@@ -76,8 +76,36 @@ export interface Effect {
   /** functvals — condições adicionais da função. */
   condFunc: Trait[];
 
+  /**
+   * Bônus super-efetivo ("special attack"): dano extra contra alvos que têm
+   * certos traits. Só existe em funções `damageNp*`. `null` quando não há.
+   *
+   * Exemplo: Enuma Elish do Gilgamesh causa 150% de dano contra
+   * `weakToEnumaElish` no overcharge 1, subindo até 200% no overcharge 5.
+   *
+   * Na fórmula entra como `superEffectiveModifier`, e o valor aqui é
+   * percentual — 150 significa multiplicador 1,5×.
+   */
+  superEffective: SuperEffective | null;
+
   /** false => a calculadora reporta em `assumptions.unmodeled` em vez de ignorar (R12). */
   supported: boolean;
+}
+
+/**
+ * Dano extra contra alvos com determinados traits.
+ *
+ * Mesma forma de `values`/`valuesByOvercharge` do efeito: percentual por nível
+ * de NP, com a matriz de overcharge quando escala — o que acontece em 52% dos
+ * casos, bem mais que nos efeitos comuns.
+ */
+export interface SuperEffective {
+  /** Traits do alvo que ativam o bônus. */
+  traits: Trait[];
+  /** Multiplicador em %, por nível de NP. 150 = 1,5×. Linha de overcharge 1. */
+  values: number[];
+  /** 5 linhas OC1..OC5. `null` quando não varia com overcharge. */
+  valuesByOvercharge: number[][] | null;
 }
 
 export interface Skill {

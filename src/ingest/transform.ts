@@ -16,6 +16,7 @@ import type {
   NoblePhantasm,
   Servant,
   Skill,
+  SuperEffective,
   Trait,
 } from "../core/model.js";
 import { convertMultiplier, convertRate, convertValues, isSupportedBuff, valueRuleFor } from "../core/units.js";
@@ -32,6 +33,7 @@ import type {
   AtlasNoblePhantasm,
   AtlasServant,
   AtlasSkill,
+  AtlasSval,
   AtlasTrait,
 } from "./atlas.js";
 
@@ -69,6 +71,70 @@ function allAssets(group: Record<string, Record<string, string>> | undefined): s
 }
 
 // -------------------------------------------------------------------- efeitos
+
+/**
+ * Dicionário global de traits, id -> nome.
+ *
+ * Necessário porque o campo `Target` do super-efetivo traz só o id (2008), sem
+ * nome. O dicionário é montado varrendo todos os pares `{id, name}` do dump —
+ * 1070 ids — em vez de manter uma lista à mão que envelheceria.
+ *
+ * Estado de módulo é aceitável aqui: `ingest/` é o estágio de setup do pipeline,
+ * roda uma vez por build. `core/` continua sem estado.
+ */
+let traitNames = new Map<number, string>();
+
+export function setTraitNames(dict: Map<number, string>): void {
+  traitNames = dict;
+}
+
+/** Varre o dump inteiro recolhendo pares `{id, name}` que parecem trait. */
+export function collectTraitNames(raw: unknown): Map<number, string> {
+  const dict = new Map<number, string>();
+  const walk = (o: unknown): void => {
+    if (!o || typeof o !== "object") return;
+    if (Array.isArray(o)) {
+      o.forEach(walk);
+      return;
+    }
+    const rec = o as Record<string, unknown>;
+    if (typeof rec["id"] === "number" && typeof rec["name"] === "string" && Object.keys(rec).length <= 3) {
+      dict.set(rec["id"] as number, rec["name"] as string);
+    }
+    for (const v of Object.values(rec)) walk(v);
+  };
+  walk(raw);
+  return dict;
+}
+
+const traitById = (id: number): Trait => ({ id, name: traitNames.get(id) ?? "unknown" });
+
+/**
+ * Bônus super-efetivo, de `Target`/`TargetList` (traits do alvo) + `Correction`
+ * (multiplicador). Só existe em funções `damageNp*`.
+ *
+ * `Correction` varia com overcharge em **52%** dos casos — bem mais que os
+ * efeitos comuns —, então a matriz de OC aqui é a regra, não a exceção.
+ * Gilgamesh: 150% no OC1 subindo até 200% no OC5 contra `weakToEnumaElish`.
+ */
+function toSuperEffective(f: AtlasFunction): SuperEffective | null {
+  const first = f.svals?.[0];
+  if (!first || first.Correction === undefined) return null;
+
+  // `Target: 0` é placeholder de "sem trait único" — não vira entrada.
+  const ids = [...(first.Target ? [first.Target] : []), ...(first.TargetList ?? [])].filter((id) => id !== 0);
+  const corrections = (rows: AtlasSval[] | undefined) => (rows ?? []).map((s) => (s.Correction ?? 0) / 10);
+
+  const values = corrections(f.svals);
+  const ocRows = [f.svals, f.svals2, f.svals3, f.svals4, f.svals5];
+  let valuesByOvercharge: number[][] | null = null;
+  if (ocRows.every(Boolean)) {
+    const rows = ocRows.map(corrections);
+    if (rows.some((r) => JSON.stringify(r) !== JSON.stringify(rows[0]))) valuesByOvercharge = rows;
+  }
+
+  return { traits: ids.map(traitById), values, valuesByOvercharge };
+}
 
 function toEffect(f: AtlasFunction): Effect {
   const buff = f.buffs?.[0];
@@ -109,6 +175,7 @@ function toEffect(f: AtlasFunction): Effect {
     condSelf: toTraits(buff?.ckSelfIndv),
     condTarget: toTraits(buff?.ckOpIndv),
     condFunc: toTraits(f.functvals),
+    superEffective: toSuperEffective(f),
     supported: isSupportedBuff(buffType),
   };
 }

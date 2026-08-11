@@ -191,11 +191,34 @@ interface Effect {
   condTarget: Trait[];           // ckOpIndv: restrição do lado do alvo (ex. human)
   condFunc: Trait[];             // functvals: condições adicionais da função
 
+  superEffective: SuperEffective | null;  // dano extra por trait do alvo (§3.4.1)
   supported: boolean;            // false => entra em `assumptions` como não modelado (R12)
+}
+
+interface SuperEffective {
+  traits: Trait[];               // traits do alvo que ativam o bônus
+  values: number[];              // multiplicador em %, por nível de NP. 150 = 1,5x
+  valuesByOvercharge: number[][] | null;  // 5 linhas OC1..OC5; null se não escala
 }
 ```
 
 > **`condSelf` não é opcional.** Não existe buff type "Buster Up" no FGO: é `upCommandall` **mais** `condSelf: [cardBuster]`. Omitir a condição aplicaria o +50% da Koyanskaya of Light num NP Arts — 50% de erro, sem nenhum sintoma (§5.3 do PLANO).
+
+#### 3.4.1 Super-efetivo
+
+O bônus contra traits vive em campos que **não** são o `Value`:
+
+| Campo do Atlas | Vira | Significado |
+|---|---|---|
+| `svals[].Target` | `superEffective.traits` | trait único (`2008` = `weakToEnumaElish`) |
+| `svals[].TargetList` | idem | vários traits (`damageNpIndividualSum`) |
+| `svals[].Correction` | `superEffective.values` | multiplicador. `1500` → `150` (%) → 1,5× |
+
+Afeta **139 NPs no índice**, e o `Correction` **varia com overcharge em 69 deles (52%)** — proporção bem maior que a dos efeitos comuns. Gilgamesh: 150% no OC1 subindo a 200% no OC5 contra `weakToEnumaElish`.
+
+O `Target` traz só o id. O nome vem de um dicionário montado varrendo todos os pares `{id, name}` do dump (1070 ids), em vez de uma lista à mão. `Target: 0` é placeholder de "sem trait" e é descartado.
+
+> **`svals` tem 114 campos distintos; lemos 6.** Os demais são engine e apresentação (`ShowState`, `HideMiss`, `PriorityBgm`). Ficaram de fora, e são candidatos a revisão se algo mais faltar: `Value2` (314 casos, em `addState`), `ParamAdd`/`ParamMax` (bônus acumulativo por trait), `RatioHPLow`/`RatioHPHigh` (condição de HP, adiada por D14).
 
 ### 3.5 `CraftEssence`
 

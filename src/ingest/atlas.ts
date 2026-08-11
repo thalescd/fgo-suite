@@ -22,6 +22,12 @@ export interface AtlasSval {
   Turn?: number;
   Count?: number;
   Value?: number;
+  /** Super-efetivo: trait único que ativa o bônus (ex. 2008 = weakToEnumaElish). */
+  Target?: number;
+  /** Super-efetivo: lista de traits, usada por `damageNpIndividualSum`. */
+  TargetList?: number[];
+  /** Super-efetivo: multiplicador. `1500` = 1.5×. Varia com overcharge em 52% dos casos. */
+  Correction?: number;
 }
 
 export interface AtlasFunction {

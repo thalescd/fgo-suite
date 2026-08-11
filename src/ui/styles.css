@@ -329,6 +329,8 @@ table.levels th:first-child {
   line-height: 1.45;
 }
 table.levels td.same { text-align: left; color: var(--muted); }
+table.levels tr.se-row td { border-bottom-style: solid; background: rgba(232, 193, 74, .05); }
+.super { color: #e8c14a; font-weight: 600; }
 table.levels .hl { color: var(--accent); background: rgba(111, 168, 255, .07); font-weight: 600; }
 
 .oc-picker { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12.5px; color: var(--muted); }

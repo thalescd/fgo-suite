@@ -33,6 +33,8 @@ import { loadManifest, readRaw } from "./sync.js";
 import {
   PLAYABLE_TYPES,
   classifyEquip,
+  collectTraitNames,
+  setTraitNames,
   disambiguate,
   toConstants,
   toCraftEssence,
@@ -152,6 +154,9 @@ export async function build(): Promise<BuildStats> {
     readRaw<AtlasAttributeRelation>("attribute_relation"),
     readRaw<AtlasCard>("card"),
   ]);
+
+  // O super-efetivo referencia traits só por id; o dicionário resolve os nomes.
+  setTraitNames(collectTraitNames(rawServants));
 
   // ---- servos
   const servants: Servant[] = rawServants

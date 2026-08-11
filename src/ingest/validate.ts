@@ -123,6 +123,31 @@ async function main(): Promise<void> {
   // 443/1855 nos 462 do índice; 446/1878 contando as 4 formas de combate.
   check("443 de 1855 efeitos de NP escalam com overcharge (índice)", [ocScaling, ocTotal], [443, 1855]);
 
+  console.log("\nSuper-efetivo — Target/TargetList + Correction");
+  const gil = await servant(byCn(12).id);
+  const se = gil.np?.effects.find((e) => e.superEffective)?.superEffective;
+  check("Gilgamesh: trait alvo resolvido a partir do id", se?.traits.map((t) => t.name), ["weakToEnumaElish"]);
+  check(
+    "multiplicador OC1..OC5 em NP1 = 150..200%",
+    se?.valuesByOvercharge?.map((r) => r[0]),
+    [150, 162.5, 175, 187.5, 200],
+  );
+  let seCount = 0;
+  let seOc = 0;
+  let seZero = 0;
+  for (const s of servants) {
+    const f = await servant(s.id);
+    for (const e of f.np?.effects ?? []) {
+      if (!e.superEffective) continue;
+      seCount++;
+      if (e.superEffective.valuesByOvercharge) seOc++;
+      if (e.superEffective.traits.some((t) => t.id === 0)) seZero++;
+    }
+  }
+  // 139/69 nos 462 do índice; as formas de combate somam mais alguns.
+  check("139 NPs com super-efetivo no índice, 69 escalando com OC", [seCount, seOc], [139, 69]);
+  check("nenhum trait placeholder id 0 sobrou", seZero, 0);
+
   console.log("\nFormas de combate");
   const jekyll = await servant(600700);
   const hyde = await read<Servant>("servant/600710.json");

@@ -63,6 +63,41 @@ describe("EffectTable — overcharge", () => {
   });
 });
 
+describe("EffectTable — super-efetivo", () => {
+  const gil = load(12); // Gilgamesh: Enuma Elish, 150% -> 200% vs weakToEnumaElish
+
+  const html = strip(
+    renderToString(
+      <EffectTable
+        effects={gil.np!.effects}
+        columns={["OC1", "OC2", "OC3", "OC4", "OC5"]}
+        valueAt={(e, oc) => (e.valuesByOvercharge ? e.valuesByOvercharge[oc] : e.values)?.[0]}
+        superEffectiveAt={(e, oc) => {
+          const se = e.superEffective;
+          if (!se) return undefined;
+          return (se.valuesByOvercharge ? se.valuesByOvercharge[oc] : se.values)?.[0];
+        }}
+        highlight={0}
+      />,
+    ),
+  );
+
+  it("nomeia o trait alvo em vez de mostrar o id cru", () => {
+    expect(html).toContain("weakToEnumaElish");
+    expect(html).not.toContain("trait 2008");
+  });
+
+  it("mostra o multiplicador escalando de 150% a 200% pelo overcharge", () => {
+    const t = text(html);
+    for (const v of ["150%", "162.5%", "175%", "187.5%", "200%"]) expect(t).toContain(`|${v}|`);
+  });
+
+  it("dá linha própria ao super-efetivo, separada do dano base", () => {
+    expect(html).toContain("se-row");
+    expect(html).toContain("super-effective");
+  });
+});
+
 describe("EffectTable — níveis de skill", () => {
   const artoria = load(2);
   // Buscada por `num`, não por nome: 4,4% dos nomes de skill ainda estão em

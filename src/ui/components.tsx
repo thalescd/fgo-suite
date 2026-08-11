@@ -134,6 +134,7 @@ export function EffectTable({
   columns,
   valueAt,
   highlight,
+  superEffectiveAt,
 }: {
   effects: Effect[];
   columns: string[];
@@ -141,6 +142,8 @@ export function EffectTable({
   valueAt: (effect: Effect, columnIndex: number) => number | undefined;
   /** Índice da coluna a destacar (nível de skill em uso, overcharge padrão). */
   highlight?: number;
+  /** Multiplicador super-efetivo na coluna i. Omitido em skills, que não têm. */
+  superEffectiveAt?: (effect: Effect, columnIndex: number) => number | undefined;
 }) {
   if (effects.length === 0) return null;
   return (
@@ -155,11 +158,11 @@ export function EffectTable({
           </tr>
         </thead>
         <tbody>
-          {effects.map((e, ei) => {
+          {effects.flatMap((e, ei) => {
             const vals = columns.map((_, i) => valueAt(e, i));
             const first = vals[0];
             const constant = vals.every((v) => v === first);
-            return (
+            const rows = [
               <tr key={ei}>
                 <td className="label"><EffectLabel effect={e} /></td>
                 {constant ? (
@@ -173,8 +176,38 @@ export function EffectTable({
                     </td>
                   ))
                 )}
-              </tr>
-            );
+              </tr>,
+            ];
+
+            // Super-efetivo ganha linha própria: é um multiplicador separado do
+            // valor do efeito e escala com overcharge em 52% dos casos.
+            const se = e.superEffective;
+            if (se && superEffectiveAt) {
+              const sv = columns.map((_, i) => superEffectiveAt(e, i));
+              const sConst = sv.every((v) => v === sv[0]);
+              rows.push(
+                <tr key={`${ei}-se`} className="se-row">
+                  <td className="label">
+                    <span className="super">super-effective</span>
+                    {se.traits.length > 0 && (
+                      <span style={{ color: "var(--muted)", fontSize: 11 }}>
+                        {" "}vs {se.traits.map((t) => (t.name === "unknown" ? `trait ${t.id}` : t.name)).join(", ")}
+                      </span>
+                    )}
+                  </td>
+                  {sConst ? (
+                    <td className="same" colSpan={columns.length}>{sv[0]}% — constant</td>
+                  ) : (
+                    sv.map((v, i) => (
+                      <td key={i} className={i === highlight ? "hl" : undefined}>
+                        {v === undefined ? "—" : `${v}%`}
+                      </td>
+                    ))
+                  )}
+                </tr>,
+              );
+            }
+            return rows;
           })}
         </tbody>
       </table>

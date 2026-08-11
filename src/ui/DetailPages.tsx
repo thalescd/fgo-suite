@@ -194,6 +194,13 @@ export function ServantPage() {
               valueAt={(e, oc) =>
                 (e.valuesByOvercharge ? e.valuesByOvercharge[oc] : e.values)?.[npLevel - 1]
               }
+              // Bônus super-efetivo: multiplicador separado, que escala com
+              // overcharge em 52% dos casos (Gilgamesh: 150% -> 200%).
+              superEffectiveAt={(e, oc) => {
+                const se = e.superEffective;
+                if (!se) return undefined;
+                return (se.valuesByOvercharge ? se.valuesByOvercharge[oc] : se.values)?.[npLevel - 1];
+              }}
               highlight={0}
             />
           </div>
