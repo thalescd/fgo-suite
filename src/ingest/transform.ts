@@ -75,11 +75,23 @@ function toEffect(f: AtlasFunction): Effect {
   const buffType = buff?.type ?? null;
   const svals = f.svals ?? [];
 
-  const rule = valueRuleFor(f.funcType, buff !== undefined);
+  const rule = valueRuleFor(f.funcType, buff !== undefined, buffType);
   const values = convertValues(
     svals.map((s) => s.Value),
     rule,
   );
+
+  // Overcharge: o Atlas guarda uma lista por nível de OC. `svals` é o OC1;
+  // svals2..svals5 são os demais. Só guardamos quando o valor realmente muda —
+  // 75,7% das funções de NP são constantes e não precisam do array extra.
+  const ocRows = [svals, f.svals2, f.svals3, f.svals4, f.svals5];
+  const valuesByOvercharge = ocRows.every(Boolean)
+    ? (() => {
+        const rows = ocRows.map((r) => convertValues((r ?? []).map((s) => s.Value), rule));
+        const varies = rows.some((r) => JSON.stringify(r) !== JSON.stringify(rows[0]));
+        return varies ? rows : null;
+      })()
+    : null;
 
   const first = svals[0];
 
@@ -88,6 +100,7 @@ function toEffect(f: AtlasFunction): Effect {
     target: f.funcTargetType,
     buffType,
     values,
+    valuesByOvercharge,
     valueUnit: rule.unit,
     turns: first?.Turn ?? null,
     count: first?.Count ?? null,

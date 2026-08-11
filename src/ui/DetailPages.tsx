@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import type { CraftEssence, Servant, Skill } from "../core/model.js";
-import { Block, EffectRow, Stars } from "./components.js";
+import { Block, EffectRow, EffectTable, Stars } from "./components.js";
 import { loadEquip, loadServant } from "./data.js";
 
 /** Números seguem en-US para casar com o resto da interface. */
@@ -42,8 +42,17 @@ function ServantLink({ id }: { id: number }) {
   );
 }
 
-/** Skills mostram o nível 10 (o default do preset); NPs mostram NP1..NP5. */
-function SkillCard({ skill, levelIndex }: { skill: Skill; levelIndex?: number }) {
+/**
+ * Skill com a progressão completa por nível.
+ *
+ * Antes só mostrávamos o nível 10, o que escondia o quanto cada efeito cresce —
+ * e escondia também quais efeitos não crescem nada (duração, chance), que é
+ * metade da informação útil ao decidir se vale subir a skill.
+ */
+function SkillCard({ skill, highlight = 9 }: { skill: Skill; highlight?: number }) {
+  const levels = skill.effects[0]?.values.length ?? 0;
+  const columns = Array.from({ length: levels }, (_, i) => `Lv${i + 1}`);
+
   return (
     <div className="skill">
       <div className="title">
@@ -59,9 +68,18 @@ function SkillCard({ skill, levelIndex }: { skill: Skill; levelIndex?: number })
         )}
       </div>
       {skill.detail && <div className="detail-text">{skill.detail}</div>}
-      <div className="effects">
-        {skill.effects.map((e, i) => <EffectRow key={i} effect={e} level={levelIndex} />)}
-      </div>
+      {levels > 1 ? (
+        <EffectTable
+          effects={skill.effects}
+          columns={columns}
+          valueAt={(e, i) => e.values[i]}
+          highlight={Math.min(highlight, levels - 1)}
+        />
+      ) : (
+        <div className="effects">
+          {skill.effects.map((e, i) => <EffectRow key={i} effect={e} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -69,6 +87,7 @@ function SkillCard({ skill, levelIndex }: { skill: Skill; levelIndex?: number })
 export function ServantPage() {
   const { id } = useParams();
   const { data: s, error } = useAsync<Servant>(() => loadServant(Number(id)), [id]);
+  const [npLevelOverride, setNpLevel] = useState<number | null>(null);
 
   if (error) return <div className="detail"><Back /><p className="empty">{error}</p></div>;
   if (!s) return <div className="detail"><Back /><p className="empty">loading…</p></div>;
@@ -76,6 +95,7 @@ export function ServantPage() {
   const atk = (lv: number) => s.atkGrowth[lv - 1] ?? null;
   const hp = (lv: number) => s.hpGrowth[lv - 1] ?? null;
   const npLevelDefault = s.rarity <= 3 || s.isWelfare ? 5 : 1;
+  const npLevel = npLevelOverride ?? npLevelDefault;
 
   return (
     <div className="detail">
@@ -153,9 +173,29 @@ export function ServantPage() {
                 {s.np.hits.length > 1 && <> · {s.np.hits.length} hits ({s.np.hits.join("/")})</>}
               </div>
             )}
-            <div className="effects">
-              {s.np.effects.map((e, i) => <EffectRow key={i} effect={e} level={npLevelDefault - 1} />)}
+
+            <div className="oc-picker">
+              <label htmlFor="nplv">NP level</label>
+              <select id="nplv" value={npLevel} onChange={(ev) => setNpLevel(Number(ev.target.value))}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>
+                    NP{n}{n === npLevelDefault ? " (default)" : ""}
+                  </option>
+                ))}
+              </select>
+              <span>· columns are overcharge; OC1 is the usual case</span>
             </div>
+
+            <EffectTable
+              effects={s.np.effects}
+              columns={["OC1", "OC2", "OC3", "OC4", "OC5"]}
+              // valuesByOvercharge é null quando o efeito não escala com OC —
+              // aí o valor é o mesmo em todas as colunas e a tabela colapsa.
+              valueAt={(e, oc) =>
+                (e.valuesByOvercharge ? e.valuesByOvercharge[oc] : e.values)?.[npLevel - 1]
+              }
+              highlight={0}
+            />
           </div>
           {s.npAlternatives.length > 0 && (
             <details className="skill" style={{ opacity: 0.85 }}>
@@ -176,19 +216,19 @@ export function ServantPage() {
         </Block>
       )}
 
-      <Block title="Skills (values at level 10)">
-        {s.skills.map((sk) => <SkillCard key={sk.id} skill={sk} levelIndex={9} />)}
+      <Block title="Skills — value at each level (Lv10 highlighted)">
+        {s.skills.map((sk) => <SkillCard key={sk.id} skill={sk} />)}
       </Block>
 
       {s.classPassive.length > 0 && (
         <Block title="Class passives">
-          {s.classPassive.map((sk) => <SkillCard key={sk.id} skill={sk} levelIndex={0} />)}
+          {s.classPassive.map((sk) => <SkillCard key={sk.id} skill={sk} highlight={0} />)}
         </Block>
       )}
 
       {s.appendPassive.length > 0 && (
-        <Block title="Append passives (off by default in calculations)">
-          {s.appendPassive.map((sk) => <SkillCard key={sk.id} skill={sk} levelIndex={9} />)}
+        <Block title="Append passives — off by default in calculations">
+          {s.appendPassive.map((sk) => <SkillCard key={sk.id} skill={sk} />)}
         </Block>
       )}
 

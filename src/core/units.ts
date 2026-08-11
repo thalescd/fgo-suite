@@ -80,13 +80,27 @@ const FUNC_VALUE_RULE: Record<string, ValueRule> = {
 
 /**
  * Funções que aplicam buff (`addState`, `addStateShort`, …) usam o valor do BUFF,
- * não da função — e buffs são sempre percentuais /10.
+ * não da função — e buffs são quase sempre percentuais /10.
  *   Charisma B lv1 = 9% ATK -> Value 90
  *   Koyanskaya sk3 = 50% Buster -> Value 500
  */
 const BUFF_FUNCS = new Set(["addState", "addStateShort", "addFieldChangeToField"]);
 
-export function valueRuleFor(funcType: string, hasBuff: boolean): ValueRule {
+/**
+ * Exceção à regra acima: estes buffs guardam um **id**, não um percentual.
+ *
+ * A família `*Function` (`attackAfterFunction`, `selfturnendFunction`, …) aponta
+ * para outra função por id; `addIndividuality` e `fieldIndividuality` apontam
+ * para um trait. Dividir por 10 produzia coisas como "97092.8%" — número
+ * plausível à distância e completamente sem sentido.
+ *
+ * Vão como `unknown` com o valor cru: o dado fica visível e obviamente não
+ * convertido, em vez de parecer um percentual válido.
+ */
+const ID_CARRYING_BUFFS = /Function$|Function(MainOnly)?$|^addIndividuality$|^fieldIndividuality$/;
+
+export function valueRuleFor(funcType: string, hasBuff: boolean, buffType?: string | null): ValueRule {
+  if (buffType && ID_CARRYING_BUFFS.test(buffType)) return UNKNOWN;
   if (hasBuff || BUFF_FUNCS.has(funcType)) return PERCENT_10;
   return FUNC_VALUE_RULE[funcType] ?? UNKNOWN;
 }

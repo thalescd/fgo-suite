@@ -30,7 +30,13 @@ export interface AtlasFunction {
   funcTargetTeam?: string;
   functvals?: AtlasTrait[];
   buffs?: AtlasBuff[];
+  /** Em NPs: valores por nível de NP **no overcharge 1**. Em skills: por nível de skill. */
   svals?: AtlasSval[];
+  /** Só em NPs: os mesmos valores nos overcharges 2 a 5. Presentes em 100% das funções de NP. */
+  svals2?: AtlasSval[];
+  svals3?: AtlasSval[];
+  svals4?: AtlasSval[];
+  svals5?: AtlasSval[];
 }
 
 export interface AtlasSkill {

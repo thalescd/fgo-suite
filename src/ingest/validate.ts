@@ -99,6 +99,30 @@ async function main(): Promise<void> {
   check("Kaleidoscope base = 80% de NP", kaleid.effectsBase[0]?.values[0], 80);
   check("Kaleidoscope MLB = 100% de NP", kaleid.effectsMlb[0]?.values[0], 100);
 
+  console.log("\nOvercharge — svals2..svals5");
+  const nero = await servant(byCn(5).id);
+  const defDown = nero.np?.effects.find((e) => e.buffType === "downDefence");
+  check("Nero: NP tem efeito que escala com overcharge", defDown?.valuesByOvercharge !== null, true);
+  check(
+    "Nero downDefence OC1..OC5 em NP1 = 20..40%",
+    defDown?.valuesByOvercharge?.map((r) => r[0]),
+    [20, 25, 30, 35, 40],
+  );
+  check("linha OC1 é idêntica a `values`", defDown?.valuesByOvercharge?.[0], defDown?.values);
+  const nptDmg = nero.np?.effects.find((e) => e.funcType.startsWith("damageNp"));
+  check("dano do NP da Nero NÃO escala com OC (fica null)", nptDmg?.valuesByOvercharge, null);
+  let ocScaling = 0;
+  let ocTotal = 0;
+  for (const s of servants) {
+    const f = await servant(s.id);
+    for (const e of f.np?.effects ?? []) {
+      ocTotal++;
+      if (e.valuesByOvercharge) ocScaling++;
+    }
+  }
+  // 443/1855 nos 462 do índice; 446/1878 contando as 4 formas de combate.
+  check("443 de 1855 efeitos de NP escalam com overcharge (índice)", [ocScaling, ocTotal], [443, 1855]);
+
   console.log("\nFormas de combate");
   const jekyll = await servant(600700);
   const hyde = await read<Servant>("servant/600710.json");

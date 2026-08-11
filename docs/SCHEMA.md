@@ -51,6 +51,7 @@ Servido em `public/data/meta.json` e exibido no rodapé do site.
 | **Percentuais de efeito** | `/10` | `svals[].Value`, `svals[].Rate`, `starGen`, `instantDeathChance` | `Value: 4000` → `400%` · `Rate: 1000` → `100%` · `Value: 90` → `9%` |
 | **Multiplicadores constantes** | `/1000` | `NiceClassAttackRate`, `NiceClassRelation`, `NiceAttributeRelation`, `NiceCard.adjustAtk/addAtk`, `NiceConstant.*_RATE` | `ATTACK_RATE: 230` → `0.23` · `adjustAtk: 1500` → `1.5×` · `saber→lancer: 2000` → `2.0×` |
 | **Ganho de NP** | `/100` | `npGain.*` | `86` → `0.86%` por hit — ⚠️ **validar na fase 3**, não usado na fórmula de dano |
+| **Referência a id** | nenhum (`unknown`) | buffs da família `*Function`, `addIndividuality`, `fieldIndividuality` | `970928` é o **id de outra função**, não `97092.8%`. Vão crus e marcados `unknown` |
 
 Outros campos com semântica não óbvia:
 
@@ -63,7 +64,22 @@ Outros campos com semântica não óbvia:
 | `priority` | versão do efeito; maior vence (R8) |
 | `condQuestId` | quest que desbloqueia a versão; `0` = disponível desde sempre |
 
-**Após a ingestão, todos os valores já estão convertidos.** O modelo canônico nunca carrega inteiros crus do Atlas.
+**Após a ingestão, todos os valores já estão convertidos.** A exceção é deliberada: quando a unidade é desconhecida, o valor fica cru e `valueUnit` vira `unknown`, para a ignorância ficar visível em vez de virar um percentual falso.
+
+### 2.1 Overcharge
+
+Um NP tem **duas dimensões** de valor, e o Atlas guarda cada uma num campo diferente:
+
+| Dimensão | Onde | Tamanho |
+|---|---|---|
+| Nível do NP (1–5) | índice dentro de `svals` | 5 |
+| Overcharge (1–5) | `svals`, `svals2`, `svals3`, `svals4`, `svals5` | 5 |
+
+`svals[i]` é *NP level i+1 no overcharge 1*. Os campos `svals2`–`svals5` existem em **100% das funções de NP** e trazem os mesmos níveis nos overcharges 2 a 5.
+
+**24,3% das funções de NP variam com overcharge**, e as que mais variam são slots da fórmula de dano: `upCommandall` (95), `upNpdamage` (85), `downDefence` (77), `upAtk` (27). A Nero, por exemplo, reduz defesa em 20% no OC1 e **40% no OC5**.
+
+No canônico isso vira `valuesByOvercharge: number[][] | null` — 5 linhas, `null` quando o efeito não escala (75,7% dos casos). A linha `[0]` é idêntica a `values`.
 
 ---
 
@@ -164,7 +180,8 @@ interface Effect {
   target: TargetType;            // "self" | "ptAll" | "ptOne" | ...
   buffType: string | null;       // "upAtk", "upCommandall", ... (null se a func não usa buff)
 
-  values: number[];              // por nível — 10 (skill), 5 (NP), 1 (CE); já convertido
+  values: number[];              // por nível — 10 (skill), 5 (NP), 1 (CE); em NP é a linha de OC1
+  valuesByOvercharge: number[][] | null;  // só NP, só quando escala: 5 linhas OC1..OC5 (§2.1)
   turns: number | null;          // -1 = permanente
   count: number | null;          // -1 = ilimitado
   chance: number;                // % (Rate/10)

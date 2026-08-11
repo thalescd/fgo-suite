@@ -41,8 +41,24 @@ export interface Effect {
   /** null quando a função não usa buff (gainNp, damageNp, gainStar...). */
   buffType: string | null;
 
-  /** Um valor por nível: 10 (skill), 5 (NP), 1 (CE). Já convertido conforme `valueUnit`. */
+  /**
+   * Um valor por nível: 10 (skill), 5 (NP level), 1 (CE).
+   * Em NPs isto é a linha de **overcharge 1** — o caso normal de uso.
+   * Já convertido conforme `valueUnit`.
+   */
   values: number[];
+  /**
+   * Só em NPs, e só quando o efeito realmente escala: 5 linhas (OC1..OC5),
+   * cada uma com um valor por nível de NP. A linha `[0]` é idêntica a `values`.
+   *
+   * `null` quando o valor não muda com overcharge (75,7% das funções de NP).
+   *
+   * **Não é opcional para a calculadora.** 24,3% das funções de NP variam com
+   * overcharge, e as que mais variam são justamente slots da fórmula de dano
+   * (`upCommandall`, `upNpdamage`, `downDefence`, `upAtk`). Ignorar isto dá
+   * número errado em qualquer cenário com OC acima de 1 — sem sintoma.
+   */
+  valuesByOvercharge: number[][] | null;
   valueUnit: ValueUnit;
 
   /** Duração em turnos. -1 = permanente. null = não aplicável. */
