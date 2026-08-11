@@ -1,0 +1,14 @@
+node_modules/
+
+# Dumps brutos do Atlas Academy — ~70 MB, reconstruíveis com `npm run data:sync`.
+# O manifest é versionado (ver abaixo) para que o repo saiba de qual versão
+# dos dados os artefatos foram gerados.
+raw/**
+!raw/manifest.json
+
+# Artefatos de build. Reconstruíveis com `npm run data:build`.
+public/data/
+
+dist/
+*.log
+.DS_Store

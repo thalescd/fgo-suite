@@ -1,0 +1,22 @@
+{
+  "_comment": [
+    "Tabela curada de apelidos: collectionNo -> nomes pelos quais a comunidade chama o servo.",
+    "Existe porque 76 nomes colidem no dado e porque quase ninguém digita o nome oficial.",
+    "Sem isso, busca por nome e perguntas em linguagem natural falham na primeira etapa (R9).",
+    "",
+    "Chaveado por collectionNo (legível para humanos). O build valida cada chave e",
+    "avisa se algum collectionNo não resolver para exatamente um servo.",
+    "",
+    "Seed conservador: só entradas verificadas. Adicionar à vontade."
+  ],
+  "1": ["Mash", "Mashu", "Shielder"],
+  "2": ["Artoria", "Saber", "Altria"],
+  "12": ["Gil", "Gilgamesh Archer", "AUO"],
+  "62": ["Tamamo", "Caster Tamamo"],
+  "150": ["Merlin", "Magus of Flowers"],
+  "215": ["Skadi", "Scathach-Skadi", "Caster Skadi"],
+  "268": ["Space Ishtar", "Spishtar"],
+  "307": ["Miss Crane", "Crane"],
+  "314": ["Koyanskaya of Light", "Koyan Light", "Light Koyan", "Tamamo Vitch Light"],
+  "334": ["Koyanskaya of Dark", "Koyan Dark", "Dark Koyan"]
+}

@@ -1,0 +1,51 @@
+damage for this card = [servantAtk * npDamageMultiplier * (firstCardBonus + (cardDamageValue * (1 + cardMod))) * classAtkBonus * triangleModifier * attributeModifier * randomModifier * 0.23 * (1 + atkMod - defMod) * criticalModifier * extraCardModifier * (1 - specialDefMod) * {1 + powerMod + selfDamageMod + (critDamageMod * isCrit) + (npDamageMod * isNP)} * {1 + ((superEffectiveModifier - 1) * isSuperEffective)}] + dmgPlusAdd + selfDmgCutAdd + (servantAtk * busterChainMod)
+
+FROM YOUR SERVANT
+* servantAtk = {Your servant's current Atk value}
+* classAtkBonus = {class bonus}
+* triangleModifier = {triangle bonus}
+* attributeModifier = {attribute bonus}
+
+FROM CARDS
+* firstCardBonus = {0.5 if first card is a Buster card, 0 otherwise. No bonus to NPs}
+* cardDamageValue
+First	Second	Third
+Arts	100%	120%	140%
+Buster	150%	180%	210%
+Quick	80%	96%	112%
+** cardDamageValue for Extra card is 1
+** NP cards act as a First card of the appropriate type.
+* busterChainMod = {0.2 if it's a Buster card in a Buster Chain, 0 otherwise}
+* extraCardModifier = {2 if Extra card in a Brave Chain, 3.5 if Extra card in a Buster/Quick/Arts Brave Chain, 1 if neither}
+
+FROM RNG
+* randomModifier = {random from 0.9 to 1.1}
+* criticalModifier = {2 if crit, 1 if not}
+
+FROM NP PROPERTIES
+* npDamageMultiplier = {NP's damage multiplier (or 1 if it's not an NP)}
+* superEffectiveModifier = {NP super effective modifier}
+* isSuperEffective = {1 if the enemy qualifies (via trait or status), 0 otherwise}
+
+FROM BUFFS
+For those dumbasses that can't use basic logic, you add up all buffs of a given type before including the term. This obviously means they'll stack additively.
+* cardMod = {X% [Card] Power Up/Down}
+* atkMod = {X% Attack Up/Down}
+* defMod = {X% Defense Up/Down), Def Up (but not Def Down) is skipped if the NP ignores defense}
+* specialDefMod = Given to some enemies like Quetz's in Babylon or Gawain in Camelot. Defense Ignore NPs do not bypass this value.
+* powerMod = {X% Power Up/Down}
+* selfDamageMod = {No buff currently uses this. It's like Power Up but on the enemy's side.}
+
+* isCrit = {1 if crit, 0 otherwise}
+* critDamageMod = {X% Critical Damage Up/Down}
+
+* isNP = {1 if NP attack, 0 otherwise}
+* npDamageMod = {X% NP Power Up/Down}
+
+* dmgPlusAdd = {X Damage Plus/Minus} // Note the lack of %. Divinity and Waver's 3rd skill, for example.
+* selfDmgCutAdd = {X Damage Up/Cut} // Also a straight number. Waver's 2nd skill and Mashu's first, for example.
+
+Remember, 10% = 0.1.
+* You'll note Attack and Defense buffs are direct and opposite buffs. +10% attack is straight +10% damage and +10% def is -10% damage.
+* [Anti-X] buffs will obviously only count if they match you/the enemy. So Power Up [Anti-Dragon] only works if you're hitting an enemy with the Dragon trait and so on.
+* Minimum damage is 1 lol. (But only if Atk > Def)

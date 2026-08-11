@@ -1,0 +1,23 @@
+{
+  "name": "fgo-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Busca, dados e calculadora de dano para Fate/Grand Order, sobre os dumps da Atlas Academy",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "data:check": "tsx src/ingest/cli.ts check",
+    "data:sync": "tsx src/ingest/cli.ts sync",
+    "data:build": "tsx src/ingest/cli.ts build",
+    "data:validate": "tsx src/ingest/validate.ts",
+    "data:all": "tsx src/ingest/cli.ts sync && tsx src/ingest/cli.ts build && tsx src/ingest/validate.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
