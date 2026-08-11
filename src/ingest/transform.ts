@@ -232,6 +232,8 @@ export function toServant(s: AtlasServant, assets: AtlasExtraAssets | undefined)
     appendPassive: (s.appendPassive ?? []).map((a) => toSkill(a.skill)),
     np,
     npAlternatives: alternatives,
+    combatFormOf: null, // preenchido em linkCombatForms()
+    combatForms: [],
     capabilities: [], // fase 2
     assets: {
       face: firstAsset(assets?.faces),
@@ -260,6 +262,61 @@ export function disambiguate(servants: Servant[]): { collisions: number } {
     }
   }
   return { collisions };
+}
+
+/**
+ * Identifica **formas de combate** e as liga ao servo base.
+ *
+ * Alguns servos se transformam em batalha e a forma transformada é uma entrada
+ * separada no dump — Hyde depois do NP do Jekyll, a segunda Aoko, Flora,
+ * Prelati. Sem tratar isso, a busca mostra o mesmo personagem duas vezes.
+ *
+ * Detecção: a função `transformServant` carrega o `id` do alvo em `values[0]`.
+ * Uma entrada é forma de combate quando é alvo de um `transformServant` vindo
+ * de **outro** servo **e** tem `collectionNo === 0`.
+ *
+ * As duas condições juntas são necessárias:
+ *  - só "é alvo" pegaria Ptolemaîos e Mélusine, que se transformam em si mesmos
+ *    e têm número de coleção próprio;
+ *  - só `collectionNo === 0` seria frágil, porque um lançamento ainda sem número
+ *    cairia na regra.
+ *
+ * Conferência: excluir as formas resulta em 462 servos e 56 welfare — exatamente
+ * o que o `basic_servant` do Atlas reporta, que faz o mesmo recorte.
+ */
+export function linkCombatForms(servants: Servant[]): { forms: Servant[] } {
+  const byId = new Map(servants.map((s) => [s.id, s]));
+
+  // alvo -> quem transforma nele
+  const transformedBy = new Map<number, Set<number>>();
+  for (const s of servants) {
+    const effects = [
+      ...s.skills.flatMap((k) => k.effects),
+      ...s.classPassive.flatMap((k) => k.effects),
+      ...(s.np?.effects ?? []),
+      ...s.npAlternatives.flatMap((np) => np.effects),
+    ];
+    for (const e of effects) {
+      if (e.funcType !== "transformServant") continue;
+      const target = e.values[0];
+      if (target === undefined || target === 0) continue;
+      (transformedBy.get(target) ?? transformedBy.set(target, new Set()).get(target)!).add(s.id);
+    }
+  }
+
+  const forms: Servant[] = [];
+  for (const [targetId, sources] of transformedBy) {
+    const target = byId.get(targetId);
+    if (!target || target.collectionNo !== 0) continue;
+
+    const base = [...sources].filter((id) => id !== targetId).map((id) => byId.get(id)).find(Boolean);
+    if (!base) continue;
+
+    target.combatFormOf = base.id;
+    base.combatForms.push(target.id);
+    forms.push(target);
+  }
+  return { forms };
 }
 
 /** NP level default: welfare tem precedência sobre raridade (§5.6). */

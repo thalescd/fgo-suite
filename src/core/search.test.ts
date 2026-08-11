@@ -78,7 +78,7 @@ describe("facetas de servo", () => {
     const aoe = search(index, F({ npTarget: ["aoe"] })).length;
     const sup = search(index, F({ npTarget: ["support"] })).length;
     expect(st + aoe + sup).toBe(servants.length);
-    expect([st, aoe, sup]).toEqual([174, 240, 52]);
+    expect([st, aoe, sup]).toEqual([174, 238, 50]);
   });
 
   it("filtra por card do NP", () => {
@@ -87,8 +87,8 @@ describe("facetas de servo", () => {
   });
 
   it("filtra welfare", () => {
-    expect(search(index, F({ welfare: true })).length).toBe(57);
-    expect(search(index, F({ welfare: false })).length).toBe(servants.length - 57);
+    expect(search(index, F({ welfare: true })).length).toBe(56);
+    expect(search(index, F({ welfare: false })).length).toBe(servants.length - 56);
   });
 
   it("traits múltiplos são AND", () => {

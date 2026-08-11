@@ -136,6 +136,20 @@ export interface Servant {
   np: NoblePhantasm | null;
   npAlternatives: NoblePhantasm[];
 
+  /**
+   * Se preenchido, este servo é uma **forma de combate**: existe apenas depois
+   * de o servo base se transformar em batalha (Hyde após o NP do Jekyll, a
+   * segunda Aoko, Flora, Prelati). O valor é o `id` do servo base.
+   *
+   * Formas de combate não entram no índice de busca — apareceriam como uma
+   * segunda entrada do mesmo personagem. O documento completo continua existindo
+   * e é alcançável pela página do base, porque os status delas são reais e a
+   * calculadora vai precisar deles.
+   */
+  combatFormOf: number | null;
+  /** Ids das formas de combate deste servo (o inverso de `combatFormOf`). */
+  combatForms: number[];
+
   /** Preenchido na fase 2. Vazio na fase 0. */
   capabilities: string[];
 
@@ -251,6 +265,8 @@ export interface Meta {
   builtAt: string;
   counts: {
     servants: number;
+    /** Formas de combate: existem como artefato mas ficam fora do índice. */
+    combatForms: number;
     craftEssences: number;
     craftEssencesDropped: number;
     mysticCodes: number;

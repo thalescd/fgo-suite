@@ -112,18 +112,37 @@ Carga inicial do site: **855 KB**. Total em disco: 10,4 MB (de 86 MB de dumps).
 
 Cada uma já mordeu ou quase mordeu. Não desfaça sem ler.
 
-### `basic_servant` e `nice_servant` discordam
+### Formas de combate aparecem como servos duplicados
 
-Fontes diferentes do Atlas dão respostas diferentes para os mesmos campos:
+Alguns servos se transformam em batalha e a forma transformada é uma **entrada
+separada** no dump — Hyde depois do NP do Jekyll, a segunda Aozaki Aoko, Flora e
+Prelati. Sem tratamento, a busca mostra o mesmo personagem duas vezes.
+
+Detecção: a função `transformServant` carrega o `id` do alvo. Uma entrada é forma
+de combate quando é alvo de um `transformServant` vindo de **outro** servo **e**
+tem `collectionNo === 0`. As duas condições são necessárias — Ptolemaîos e
+Mélusine também usam `transformServant`, mas apontam para si mesmos e têm número
+de coleção próprio.
+
+Elas continuam existindo como `servant/{id}.json` (os status são reais e a
+calculadora vai precisar deles) e ficam ligadas ao base por `combatFormOf` /
+`combatForms`, mas **não entram no índice**.
+
+### `basic_servant` e `nice_servant` discordam
 
 | | `basic_servant` | `nice_servant` (o que ingerimos) |
 |---|---|---|
-| Servos jogáveis | 462 | **466** |
-| Servos welfare | 56 | **57** |
-| Rarity da Mash | 3 | **4** |
+| Servos jogáveis | 462 | 466 |
+| Servos welfare | 56 | 57 |
+| Rarity da Mash | **3** | **4** |
 
-Qualquer conferência feita contra o `basic` vai discordar do build. O projeto usa
-o `nice`; `data:validate` também.
+As duas primeiras linhas estão **explicadas**: a diferença são exatamente as 4
+formas de combate acima (uma delas, a de Flora, é welfare). Excluí-las reproduz
+462 e 56 — o `basic_servant` faz o mesmo recorte. Nosso índice bate com o basic;
+os artefatos completos mantêm as 466 entradas.
+
+A rarity da Mash continua sendo divergência genuína de campo. O projeto usa o
+`nice` (4); `data:validate` também.
 
 ### Três divisores de unidade, sem marcação no dado
 

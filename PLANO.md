@@ -38,12 +38,15 @@ Insight que organiza tudo: **(2) e (3) são a mesma entrega** — um MCP server 
 | D16 | **Lista de traits do inimigo gerada no build** | 91 traits de identidade, ordenados por frequência de uso. Servo novo traz o trait dele sem edição manual. |
 | D17 | **MLB de CE é input do usuário** | `condLimitCount` `0`/`4` separa os dois conjuntos de efeito. Ver R13. |
 | D18 | **`rollMode` selecionável (`min`/`avg`/`max`/`range`)** | Controla **só** o `randomModifier`. Buffs com RNG de ativação não são filtrados — quem compõe o `BuffStack` decide. Chance é informativa. Ver §5.6. |
+| D19 | **Formas de combate ficam fora do índice, não fora do modelo** | Hyde, a 2ª Aoko, Flora e Prelati continuam como artefato e ligadas ao base; só não aparecem na busca. Ver R15. |
 
 ### Volume real (medido)
 
 | Entidade | Qtd |
 |---|---:|
-| Servos jogáveis (`type` = normal/heroine) | **462** |
+| Servos jogáveis (`type` = normal/heroine) | **466** |
+| — destes, formas de combate (fora do índice, R15) | 4 |
+| **Servos no índice de busca** | **462** |
 | Craft Essences | **2.685** |
 | Mystic Codes | **28** |
 
@@ -519,4 +522,5 @@ Cada fase entrega algo usável sozinho.
 | **R11** | **Restrição de card fica em `ckSelfIndv`** | Não existe buff type "Buster up": é `upCommandall` + `ckSelfIndv: [cardBuster]`. Omitir a condição aplica buff de Buster a NP Arts — 50% de erro sem sintoma. **Mitigação: `ckSelfIndv`/`ckOpIndv`/`functvals` são obrigatórios no registro de efeito (§5.3).** |
 | R12 | Buffs não modelados | Aparecem tipos exóticos (ex. `commandattackAfterFunctionMainOnly`, que referencia outra função por id). **Mitigação: lista explícita de buff types suportados; qualquer coisa fora dela entra no bloco `assumptions` como "não modelado", nunca é ignorada em silêncio.** |
 | **R13** | **CE tem dois conjuntos de efeito (base e MLB)** | `condLimitCount` `0` = base, `4` = max limit break. Kaleidoscope: 80% de NP base vs **100%** MLB. São 1.491 variantes MLB no dump. Pegar o conjunto errado erra sem sintoma. **Mitigação: `effectsBase` e `effectsMlb` separados no schema; MLB é input obrigatório da calculadora (D17).** |
+| **R15** | **Formas de combate duplicam personagens na busca** | Servos que se transformam em batalha têm a forma transformada como entrada separada: Hyde (após o NP do Jekyll), a 2ª Aozaki Aoko, Flora e Prelati. Todas com `collectionNo: 0`. **Mitigação: detectadas via `transformServant` (que carrega o id do alvo) + `collectionNo === 0`; ligadas ao base por `combatFormOf`/`combatForms` e excluídas do índice.** As duas condições são necessárias — Ptolemaîos e Mélusine também usam `transformServant`, mas apontam para si mesmos. Excluir as 4 reproduz os 462 servos e 56 welfare que o `basic_servant` reporta, o que **explica a divergência de R2/DATA.md §4**. |
 | R14 | Divisores de unidade inconsistentes | O Atlas usa `/10` para percentuais de efeito, `/1000` para multiplicadores constantes e `/100` para ganho de NP — sem marcação no dado. **Mitigação: tabela em `docs/SCHEMA.md` §2; conversão acontece só na ingestão, o modelo canônico nunca carrega inteiro cru.** |

@@ -27,6 +27,21 @@ function useAsync<T>(load: () => Promise<T>, deps: unknown[]): { data: T | null;
 
 const Back = () => <Link className="back" to="/">← back to search</Link>;
 
+/**
+ * Link para uma forma de combate (ou para o servo base a partir dela).
+ *
+ * Essas formas ficam fora do índice de busca — apareceriam como uma segunda
+ * entrada do mesmo personagem —, então este link é o único caminho até elas.
+ */
+function ServantLink({ id }: { id: number }) {
+  const { data } = useAsync<Servant>(() => loadServant(id), [id]);
+  return (
+    <Link to={`/servant/${id}`}>
+      {data ? `${data.name} (${data.className}, ${data.rarity}★)` : `#${id}`}
+    </Link>
+  );
+}
+
 /** Skills mostram o nível 10 (o default do preset); NPs mostram NP1..NP5. */
 function SkillCard({ skill, levelIndex }: { skill: Skill; levelIndex?: number }) {
   return (
@@ -66,11 +81,29 @@ export function ServantPage() {
     <div className="detail">
       <Back />
 
+      {s.combatFormOf !== null && (
+        <p className="detail-text" style={{ marginTop: -6, marginBottom: 16 }}>
+          In-battle transformed form of <ServantLink id={s.combatFormOf} />. Only appears mid-combat,
+          so it is kept out of the search index.
+        </p>
+      )}
+
       <div className="detail-head">
         {s.assets.charaGraph[0] && <img src={s.assets.charaGraph[0]} alt="" />}
         <div>
           <h2>{s.name}</h2>
-          <div className="orig">{s.originalName} · no. {s.collectionNo} · id {s.id}</div>
+          <div className="orig">
+            {s.originalName} · {s.collectionNo > 0 ? `no. ${s.collectionNo}` : "no collection no."} · id {s.id}
+          </div>
+          {s.combatForms.length > 0 && (
+            <div className="orig">
+              transforms into{" "}
+              {s.combatForms.map((fid, i) => (
+                <span key={fid}>{i > 0 && ", "}<ServantLink id={fid} /></span>
+              ))}{" "}
+              in battle
+            </div>
+          )}
           <dl className="kv">
             <dt>class</dt><dd>{s.className}</dd>
             <dt>rarity</dt><dd><Stars n={s.rarity} /></dd>

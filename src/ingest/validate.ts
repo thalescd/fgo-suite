@@ -48,7 +48,8 @@ async function main(): Promise<void> {
   console.log(`Validando build de ${meta.builtAt} (gamedata ${meta.gameDataHash})\n`);
 
   console.log("Contagens");
-  check("466 servos jogáveis", meta.counts.servants, 466);
+  check("462 servos no índice (466 jogáveis menos 4 formas de combate)", meta.counts.servants, 462);
+  check("4 formas de combate fora do índice", meta.counts.combatForms, 4);
   check("536 CEs inertes descartadas", meta.counts.craftEssencesDropped, 536);
   check("28 mystic codes", meta.counts.mysticCodes, 28);
 
@@ -78,7 +79,8 @@ async function main(): Promise<void> {
     const f = await servant(s.id);
     if (f.skills.some((k) => k.previousVersions)) withRankUp++;
   }
-  check("245 servos com rank up de skill", withRankUp, 245);
+  // 243 no índice; 245 contando as 4 formas de combate, que é o número citado em R8.
+  check("243 servos com rank up de skill no índice", withRankUp, 243);
 
   console.log("\nR11 — condições de card e alvo");
   const cmd = koyan.skills.find((s) => s.num === 3)?.effects.find((e) => e.buffType === "upCommandall");
@@ -97,8 +99,19 @@ async function main(): Promise<void> {
   check("Kaleidoscope base = 80% de NP", kaleid.effectsBase[0]?.values[0], 80);
   check("Kaleidoscope MLB = 100% de NP", kaleid.effectsMlb[0]?.values[0], 100);
 
+  console.log("\nFormas de combate");
+  const jekyll = await servant(600700);
+  const hyde = await read<Servant>("servant/600710.json");
+  check("Hyde fora do índice", servants.filter((s) => s.id === 600710).length, 0);
+  check("só uma Aozaki Aoko no índice", servants.filter((s) => s.name === "Aozaki Aoko").length, 1);
+  check("nenhum collectionNo 0 sobra no índice", servants.filter((s) => s.collectionNo === 0).length, 0);
+  check("Jekyll aponta para a forma Hyde", jekyll.combatForms, [600710]);
+  check("Hyde continua existindo como artefato", hyde.className, "berserker");
+  check("Hyde aponta de volta para o base", hyde.combatFormOf, 600700);
+  check("o base não é forma de ninguém", jekyll.combatFormOf, null);
+
   console.log("\n§5.6 — welfare e NP level");
-  check("57 servos welfare (nice_servant; o basic diz 56)", servants.filter((s) => s.isWelfare).length, 57);
+  check("56 welfare no índice — mesmo recorte do basic_servant", servants.filter((s) => s.isWelfare).length, 56);
   check("welfare 5★ = Solomon", servants.find((s) => s.isWelfare && s.rarity === 5)?.name, "Solomon");
   check("1 servo rarity 0 (Aŋra Mainiiu)", servants.filter((s) => s.rarity === 0).length, 1);
   const npLevel = (s: IndexEntryServant) => (s.rarity <= 3 || s.isWelfare ? 5 : 1);
@@ -109,7 +122,7 @@ async function main(): Promise<void> {
   check("displayName único para todos", new Set(servants.map((s) => s.displayName)).size, servants.length);
   check("displayName desambiguado", byCn(2).displayName, "Altria Pendragon (saber, 5★)");
   check("apelidos curados carregados", byCn(150).aliases.includes("Merlin"), true);
-  check("4 servos com collectionNo 0", servants.filter((s) => s.collectionNo === 0).length, 4);
+  check("displayName do Hyde distingue do base", hyde.displayName !== jekyll.displayName, true);
 
   console.log("\nConstantes da fórmula");
   check("ATTACK_RATE = 0.23", constants.attackRate, 0.23);

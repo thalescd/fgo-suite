@@ -42,7 +42,7 @@ const renderAt = (url: string): string =>
 describe("SearchPage", () => {
   it("renderiza a listagem de servos sem filtro", () => {
     const html = renderAt("/");
-    expect(html).toContain("466</strong> servants");
+    expect(html).toContain("462</strong> servants");
     expect(html).toContain("Mash Kyrielight");
   });
 
@@ -57,7 +57,7 @@ describe("SearchPage", () => {
 
   it("filtro de alvo de NP chega ao resultado", () => {
     const html = renderAt("/?np=aoe");
-    expect(html).toContain("240</strong> servants");
+    expect(html).toContain("238</strong> servants");
   });
 
   it("busca por apelido funciona na tela", () => {

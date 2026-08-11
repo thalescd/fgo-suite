@@ -36,6 +36,7 @@ import {
   disambiguate,
   toConstants,
   toCraftEssence,
+  linkCombatForms,
   toMysticCode,
   toServant,
 } from "./transform.js";
@@ -125,6 +126,7 @@ function buildTraitCatalog(servants: Servant[]): { id: number; name: string; use
 
 export interface BuildStats {
   servants: number;
+  combatForms: number;
   equipsCombat: number;
   equipsFarm: number;
   equipsDropped: number;
@@ -156,6 +158,11 @@ export async function build(): Promise<BuildStats> {
     .filter((s) => PLAYABLE_TYPES.has(s.type))
     .map((s) => toServant(s, s.extraAssets))
     .sort((a, b) => a.collectionNo - b.collectionNo || a.id - b.id);
+
+  // Formas de combate (Hyde, a 2ª Aoko, Flora, Prelati) continuam no artefato,
+  // mas ficam fora do índice — apareceriam como duplicata do mesmo personagem.
+  const { forms: combatForms } = linkCombatForms(servants);
+  const indexed = servants.filter((s) => s.combatFormOf === null);
 
   const { collisions } = disambiguate(servants);
   warnings.push(...(await loadAliases(servants)));
@@ -189,7 +196,7 @@ export async function build(): Promise<BuildStats> {
 
   // ---- índice
   const index: IndexEntry[] = [
-    ...servants.map((s) => ({
+    ...indexed.map((s) => ({
       kind: "servant" as const,
       id: s.id,
       collectionNo: s.collectionNo,
@@ -238,7 +245,8 @@ export async function build(): Promise<BuildStats> {
     syncedAt: manifest.syncedAt,
     builtAt: new Date().toISOString(),
     counts: {
-      servants: servants.length,
+      servants: indexed.length,
+      combatForms: combatForms.length,
       craftEssences: equips.length,
       craftEssencesDropped: dropped,
       mysticCodes: mysticCodes.length,
@@ -254,7 +262,8 @@ export async function build(): Promise<BuildStats> {
   await Promise.all(equips.map((e) => write(`equip/${e.id}.json`, e)));
 
   return {
-    servants: servants.length,
+    servants: indexed.length,
+    combatForms: combatForms.length,
     equipsCombat: equips.filter((e) => e.category === "combat").length,
     equipsFarm: equips.filter((e) => e.category === "farm").length,
     equipsDropped: dropped,

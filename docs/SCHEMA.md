@@ -12,7 +12,7 @@ Notação: TypeScript, que é a implementação real.
 
 | Regra | Detalhe |
 |---|---|
-| **Chave primária é `id`** | O `id` interno do Atlas. `collectionNo` **não** serve: não é único e 4 servos têm `collectionNo = 0` (R9). |
+| **Chave primária é `id`** | O `id` interno do Atlas. `collectionNo` **não** serve: não é único e 4 servos têm `collectionNo = 0` — que são justamente as formas de combate (R9, §5.8). |
 | **Códigos resolvidos** | `"buster"`, nunca `"2"`. Nenhum enum numérico sobrevive à ingestão. |
 | **Percentuais como percentual** | `400` significa 400%. A conversão para fração acontece num único ponto dentro de `damage.ts`. |
 | **Traits sempre `{id, name}`** | Nunca só o nome — `unknown` é o `name` mais frequente do dataset (R10). O `id` é a identidade. |
@@ -28,7 +28,13 @@ interface Meta {
   gameDataTimestamp: number;  // epoch de /info
   region: "JP";
   syncedAt: string;           // ISO 8601
-  counts: { servants: number; craftEssences: number; mysticCodes: number };
+  counts: {
+    servants: number;             // os que entram no índice (exclui formas de combate)
+    combatForms: number;
+    craftEssences: number;
+    craftEssencesDropped: number;
+    mysticCodes: number;
+  };
 }
 ```
 
@@ -100,6 +106,10 @@ interface Servant {
   appendPassive: Skill[];        // 5; desligadas por default (D10)
   np: NoblePhantasm;             // versão ATIVA (§5.1)
   npAlternatives: NoblePhantasm[];
+
+  // formas de combate (§5.8)
+  combatFormOf: number | null;   // se preenchido, é forma transformada do servo com este id
+  combatForms: number[];         // ids das formas de combate deste servo
 
   // derivado para busca
   capabilities: string[];        // ex. ["np_charge_party", "atk_up_party"]
@@ -400,6 +410,23 @@ Welfare tem precedência sobre raridade: Solomon é welfare 5★ e cairia errado
 `flag === "ignoreCombineLimitSpecial"` marca **57** servos welfare em `nice_servant` (56× 4★ + Solomon 5★).
 
 ⚠️ **`basic_servant` e `nice_servant` divergem.** O basic reporta 56 welfare e `rarity: 3` para a Mash; o nice reporta 57 e `rarity: 4`. **O projeto ingere o `nice`** — qualquer conferência feita contra o basic vai discordar. Consequência prática: pela regra acima a Mash recebe NP1, o que é inconsequente porque o NP dela é `support` e não tem `damageMultiplier`.
+
+### 5.8 Formas de combate
+
+Servos que se transformam em batalha têm a forma transformada como **entrada
+separada** no dump: Hyde (após o NP do Jekyll), a 2ª Aozaki Aoko, Flora, Prelati.
+
+Regra: é forma de combate quem é alvo de um `transformServant` vindo de **outro**
+servo **e** tem `collectionNo === 0`. Ptolemaîos e Mélusine também usam
+`transformServant` mas apontam para si mesmos, então ficam de fora da regra.
+
+As formas **continuam no modelo** (`servant/{id}.json`) porque os status são reais
+e a calculadora vai precisar deles; só não entram no `index.json`, onde
+apareceriam como uma segunda entrada do mesmo personagem. O caminho até elas é o
+link na página do servo base.
+
+Conferência: excluir as 4 dá 462 servos e 56 welfare — exatamente o recorte do
+`basic_servant`.
 
 ### 5.7 Descarte de CEs
 Classificar pelo `funcType` das skills: **combat** (1.310) e **farm** (839) são ingeridas; **inerte** (536 — todas com `funcType: "none"`) é descartada. Nunca cortar por flag de origem: as 462 `svtEquipFriendShip` são as bond CEs.

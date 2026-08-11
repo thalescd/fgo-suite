@@ -28,6 +28,7 @@ async function main(): Promise<void> {
       console.log();
       console.log("Artefatos gerados em public/data/");
       console.log(`  servos            ${s.servants}`);
+      console.log(`  formas de combate ${s.combatForms}  (fora do índice, ligadas ao base)`);
       console.log(`  craft essences    ${s.equipsCombat + s.equipsFarm}  (combat ${s.equipsCombat} · farm ${s.equipsFarm})`);
       console.log(`  CEs descartadas   ${s.equipsDropped}  (inertes)`);
       console.log(`  mystic codes      ${s.mysticCodes}`);
