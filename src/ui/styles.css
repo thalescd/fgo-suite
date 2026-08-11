@@ -331,6 +331,35 @@ table.levels th:first-child {
 table.levels td.same { text-align: left; color: var(--muted); }
 table.levels tr.se-row td { border-bottom-style: solid; background: rgba(232, 193, 74, .05); }
 .super { color: #e8c14a; font-weight: 600; }
+
+table.levels th.axis {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  color: var(--accent);
+}
+table.levels tr.dmg-row td { background: rgba(255, 128, 128, .07); border-bottom-style: solid; }
+table.levels tr.pre-row td { background: rgba(159, 217, 111, .04); }
+.step {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  padding: 0 5px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: 1px;
+  background: #4f2727;
+  color: #ff9b9b;
+}
+.step.pre { background: #2a3a24; color: #9dd96f; }
+
+.axis-toggle { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.axis-toggle button {
+  background: none; border: none; cursor: pointer;
+  padding: 4px 11px; font-size: 12px; color: var(--muted);
+}
+.axis-toggle button[aria-pressed="true"] { background: var(--accent-dim); color: var(--accent); }
 table.levels .hl { color: var(--accent); background: rgba(111, 168, 255, .07); font-weight: 600; }
 
 .oc-picker { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12.5px; color: var(--muted); }

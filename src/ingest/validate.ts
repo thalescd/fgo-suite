@@ -123,6 +123,29 @@ async function main(): Promise<void> {
   // 443/1855 nos 462 do índice; 446/1878 contando as 4 formas de combate.
   check("443 de 1855 efeitos de NP escalam com overcharge (índice)", [ocScaling, ocTotal], [443, 1855]);
 
+  console.log("\nOrdem de execução do NP");
+  const gilOrder = await servant(byCn(12).id);
+  check("Gilgamesh: buff no índice 0, dano no 1", gilOrder.np?.damageEffectIndex, 1);
+  check(
+    "o efeito antes do dano é o upNpdamage nele mesmo",
+    gilOrder.np?.effects[0] && [gilOrder.np.effects[0].buffType, gilOrder.np.effects[0].target],
+    ["upNpdamage", "self"],
+  );
+  const artOrder = await servant(byCn(2).id);
+  check("Artoria: dano no índice 0, refund só depois", artOrder.np?.damageEffectIndex, 0);
+  check("o efeito depois do dano é o gainNp", artOrder.np?.effects[1]?.funcType, "gainNp");
+  let withPre = 0;
+  let dmgNps = 0;
+  for (const s of servants) {
+    const f = await servant(s.id);
+    const i = f.np?.damageEffectIndex;
+    if (i === null || i === undefined) continue;
+    dmgNps++;
+    if (i > 0) withPre++;
+  }
+  // 411/237 nos 462 do índice; 413/238 contando as 4 formas de combate.
+  check("411 NPs de dano no índice, 237 com efeito antes do golpe", [dmgNps, withPre], [411, 237]);
+
   console.log("\nSuper-efetivo — Target/TargetList + Correction");
   const gil = await servant(byCn(12).id);
   const se = gil.np?.effects.find((e) => e.superEffective)?.superEffective;

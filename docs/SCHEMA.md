@@ -148,11 +148,14 @@ interface NoblePhantasm {
   target: "st" | "aoe" | "support";   // DERIVADO de effectFlags (§5.5)
   hits: number[];                // npDistribution
   damageMultiplier: number[] | null;  // 5 entradas (NP1..NP5), em % — null se support
-  effects: Effect[];
+  effects: Effect[];             // EM ORDEM DE EXECUÇÃO — ver nota abaixo
+  damageEffectIndex: number | null;  // índice do dano dentro de `effects`
   priority: number;
   condQuestId: number;           // 0 = base; >0 = upgrade condicionado
 }
 ```
+
+> **`effects` está em ordem de execução, e isso é contratual.** O que aparece antes da função de dano é aplicado ao **próprio dano deste NP**; o que aparece depois, não. Gilgamesh ganha `upNpdamage` no índice 0 e causa dano no índice 1 — o buff está embutido no golpe. Artoria causa dano no índice 0 e só depois recupera NP. **237 dos 411 NPs de dano (58%)** têm efeito antes do golpe. `damageEffectIndex` marca o corte para o consumidor não reimplementar a regra.
 
 ### 3.3 `Skill`
 

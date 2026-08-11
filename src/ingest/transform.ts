@@ -246,6 +246,10 @@ function npDamageMultiplier(np: AtlasNoblePhantasm): number[] | null {
 }
 
 function toNp(np: AtlasNoblePhantasm): NoblePhantasm {
+  const effects = toEffects(np.functions);
+  // A ordem do array do Atlas É a ordem de execução; efeitos antes do dano
+  // valem para o próprio dano deste NP.
+  const dmgIndex = effects.findIndex((e) => e.funcType.startsWith("damageNp"));
   return {
     id: np.id,
     name: np.name ?? "",
@@ -255,7 +259,8 @@ function toNp(np: AtlasNoblePhantasm): NoblePhantasm {
     target: npTarget(np),
     hits: np.npDistribution ?? [],
     damageMultiplier: npDamageMultiplier(np),
-    effects: toEffects(np.functions),
+    effects,
+    damageEffectIndex: dmgIndex >= 0 ? dmgIndex : null,
     priority: np.priority ?? 0,
     condQuestId: np.condQuestId ?? 0,
   };

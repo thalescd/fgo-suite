@@ -88,6 +88,8 @@ export function ServantPage() {
   const { id } = useParams();
   const { data: s, error } = useAsync<Servant>(() => loadServant(Number(id)), [id]);
   const [npLevelOverride, setNpLevel] = useState<number | null>(null);
+  const [axis, setAxis] = useState<"oc" | "np">("oc");
+  const [oc, setOc] = useState(1);
 
   if (error) return <div className="detail"><Back /><p className="empty">{error}</p></div>;
   if (!s) return <div className="detail"><Back /><p className="empty">loading…</p></div>;
@@ -167,41 +169,71 @@ export function ServantPage() {
               <span className={`chip ${s.np.target}`}>{s.np.target}</span>
               <span className={`chip ${s.np.card}`}>{s.np.card}</span>
             </div>
-            {s.np.damageMultiplier && (
-              <div className="detail-text">
-                NP1–NP5 multiplier: {s.np.damageMultiplier.map((v) => `${v}%`).join(" · ")}
-                {s.np.hits.length > 1 && <> · {s.np.hits.length} hits ({s.np.hits.join("/")})</>}
-              </div>
+            {s.np.hits.length > 1 && (
+              <div className="detail-text">{s.np.hits.length} hits ({s.np.hits.join("/")})</div>
             )}
 
+            {/*
+              Um NP tem DUAS dimensões de cinco valores — nível de NP e
+              overcharge — e misturá-las numa tabela só é o que confunde. Aqui
+              o usuário escolhe qual delas são as colunas; a outra vira um
+              valor fixo, dito no cabeçalho. Assim o multiplicador de dano
+              (que varia por nível de NP) e os buffs (que variam por
+              overcharge) cabem na mesma tabela sem mentir sobre o eixo.
+            */}
             <div className="oc-picker">
-              <label htmlFor="nplv">NP level</label>
-              <select id="nplv" value={npLevel} onChange={(ev) => setNpLevel(Number(ev.target.value))}>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>
-                    NP{n}{n === npLevelDefault ? " (default)" : ""}
-                  </option>
-                ))}
-              </select>
-              <span>· columns are overcharge; OC1 is the usual case</span>
+              <div className="axis-toggle">
+                <button aria-pressed={axis === "oc"} onClick={() => setAxis("oc")}>
+                  columns = overcharge
+                </button>
+                <button aria-pressed={axis === "np"} onClick={() => setAxis("np")}>
+                  columns = NP level
+                </button>
+              </div>
+              {axis === "oc" ? (
+                <>
+                  <label htmlFor="nplv">at</label>
+                  <select id="nplv" value={npLevel} onChange={(ev) => setNpLevel(Number(ev.target.value))}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>NP{n}{n === npLevelDefault ? " (default)" : ""}</option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <>
+                  <label htmlFor="oclv">at</label>
+                  <select id="oclv" value={oc} onChange={(ev) => setOc(Number(ev.target.value))}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>OC{n}{n === 1 ? " (usual)" : ""}</option>
+                    ))}
+                  </select>
+                </>
+              )}
             </div>
 
             <EffectTable
               effects={s.np.effects}
-              columns={["OC1", "OC2", "OC3", "OC4", "OC5"]}
-              // valuesByOvercharge é null quando o efeito não escala com OC —
-              // aí o valor é o mesmo em todas as colunas e a tabela colapsa.
-              valueAt={(e, oc) =>
-                (e.valuesByOvercharge ? e.valuesByOvercharge[oc] : e.values)?.[npLevel - 1]
+              axisLabel={axis === "oc" ? `at NP${npLevel}` : `at OC${oc}`}
+              columns={
+                axis === "oc"
+                  ? ["OC1", "OC2", "OC3", "OC4", "OC5"]
+                  : ["NP1", "NP2", "NP3", "NP4", "NP5"]
               }
-              // Bônus super-efetivo: multiplicador separado, que escala com
-              // overcharge em 52% dos casos (Gilgamesh: 150% -> 200%).
-              superEffectiveAt={(e, oc) => {
+              // valuesByOvercharge é null quando o efeito não escala com OC —
+              // nesse caso a linha de OC1 vale para todos os overcharges.
+              valueAt={(e, i) => {
+                const row = (ocIdx: number) =>
+                  e.valuesByOvercharge ? e.valuesByOvercharge[ocIdx] : e.values;
+                return axis === "oc" ? row(i)?.[npLevel - 1] : row(oc - 1)?.[i];
+              }}
+              superEffectiveAt={(e, i) => {
                 const se = e.superEffective;
                 if (!se) return undefined;
-                return (se.valuesByOvercharge ? se.valuesByOvercharge[oc] : se.values)?.[npLevel - 1];
+                const row = (ocIdx: number) => (se.valuesByOvercharge ? se.valuesByOvercharge[ocIdx] : se.values);
+                return axis === "oc" ? row(i)?.[npLevel - 1] : row(oc - 1)?.[i];
               }}
-              highlight={0}
+              damageIndex={s.np.damageEffectIndex}
+              highlight={axis === "oc" ? 0 : npLevelDefault - 1}
             />
           </div>
           {s.npAlternatives.length > 0 && (

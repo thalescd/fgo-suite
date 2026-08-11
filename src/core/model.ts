@@ -135,7 +135,23 @@ export interface NoblePhantasm {
   hits: number[];
   /** 5 entradas (NP1..NP5) em %. null quando o NP não causa dano. */
   damageMultiplier: number[] | null;
+  /**
+   * **Em ordem de execução.** Não é detalhe: o que vem antes da função de dano
+   * é aplicado ao próprio dano deste NP; o que vem depois, não.
+   *
+   * Gilgamesh ganha `upNpdamage` no índice 0 e causa dano no índice 1 — o buff
+   * está embutido no NP dele. Artoria causa dano no índice 0 e só depois ganha
+   * NP, que portanto não entra no cálculo daquele golpe.
+   *
+   * 238 dos 413 NPs de dano (58%) têm ao menos um efeito antes do dano.
+   */
   effects: Effect[];
+  /**
+   * Índice da função de dano dentro de `effects`, ou `null` se o NP não causa
+   * dano. Existe para o consumidor separar "antes" de "depois" sem reimplementar
+   * a regra de reconhecer `damageNp*`.
+   */
+  damageEffectIndex: number | null;
   priority: number;
   condQuestId: number;
 }

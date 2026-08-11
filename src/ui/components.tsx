@@ -135,6 +135,8 @@ export function EffectTable({
   valueAt,
   highlight,
   superEffectiveAt,
+  damageIndex,
+  axisLabel,
 }: {
   effects: Effect[];
   columns: string[];
@@ -144,6 +146,15 @@ export function EffectTable({
   highlight?: number;
   /** Multiplicador super-efetivo na coluna i. Omitido em skills, que não têm. */
   superEffectiveAt?: (effect: Effect, columnIndex: number) => number | undefined;
+  /**
+   * Índice do efeito que causa o dano. As linhas acima dele são buffs que
+   * entram no próprio dano deste NP; as abaixo, não. Sem essa marcação a
+   * tabela sugere que tudo se aplica igualmente — e 58% dos NPs de dano têm
+   * efeito antes do golpe.
+   */
+  damageIndex?: number | null;
+  /** Texto do cabeçalho da primeira coluna: diz o que as colunas significam. */
+  axisLabel?: string;
 }) {
   if (effects.length === 0) return null;
   return (
@@ -151,7 +162,7 @@ export function EffectTable({
       <table className="levels">
         <thead>
           <tr>
-            <th />
+            <th className="axis">{axisLabel ?? ""}</th>
             {columns.map((c, i) => (
               <th key={c} className={i === highlight ? "hl" : undefined}>{c}</th>
             ))}
@@ -162,9 +173,17 @@ export function EffectTable({
             const vals = columns.map((_, i) => valueAt(e, i));
             const first = vals[0];
             const constant = vals.every((v) => v === first);
+            const isDamage = damageIndex !== null && damageIndex !== undefined && ei === damageIndex;
+            const beforeDamage =
+              damageIndex !== null && damageIndex !== undefined && ei < damageIndex;
+
             const rows = [
-              <tr key={ei}>
-                <td className="label"><EffectLabel effect={e} /></td>
+              <tr key={ei} className={isDamage ? "dmg-row" : beforeDamage ? "pre-row" : undefined}>
+                <td className="label">
+                  {isDamage && <span className="step">DAMAGE</span>}
+                  {beforeDamage && <span className="step pre">before</span>}
+                  <EffectLabel effect={e} />
+                </td>
                 {constant ? (
                   <td className="same" colSpan={columns.length}>
                     {first === undefined || first === 0 ? "—" : `${first}${unitOf(e)} — constant`}
