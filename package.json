@@ -13,11 +13,26 @@
     "data:build": "tsx src/ingest/cli.ts build",
     "data:validate": "tsx src/ingest/validate.ts",
     "data:all": "tsx src/ingest/cli.ts sync && tsx src/ingest/cli.ts build && tsx src/ingest/validate.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node -e \"require('fs').copyFileSync('dist/index.html','dist/404.html')\"",
+    "preview": "vite preview"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.5",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2"
   }
 }

@@ -16,7 +16,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | Fase | Entrega | Status |
 |---|---|---|
 | **0** | Ingestão, manifest, modelo canônico | ✅ pronta |
-| 1 | Busca com filtros diretos | pendente |
+| **1** | Busca com filtros diretos (servos e CEs) | ✅ pronta |
 | 2 | Capabilities + busca por skill | pendente |
 | 3 | Calculadora + testes | pendente |
 | 4 | MCP server | pendente |
@@ -27,6 +27,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 ```bash
 npm install
 npm run data:all     # baixa ~86 MB, gera public/data/, valida
+npm run dev          # http://localhost:5173
 ```
 
 Depois disso `public/data/` tem 466 servos, 2.149 Craft Essences e 28 Mystic Codes
@@ -36,12 +37,35 @@ no modelo canônico (10,4 MB).
 
 | Comando | O que faz |
 |---|---|
+| `npm run dev` | Servidor de desenvolvimento. |
+| `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
+| `npm run preview` | Serve o `dist/` para conferir o build. |
+| `npm test` | 31 testes: motor de busca + renderização da tela. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
 | `npm run data:validate` | Confere a saída contra 42 valores conhecidos do jogo. |
-| `npm run data:all` | Os três últimos em sequência. |
+| `npm run data:all` | Os três de dados em sequência. |
 | `npm run typecheck` | `tsc --noEmit`. |
+
+## A busca
+
+Filtros vivem na **query string**, não no estado do React — link compartilhável,
+botão voltar funcionando, e os mesmos parâmetros viram a assinatura da tool do
+MCP na fase 4.
+
+```
+/?kind=servant&class=archer&rarity=5&np=aoe&sort=atk&dir=desc
+/?kind=equip&cat=combat&q=kaleidoscope
+```
+
+Servos filtram por raridade, classe, atributo, alvo do NP (ST/AoE/support), card
+do NP, welfare e traits; CEs por raridade, categoria (combate/farm) e origem.
+Busca textual cobre nome, apelido curado e `collectionNo`, ignorando acentos —
+`scathach` acha *Scáthach*, `auo` acha *Gilgamesh*.
+
+As contagens de cada faceta são calculadas **ignorando a própria dimensão**: com
+"saber" marcado, você continua vendo quantos archers existem para trocar o filtro.
 
 ## Estrutura
 
@@ -49,7 +73,8 @@ no modelo canônico (10,4 MB).
 src/
   core/          modelo canônico e regras puras — sem I/O, sem framework
     model.ts       os tipos que todo o resto consome
-    units.ts       conversão de unidades do Atlas (3 divisores diferentes)
+    units.ts       conversão de unidades do Atlas (4 divisores diferentes)
+    search.ts      motor de busca: filtro, ordenação, contagem de facetas
   ingest/        raw -> canônico. O ÚNICO lugar que conhece o formato do Atlas
     sources.ts     lista de arquivos e manifest
     sync.ts        download incremental
@@ -57,10 +82,17 @@ src/
     transform.ts   tradução para o canônico
     build.ts       geração dos artefatos
     validate.ts    verificação contra valores conhecidos
+  ui/            React; casca fina sobre core/
+    main.tsx       rotas
+    SearchPage.tsx listagem, facetas
+    DetailPages.tsx servo e craft essence
+    useFilters.ts  filtros <-> query string
+    data.ts        carregamento dos artefatos
 data/
-  aliases.json   apelidos curados à mão (Castoria, Waver, Skadi...)
+  aliases.json   apelidos curados à mão (AUO, Skadi, Mashu...)
 raw/             dumps baixados (gitignored, exceto o manifest)
 public/data/     artefatos de build (gitignored, reconstruíveis)
+dist/            build de produção (gitignored)
 docs/
 ```
 
