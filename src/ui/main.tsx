@@ -20,15 +20,16 @@ function App() {
   if (error) {
     return (
       <div className="empty">
-        Não consegui carregar os dados: {error}
+        Could not load data: {error}
         <br />
         <code>npm run data:all</code>
       </div>
     );
   }
-  if (!boot) return <div className="empty">carregando índice…</div>;
+  if (!boot) return <div className="empty">loading index…</div>;
 
-  const built = new Date(boot.meta.builtAt).toLocaleDateString("pt-BR");
+  // ISO: sem ambiguidade de locale para um rótulo de "quando os dados são de".
+  const built = boot.meta.builtAt.slice(0, 10);
 
   return (
     <>
@@ -37,15 +38,15 @@ function App() {
           <Link to="/" style={{ color: "inherit" }}>FGO Tools</Link>
         </h1>
         <span className="meta">
-          {boot.meta.region} · gamedata {boot.meta.gameDataHash} · build {built} ·{" "}
-          {boot.meta.counts.servants} servos, {boot.meta.counts.craftEssences} CEs
+          {boot.meta.region} · gamedata {boot.meta.gameDataHash} · built {built} ·{" "}
+          {boot.meta.counts.servants} servants, {boot.meta.counts.craftEssences} CEs
         </span>
       </header>
       <Routes>
         <Route path="/" element={<SearchPage boot={boot} />} />
         <Route path="/servant/:id" element={<ServantPage />} />
         <Route path="/equip/:id" element={<EquipPage />} />
-        <Route path="*" element={<div className="empty">Página não encontrada. <Link to="/">Voltar</Link></div>} />
+        <Route path="*" element={<div className="empty">Page not found. <Link to="/">Back to search</Link></div>} />
       </Routes>
     </>
   );

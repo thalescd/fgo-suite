@@ -71,7 +71,7 @@ export function ResultCard({ entry }: { entry: IndexEntry }) {
           ) : (
             <>
               <span className={`chip ${entry.category === "combat" ? "st" : "support"}`}>{entry.category}</span>
-              <span>custo {entry.cost}</span>
+              <span>cost {entry.cost}</span>
             </>
           )}
         </div>
@@ -105,13 +105,13 @@ export function EffectRow({ effect, level }: { effect: Effect; level?: number })
         </span>
       )}
       <span style={{ color: "var(--muted)", fontSize: 11 }}>→ {effect.target}</span>
-      {conds.length > 0 && <span className="cond">se {conds.join(" + ")}</span>}
+      {conds.length > 0 && <span className="cond">if {conds.join(" + ")}</span>}
       {effect.turns !== null && effect.turns > 0 && (
         <span style={{ color: "var(--muted)", fontSize: 11 }}>{effect.turns}t</span>
       )}
-      {effect.chance < 100 && <span className="warn">{effect.chance}% de chance</span>}
-      {effect.valueUnit === "unknown" && <span className="warn">unidade não mapeada (valor cru)</span>}
-      {!effect.supported && <span className="warn">buff não catalogado</span>}
+      {effect.chance < 100 && <span className="warn">{effect.chance}% chance</span>}
+      {effect.valueUnit === "unknown" && <span className="warn">unit not mapped (raw value)</span>}
+      {!effect.supported && <span className="warn">uncatalogued buff</span>}
     </div>
   );
 }

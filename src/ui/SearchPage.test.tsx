@@ -42,7 +42,7 @@ const renderAt = (url: string): string =>
 describe("SearchPage", () => {
   it("renderiza a listagem de servos sem filtro", () => {
     const html = renderAt("/");
-    expect(html).toContain("466</strong> servos");
+    expect(html).toContain("466</strong> servants");
     expect(html).toContain("Mash Kyrielight");
   });
 
@@ -51,19 +51,19 @@ describe("SearchPage", () => {
     const expected = boot.index.filter(
       (e) => e.kind === "servant" && e.className === "archer" && e.rarity === 5,
     ).length;
-    expect(html).toContain(`${expected}</strong> servos`);
+    expect(html).toContain(`${expected}</strong> servants`);
     expect(expected).toBeGreaterThan(0);
   });
 
   it("filtro de alvo de NP chega ao resultado", () => {
     const html = renderAt("/?np=aoe");
-    expect(html).toContain("240</strong> servos");
+    expect(html).toContain("240</strong> servants");
   });
 
   it("busca por apelido funciona na tela", () => {
     const html = renderAt("/?q=auo");
     expect(html).toContain("Gilgamesh");
-    expect(html).toContain("1</strong> servos");
+    expect(html).toContain("1</strong> servants");
   });
 
   it("troca para a aba de craft essences", () => {
@@ -78,26 +78,27 @@ describe("SearchPage", () => {
 
   it("mostra as facetas com contagem", () => {
     const html = renderAt("/");
-    expect(html).toContain("Classe");
-    expect(html).toContain("Alvo do NP");
+    // Ancorado no <summary>: "Class" sozinho casaria com qualquer class="..."
+    expect(html).toContain("<summary>Class</summary>");
+    expect(html).toContain("<summary>NP target</summary>");
     expect(html).toContain("saber");
   });
 
   it("as facetas de CE substituem as de servo", () => {
     const html = renderAt("/?kind=equip");
-    expect(html).toContain("Categoria");
-    expect(html).not.toContain("Alvo do NP");
+    expect(html).toContain("Category");
+    expect(html).not.toContain("<summary>NP target</summary>");
   });
 
   it("pagina em 120 e oferece mostrar mais", () => {
     const html = renderAt("/");
-    expect(html).toContain("mostrando 120");
-    expect(html).toContain("mostrar mais");
+    expect(html).toContain("showing 120");
+    expect(html).toContain("show 120 more");
   });
 
   it("estado vazio quando nada casa", () => {
     const html = renderAt("/?q=zzzznaoexiste");
-    expect(html).toContain("Nada encontrado");
+    expect(html).toContain("No results");
   });
 
   it("ordenação por ATK muda o primeiro resultado", () => {

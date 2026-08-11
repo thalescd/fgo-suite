@@ -96,7 +96,7 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
     <div className="layout">
       <aside className="sidebar">
         <Facet
-          title="Raridade"
+          title="Rarity"
           selectedCount={filters.rarity.length}
           options={rarityOpts}
           isSelected={(v) => filters.rarity.includes(Number(v))}
@@ -105,43 +105,43 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
         />
         {isServant ? (
           <>
-            <Facet title="Classe" selectedCount={filters.className.length} options={classOpts} open
+            <Facet title="Class" selectedCount={filters.className.length} options={classOpts} open
               isSelected={(v) => filters.className.includes(String(v))}
               onToggle={(v) => { toggle("className", String(v)); setShown(PAGE); }} />
-            <Facet title="Alvo do NP" selectedCount={filters.npTarget.length} options={npOpts} open
+            <Facet title="NP target" selectedCount={filters.npTarget.length} options={npOpts} open
               isSelected={(v) => filters.npTarget.includes(String(v))}
               onToggle={(v) => { toggle("npTarget", String(v)); setShown(PAGE); }} />
-            <Facet title="Card do NP" selectedCount={filters.npCard.length} options={cardOpts}
+            <Facet title="NP card" selectedCount={filters.npCard.length} options={cardOpts}
               isSelected={(v) => filters.npCard.includes(String(v))}
               onToggle={(v) => { toggle("npCard", String(v)); setShown(PAGE); }} />
-            <Facet title="Atributo" selectedCount={filters.attribute.length} options={attrOpts}
+            <Facet title="Attribute" selectedCount={filters.attribute.length} options={attrOpts}
               isSelected={(v) => filters.attribute.includes(String(v))}
               onToggle={(v) => { toggle("attribute", String(v)); setShown(PAGE); }} />
             <Facet title="Traits" selectedCount={filters.traitIds.length} options={traitOpts}
               isSelected={(v) => filters.traitIds.includes(Number(v))}
               onToggle={(v) => { toggle("traitIds", Number(v)); setShown(PAGE); }} />
             <details className="facet" open={filters.welfare !== null}>
-              <summary>Obtenção</summary>
+              <summary>Availability</summary>
               <div className="opts">
                 <label className="opt">
                   <input type="checkbox" checked={filters.welfare === true}
                     onChange={() => set({ welfare: filters.welfare === true ? null : true })} />
-                  <span>só welfare</span>
+                  <span>welfare only</span>
                 </label>
                 <label className="opt">
                   <input type="checkbox" checked={filters.welfare === false}
                     onChange={() => set({ welfare: filters.welfare === false ? null : false })} />
-                  <span>sem welfare</span>
+                  <span>exclude welfare</span>
                 </label>
               </div>
             </details>
           </>
         ) : (
           <>
-            <Facet title="Categoria" selectedCount={filters.category.length} options={catOpts} open
+            <Facet title="Category" selectedCount={filters.category.length} options={catOpts} open
               isSelected={(v) => filters.category.includes(String(v))}
               onToggle={(v) => { toggle("category", String(v)); setShown(PAGE); }} />
-            <Facet title="Origem" selectedCount={filters.origin.length} options={originOpts}
+            <Facet title="Origin" selectedCount={filters.origin.length} options={originOpts}
               isSelected={(v) => filters.origin.includes(String(v))}
               onToggle={(v) => { toggle("origin", String(v)); setShown(PAGE); }} />
           </>
@@ -152,7 +152,7 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
         <div className="toolbar">
           <div className="tabs">
             <button aria-pressed={isServant} onClick={() => { set({ kind: "servant" }); setShown(PAGE); }}>
-              Servos
+              Servants
             </button>
             <button aria-pressed={!isServant} onClick={() => { set({ kind: "equip" }); setShown(PAGE); }}>
               Craft Essences
@@ -161,7 +161,7 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
 
           <input
             className="search-input"
-            placeholder="nome, apelido ou número…"
+            placeholder="name, alias or number…"
             value={filters.text}
             onChange={(e) => { set({ text: e.target.value }); setShown(PAGE); }}
           />
@@ -170,28 +170,28 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
             const [sort, dir] = e.target.value.split(":");
             set({ sort: sort as never, dir: dir as never });
           }}>
-            <option value="collectionNo:asc">nº ↑</option>
-            <option value="collectionNo:desc">nº ↓</option>
-            <option value="rarity:desc">raridade ↓</option>
-            <option value="rarity:asc">raridade ↑</option>
+            <option value="collectionNo:asc">no. ↑</option>
+            <option value="collectionNo:desc">no. ↓</option>
+            <option value="rarity:desc">rarity ↓</option>
+            <option value="rarity:asc">rarity ↑</option>
             <option value="atk:desc">ATK ↓</option>
             <option value="atk:asc">ATK ↑</option>
             <option value="hp:desc">HP ↓</option>
-            <option value="name:asc">nome A-Z</option>
+            <option value="name:asc">name A-Z</option>
           </select>
 
           {!isDefaultFilters(filters) && (
-            <button className="linkish" onClick={() => { reset(); setShown(PAGE); }}>limpar</button>
+            <button className="linkish" onClick={() => { reset(); setShown(PAGE); }}>clear</button>
           )}
         </div>
 
         <p className="count-line">
-          <strong>{results.length}</strong> {isServant ? "servos" : "craft essences"}
-          {visible.length < results.length && <> · mostrando {visible.length}</>}
+          <strong>{results.length}</strong> {isServant ? "servants" : "craft essences"}
+          {visible.length < results.length && <> · showing {visible.length}</>}
         </p>
 
         {results.length === 0 ? (
-          <div className="empty">Nada encontrado. Tente afrouxar os filtros.</div>
+          <div className="empty">No results. Try relaxing the filters.</div>
         ) : (
           <>
             <div className="grid">
@@ -200,7 +200,7 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
             {visible.length < results.length && (
               <div className="more">
                 <button className="linkish" onClick={() => setShown((n) => n + PAGE)}>
-                  mostrar mais {Math.min(PAGE, results.length - visible.length)}
+                  show {Math.min(PAGE, results.length - visible.length)} more
                 </button>
               </div>
             )}

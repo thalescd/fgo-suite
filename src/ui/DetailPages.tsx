@@ -5,6 +5,9 @@ import type { CraftEssence, Servant, Skill } from "../core/model.js";
 import { Block, EffectRow, Stars } from "./components.js";
 import { loadEquip, loadServant } from "./data.js";
 
+/** Números seguem en-US para casar com o resto da interface. */
+const num = (n: number) => n.toLocaleString("en-US");
+
 function useAsync<T>(load: () => Promise<T>, deps: unknown[]): { data: T | null; error: string | null } {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +25,7 @@ function useAsync<T>(load: () => Promise<T>, deps: unknown[]): { data: T | null;
   return { data, error };
 }
 
-const Back = () => <Link className="back" to="/">← voltar à busca</Link>;
+const Back = () => <Link className="back" to="/">← back to search</Link>;
 
 /** Skills mostram o nível 10 (o default do preset); NPs mostram NP1..NP5. */
 function SkillCard({ skill, levelIndex }: { skill: Skill; levelIndex?: number }) {
@@ -35,8 +38,8 @@ function SkillCard({ skill, levelIndex }: { skill: Skill; levelIndex?: number })
           <span className="num">CD {skill.cooldown[0]}→{skill.cooldown[skill.cooldown.length - 1]}</span>
         )}
         {skill.previousVersions && (
-          <span className="num" title="rank ups substituídos">
-            +{skill.previousVersions.length} versão(ões) anterior(es)
+          <span className="num" title="superseded rank ups">
+            +{skill.previousVersions.length} earlier version(s)
           </span>
         )}
       </div>
@@ -53,7 +56,7 @@ export function ServantPage() {
   const { data: s, error } = useAsync<Servant>(() => loadServant(Number(id)), [id]);
 
   if (error) return <div className="detail"><Back /><p className="empty">{error}</p></div>;
-  if (!s) return <div className="detail"><Back /><p className="empty">carregando…</p></div>;
+  if (!s) return <div className="detail"><Back /><p className="empty">loading…</p></div>;
 
   const atk = (lv: number) => s.atkGrowth[lv - 1] ?? null;
   const hp = (lv: number) => s.hpGrowth[lv - 1] ?? null;
@@ -67,37 +70,37 @@ export function ServantPage() {
         {s.assets.charaGraph[0] && <img src={s.assets.charaGraph[0]} alt="" />}
         <div>
           <h2>{s.name}</h2>
-          <div className="orig">{s.originalName} · nº {s.collectionNo} · id {s.id}</div>
+          <div className="orig">{s.originalName} · no. {s.collectionNo} · id {s.id}</div>
           <dl className="kv">
-            <dt>classe</dt><dd>{s.className}</dd>
-            <dt>raridade</dt><dd><Stars n={s.rarity} /></dd>
-            <dt>atributo</dt><dd>{s.attribute}</dd>
-            <dt>custo</dt><dd>{s.cost}</dd>
-            <dt>obtenção</dt><dd>{s.isWelfare ? "welfare (evento)" : "normal"}</dd>
+            <dt>class</dt><dd>{s.className}</dd>
+            <dt>rarity</dt><dd><Stars n={s.rarity} /></dd>
+            <dt>attribute</dt><dd>{s.attribute}</dd>
+            <dt>cost</dt><dd>{s.cost}</dd>
+            <dt>availability</dt><dd>{s.isWelfare ? "welfare (event)" : "normal"}</dd>
             <dt>deck</dt><dd>{s.cards.map((c) => c[0]!.toUpperCase()).join("")}</dd>
-            <dt>gera estrelas</dt><dd>{s.starGen}%</dd>
-            {s.aliases.length > 0 && <><dt>apelidos</dt><dd>{s.aliases.join(", ")}</dd></>}
+            <dt>star gen</dt><dd>{s.starGen}%</dd>
+            {s.aliases.length > 0 && <><dt>aliases</dt><dd>{s.aliases.join(", ")}</dd></>}
           </dl>
         </div>
       </div>
 
-      <Block title="Status por nível">
+      <Block title="Stats by level">
         <table className="growth">
           <thead>
-            <tr><th>nível</th><th>ATK</th><th>HP</th></tr>
+            <tr><th>level</th><th>ATK</th><th>HP</th></tr>
           </thead>
           <tbody>
             {[1, s.lvMax, 100, 120].filter((lv, i, a) => a.indexOf(lv) === i && atk(lv) !== null).map((lv) => (
               <tr key={lv}>
-                <td>{lv}{lv === s.lvMax && " (máx natural)"}{lv > s.lvMax && " (grail)"}</td>
-                <td>{atk(lv)?.toLocaleString("pt-BR")}</td>
-                <td>{hp(lv)?.toLocaleString("pt-BR")}</td>
+                <td>{lv}{lv === s.lvMax && " (natural max)"}{lv > s.lvMax && " (grail)"}</td>
+                <td>{atk(lv) !== null && num(atk(lv)!)}</td>
+                <td>{hp(lv) !== null && num(hp(lv)!)}</td>
               </tr>
             ))}
           </tbody>
         </table>
         <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 8 }}>
-          Preset padrão: lv{s.lvMax} + 1000 fou = <strong>{((atk(s.lvMax) ?? 0) + 1000).toLocaleString("pt-BR")}</strong> ATK ·
+          Default preset: lv{s.lvMax} + 1000 fou = <strong>{num((atk(s.lvMax) ?? 0) + 1000)}</strong> ATK ·
           NP{npLevelDefault}
         </p>
       </Block>
@@ -113,7 +116,7 @@ export function ServantPage() {
             </div>
             {s.np.damageMultiplier && (
               <div className="detail-text">
-                Multiplicador NP1–NP5: {s.np.damageMultiplier.map((v) => `${v}%`).join(" · ")}
+                NP1–NP5 multiplier: {s.np.damageMultiplier.map((v) => `${v}%`).join(" · ")}
                 {s.np.hits.length > 1 && <> · {s.np.hits.length} hits ({s.np.hits.join("/")})</>}
               </div>
             )}
@@ -124,13 +127,13 @@ export function ServantPage() {
           {s.npAlternatives.length > 0 && (
             <details className="skill" style={{ opacity: 0.85 }}>
               <summary style={{ cursor: "pointer" }}>
-                {s.npAlternatives.length} NP alternativo(s) — versões anteriores ou por card
+                {s.npAlternatives.length} alternative NP(s) — earlier versions or per card type
               </summary>
               <div style={{ marginTop: 10 }}>
                 {s.npAlternatives.map((np) => (
                   <div key={np.id} className="detail-text">
                     {np.name} · {np.card} · {np.target} ·{" "}
-                    {np.damageMultiplier ? `${np.damageMultiplier[0]}%` : "sem dano"}{" "}
+                    {np.damageMultiplier ? `${np.damageMultiplier[0]}%` : "no damage"}{" "}
                     {np.condQuestId > 0 && <>· quest {np.condQuestId}</>}
                   </div>
                 ))}
@@ -140,18 +143,18 @@ export function ServantPage() {
         </Block>
       )}
 
-      <Block title="Skills (valores em nível 10)">
+      <Block title="Skills (values at level 10)">
         {s.skills.map((sk) => <SkillCard key={sk.id} skill={sk} levelIndex={9} />)}
       </Block>
 
       {s.classPassive.length > 0 && (
-        <Block title="Passivas de classe">
+        <Block title="Class passives">
           {s.classPassive.map((sk) => <SkillCard key={sk.id} skill={sk} levelIndex={0} />)}
         </Block>
       )}
 
       {s.appendPassive.length > 0 && (
-        <Block title="Append passives (desligadas por padrão no cálculo)">
+        <Block title="Append passives (off by default in calculations)">
           {s.appendPassive.map((sk) => <SkillCard key={sk.id} skill={sk} levelIndex={9} />)}
         </Block>
       )}
@@ -172,7 +175,7 @@ export function EquipPage() {
   const { data: e, error } = useAsync<CraftEssence>(() => loadEquip(Number(id)), [id]);
 
   if (error) return <div className="detail"><Back /><p className="empty">{error}</p></div>;
-  if (!e) return <div className="detail"><Back /><p className="empty">carregando…</p></div>;
+  if (!e) return <div className="detail"><Back /><p className="empty">loading…</p></div>;
 
   const maxAtk = e.atkGrowth[e.atkGrowth.length - 1];
   const maxHp = e.hpGrowth[e.hpGrowth.length - 1];
@@ -184,19 +187,19 @@ export function EquipPage() {
         {e.assets.charaGraph && <img src={e.assets.charaGraph} alt="" />}
         <div>
           <h2>{e.name}</h2>
-          <div className="orig">{e.originalName} · nº {e.collectionNo} · id {e.id}</div>
+          <div className="orig">{e.originalName} · no. {e.collectionNo} · id {e.id}</div>
           <dl className="kv">
-            <dt>raridade</dt><dd><Stars n={e.rarity} /></dd>
-            <dt>custo</dt><dd>{e.cost}</dd>
-            <dt>categoria</dt><dd>{e.category === "combat" ? "combate" : "farm"}</dd>
-            <dt>origem</dt><dd>{e.origin}</dd>
-            <dt>nível máx</dt><dd>{e.lvMax}</dd>
-            <dt>ATK / HP máx</dt><dd>{maxAtk} / {maxHp}</dd>
+            <dt>rarity</dt><dd><Stars n={e.rarity} /></dd>
+            <dt>cost</dt><dd>{e.cost}</dd>
+            <dt>category</dt><dd>{e.category}</dd>
+            <dt>origin</dt><dd>{e.origin}</dd>
+            <dt>max level</dt><dd>{e.lvMax}</dd>
+            <dt>max ATK / HP</dt><dd>{maxAtk} / {maxHp}</dd>
           </dl>
         </div>
       </div>
 
-      <Block title="Efeito — sem limit break">
+      <Block title="Effect — not limit broken">
         <div className="skill">
           <div className="effects">
             {e.effectsBase.map((ef, i) => <EffectRow key={i} effect={ef} level={0} />)}
@@ -204,14 +207,14 @@ export function EquipPage() {
         </div>
       </Block>
 
-      <Block title="Efeito — max limit break (MLB)">
+      <Block title="Effect — max limit break (MLB)">
         <div className="skill">
           <div className="effects">
             {e.effectsMlb.map((ef, i) => <EffectRow key={i} effect={ef} level={0} />)}
           </div>
           {JSON.stringify(e.effectsBase) === JSON.stringify(e.effectsMlb) && (
             <div className="detail-text" style={{ marginTop: 8 }}>
-              Esta CE não tem variante MLB — o efeito é o mesmo nos dois casos.
+              This CE has no MLB variant — the effect is the same either way.
             </div>
           )}
         </div>
