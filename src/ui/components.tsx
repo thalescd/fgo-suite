@@ -211,7 +211,7 @@ export function NpTable({ np }: { np: NoblePhantasm }) {
           <tr key={`${title}${i}`}>
             <td className="label">
               {r.label}
-              {r.axis === "both" && <span className="warn"> varia nos dois eixos — mostrando nível de NP</span>}
+              {r.axis === "both" && <span className="warn"> varies on both axes — showing NP level</span>}
             </td>
             {[0, 1, 2, 3, 4].map((c) => (
               <td key={c}>{r.series[c] === undefined ? "—" : `${r.series[c]}${r.unit}`}</td>

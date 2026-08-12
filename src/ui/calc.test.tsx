@@ -155,7 +155,8 @@ describe("o cenário chega inteiro no cálculo", () => {
     const r = run(artoria, `s=${artoria.id}&sk=2`);
     expect(artoria.np!.card).toBe("buster");
     expect(r.breakdown.cardMod).toBeGreaterThan(0);
-    expect(r.assumptions.skippedBuffs.filter((b) => /nenhum card/.test(b.reason))).toEqual([]);
+    // O buff não pode aparecer entre os recusados: era isso que acontecia.
+    expect(r.assumptions.skippedBuffs.filter((b) => /cardBuster/.test(b.reason))).toEqual([]);
     // Mesma skill num card Arts tem de ser recusada — senão o teste acima
     // passaria igual com a restrição de card deixando de ser lida.
     const arts = run(artoria, `s=${artoria.id}&act=arts&sk=2`);
@@ -230,6 +231,45 @@ describe("relatório", () => {
     const np = render(artoria, `s=${artoria.id}&act=np&sk=1,2,3`);
     expect(np).toContain("Damage bonuses");
     expect(np).not.toContain("only applies to NP damage");
+  });
+
+  /**
+   * As mensagens de `assumptions` são interface, não log: aparecem no relatório
+   * e vão virar resposta do MCP. Varrer o roster inteiro é o que garante que
+   * nenhum template de mensagem escapou — testar um servo só cobriria os
+   * caminhos que aquele servo por acaso aciona.
+   */
+  it("nenhuma mensagem em português chega à tela, em nenhum servo", () => {
+    const suspicious = /[áàâãéêíóôõúçÁÉÍÓÚÇ]|\b(alvo|dano|servo|restrito|exige|nenhum|antes|carregado|atacante|acao)\b/i;
+    const offenders: string[] = [];
+
+    for (const entry of servants) {
+      const s = JSON.parse(readFileSync(`public/data/servant/${entry.id}.json`, "utf8")) as Servant;
+      // Dois cenários: NP (aciona os buffs pré-dano) e um card Arts crítico com
+      // todas as skills (aciona as recusas por restrição de card e o "critical").
+      for (const q of ["act=np", "act=arts&crit=1"]) {
+        const a = calculateDamage(
+          toDamageInput(
+            parseCalc(new URLSearchParams(`${q}&sk=1,2,3&ap=1,2,3,4,5&ec=lancer&ea=sky`)),
+            s,
+            traitName,
+          ),
+          dataFor(s),
+        ).assumptions;
+
+        for (const str of [
+          ...a.resolved,
+          ...a.appliedBuffs.map((b) => b.source),
+          ...a.skippedBuffs.flatMap((b) => [b.source, b.reason]),
+        ]) {
+          // O nome do próprio servo pode ter acento (Scáthach) e não é mensagem.
+          const withoutName = str.split(s.name).join("");
+          if (suspicious.test(withoutName)) offenders.push(`${s.name}: ${str}`);
+        }
+      }
+    }
+
+    expect(offenders.slice(0, 5)).toEqual([]);
   });
 
   it("super-efetivo aparece nomeado no cenário", () => {

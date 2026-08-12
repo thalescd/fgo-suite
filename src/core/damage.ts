@@ -142,6 +142,13 @@ export interface DamageResult {
     busterChainBonus: number;
     pierceDefence: boolean;
   };
+  /**
+   * As premissas do cálculo, em texto.
+   *
+   * **Estas strings vão para a tela e para a resposta do MCP, então são em
+   * inglês** — ao contrário dos comentários deste projeto. Quem editar `reason`
+   * ou `source` está editando interface, não log.
+   */
   assumptions: {
     rollMode: RollMode;
     resolved: string[];
@@ -228,7 +235,7 @@ function resolveBuffs(
     const label = e.buffType;
 
     if (c.fromSupport && !REACHES_ALLY.has(e.target)) {
-      skipped.push({ source: c.source, buffType: label, reason: `alvo ${e.target} não alcança o atacante` });
+      skipped.push({ source: c.source, buffType: label, reason: `target ${e.target} does not reach the attacker` });
       continue;
     }
 
@@ -247,7 +254,7 @@ function resolveBuffs(
         skipped.push({
           source: c.source,
           buffType: label,
-          reason: `restrito a ${cardConds.map((t) => t.name).join("/")}, ação usa ${wanted}`,
+          reason: `restricted to ${cardConds.map((t) => t.name).join("/")}, this attack uses ${wanted}`,
         });
         continue;
       }
@@ -258,7 +265,7 @@ function resolveBuffs(
       skipped.push({
         source: c.source,
         buffType: label,
-        reason: `exige alvo com ${e.condTarget.map((t) => t.name).join("/")}`,
+        reason: `requires a target with ${e.condTarget.map((t) => t.name).join("/")}`,
       });
       continue;
     }
@@ -306,7 +313,7 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
         const np = attacker.np;
         if (!np || np.damageEffectIndex === null) break;
         for (const e of np.effects.slice(0, np.damageEffectIndex)) {
-          out.push({ effect: e, source: `${attacker.name} NP (antes do dano)`, levelIndex: input.attacker.npLevel - 1, fromSupport: false });
+          out.push({ effect: e, source: `${attacker.name} NP (before the damage)`, levelIndex: input.attacker.npLevel - 1, fromSupport: false });
         }
         break;
       }
@@ -352,7 +359,7 @@ const sumSlot = (buffs: ResolvedBuff[], slot: DamageSlot): number =>
 export function calculateDamage(input: DamageInput, data: DamageData): DamageResult {
   const k = data.constants;
   const attacker = data.servants.get(input.attacker.servantId);
-  if (!attacker) throw new Error(`servo ${input.attacker.servantId} não carregado`);
+  if (!attacker) throw new Error(`servant ${input.attacker.servantId} is not loaded`);
 
   const enemyTraits = enemyTraitNames(input.enemy);
 
@@ -494,10 +501,10 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
         `${input.attacker.fou} fou`,
         `NP${input.attacker.npLevel}`,
         `OC${input.attacker.overcharge}`,
-        `alvo ${input.enemy.className}/${input.enemy.attribute}`,
+        `vs ${input.enemy.className}/${input.enemy.attribute}`,
         input.action.kind === "np" ? "NP" : `card ${card} pos${position}`,
-        ...(isCrit ? ["crítico"] : []),
-        ...(seApplies ? [`super-efetivo ${superEffectiveModifier}%`] : []),
+        ...(isCrit ? ["critical"] : []),
+        ...(seApplies ? [`super effective ${superEffectiveModifier}%`] : []),
       ],
       appliedBuffs: applied,
       skippedBuffs: skipped,

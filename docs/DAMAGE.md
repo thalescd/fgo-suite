@@ -175,6 +175,11 @@ Cada item existe porque escondê-lo produz número plausível e errado:
 | `uncertainBuffs` | buffs ativos com chance < 100% (informativo, nunca filtro — D18) |
 | `unmodeled` | buff types fora da tabela (R12) |
 
+> **Estas strings são interface, não log.** Vão para a tela e vão virar a
+> resposta do MCP, então são escritas **em inglês** — ao contrário dos
+> comentários do projeto. Um teste varre o roster inteiro (462 servos × 2
+> cenários, ~6 mil mensagens) e falha nomeando o servo se alguma escapar.
+
 `skippedBuffs` já se pagou: o bug de §3.1 foi encontrado lendo o motivo
 `"restrito a cardBuster, ação usa nenhum card"` num caso em que o card *era*
 Buster.
@@ -194,7 +199,7 @@ critica, NP não entra em chain).
 Comparar razões em vez de valores absolutos testa a fórmula sem depender de um
 número de referência externo.
 
-Mais 25 em [`src/ui/calc.test.tsx`](../src/ui/calc.test.tsx) cobrem a tradução
+Mais 26 em [`src/ui/calc.test.tsx`](../src/ui/calc.test.tsx) cobrem a tradução
 que a tela acrescenta: defaults por raridade, limites de faixa, as duas regras
 de §4.1, e o relatório mostrando o que entrou e o que não entrou.
 
