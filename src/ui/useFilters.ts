@@ -24,6 +24,7 @@ const KEYS = {
   npCard: "card",
   welfare: "welfare",
   traitIds: "trait",
+  capabilities: "cap",
   category: "cat",
   origin: "origin",
   sort: "sort",
@@ -53,6 +54,7 @@ export function parseFilters(p: URLSearchParams): SearchFilters {
     npCard: list(p, KEYS.npCard),
     welfare: welfareRaw === null ? null : welfareRaw === "1",
     traitIds: nums(p, KEYS.traitIds),
+    capabilities: list(p, KEYS.capabilities),
     category: list(p, KEYS.category),
     origin: list(p, KEYS.origin),
     sort,
@@ -73,6 +75,7 @@ export function serializeFilters(f: SearchFilters): URLSearchParams {
   put(KEYS.npCard, f.npCard.join(","));
   if (f.welfare !== null) p.set(KEYS.welfare, f.welfare ? "1" : "0");
   put(KEYS.traitIds, f.traitIds.join(","));
+  put(KEYS.capabilities, f.capabilities.join(","));
   put(KEYS.category, f.category.join(","));
   put(KEYS.origin, f.origin.join(","));
   if (f.sort !== EMPTY_FILTERS.sort) p.set(KEYS.sort, f.sort);
@@ -80,7 +83,7 @@ export function serializeFilters(f: SearchFilters): URLSearchParams {
   return p;
 }
 
-type ArrayKeys = "rarity" | "traitIds" | "className" | "attribute" | "npTarget" | "npCard" | "category" | "origin";
+type ArrayKeys = "rarity" | "traitIds" | "capabilities" | "className" | "attribute" | "npTarget" | "npCard" | "category" | "origin";
 
 export interface FilterApi {
   filters: SearchFilters;

@@ -8,6 +8,7 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { tagsForEffects } from "../core/capabilities.js";
 import {
   SCHEMA_VERSION,
   type Constants,
@@ -169,6 +170,15 @@ export async function build(): Promise<BuildStats> {
   const { forms: combatForms } = linkCombatForms(servants);
   const indexed = servants.filter((s) => s.combatFormOf === null);
 
+  // Capabilities (fase 2): derivadas dos mesmos efeitos que a calculadora lê.
+  for (const s of servants) {
+    s.capabilities = tagsForEffects([
+      ...s.skills.flatMap((k) => k.effects),
+      ...s.classPassive.flatMap((k) => k.effects),
+      ...(s.np?.effects ?? []),
+    ]);
+  }
+
   const { collisions } = disambiguate(servants);
   warnings.push(...(await loadAliases(servants)));
 
@@ -189,7 +199,9 @@ export async function build(): Promise<BuildStats> {
       dropped++;
       continue;
     }
-    equips.push(toCraftEssence(e, category));
+    const ce = toCraftEssence(e, category);
+    ce.capabilities = tagsForEffects(ce.effectsMlb);
+    equips.push(ce);
   }
   equips.sort((a, b) => a.collectionNo - b.collectionNo || a.id - b.id);
 

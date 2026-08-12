@@ -31,6 +31,8 @@ export interface SearchFilters {
   welfare: boolean | null;
   /** todos precisam bater (AND) */
   traitIds: number[];
+  /** todas precisam bater (AND) — vale para servos e CEs */
+  capabilities: string[];
 
   // craft essence
   category: string[];
@@ -50,6 +52,7 @@ export const EMPTY_FILTERS: SearchFilters = {
   npCard: [],
   welfare: null,
   traitIds: [],
+  capabilities: [],
   category: [],
   origin: [],
   sort: "collectionNo",
@@ -66,6 +69,7 @@ export function isDefaultFilters(f: SearchFilters): boolean {
     f.npCard.length === 0 &&
     f.welfare === null &&
     f.traitIds.length === 0 &&
+    f.capabilities.length === 0 &&
     f.category.length === 0 &&
     f.origin.length === 0
   );
@@ -128,6 +132,8 @@ function matchesEquip(e: IndexEntryEquip, f: SearchFilters): boolean {
 export function matches(e: IndexEntry, f: SearchFilters): boolean {
   if (e.kind !== f.kind) return false;
   if (!anyOf(f.rarity, e.rarity)) return false;
+  // AND: "buff de Buster na party E carga de NP" devolve só quem faz os dois.
+  if (f.capabilities.length && !f.capabilities.every((c) => e.capabilities.includes(c))) return false;
   if (!matchesText(e, f.text)) return false;
   return e.kind === "servant" ? matchesServant(e, f) : matchesEquip(e, f);
 }

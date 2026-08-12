@@ -17,8 +17,8 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 |---|---|---|
 | **0** | Ingestão, manifest, modelo canônico | ✅ pronta |
 | **1** | Busca com filtros diretos (servos e CEs) | ✅ pronta |
-| 2 | Capabilities + busca por skill | pendente |
-| 3 | Calculadora + testes | pendente |
+| **2** | Capabilities + busca por skill | ✅ pronta |
+| **3** | Calculadora (núcleo + testes) | ✅ núcleo pronto — **sem tela ainda** |
 | 4 | MCP server | pendente |
 | 5 | Condicionais de estado, comparação, templates | pendente |
 
@@ -40,11 +40,11 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 31 testes: motor de busca + renderização da tela. |
+| `npm test` | 71 testes: busca, renderização, e a fórmula termo a termo. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
-| `npm run data:validate` | Confere a saída contra 42 valores conhecidos do jogo. |
+| `npm run data:validate` | Confere a saída contra 64 valores conhecidos do jogo. |
 | `npm run data:all` | Os três de dados em sequência. |
 | `npm run typecheck` | `tsc --noEmit`. |
 
@@ -67,6 +67,16 @@ Busca textual cobre nome, apelido curado e `collectionNo`, ignorando acentos —
 As contagens de cada faceta são calculadas **ignorando a própria dimensão**: com
 "saber" marcado, você continua vendo quantos archers existem para trocar o filtro.
 
+E há busca por **o que o servo faz** — 166 tags derivadas dos efeitos, com
+filtro AND:
+
+```
+/?cap=buster_up_party,atk_up_party,np_charge_party   -> 13 servos
+/?cap=np_charge_50_party                             -> 9 servos
+```
+
+Detalhes em [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md).
+
 ## Estrutura
 
 ```
@@ -75,6 +85,9 @@ src/
     model.ts       os tipos que todo o resto consome
     units.ts       conversão de unidades do Atlas (4 divisores diferentes)
     search.ts      motor de busca: filtro, ordenação, contagem de facetas
+    buffs.ts       tabela única: buff -> slot da fórmula + tag de busca
+    capabilities.ts  tags derivadas (escopo, card, limiar)
+    damage.ts      calculadora, função pura
   ingest/        raw -> canônico. O ÚNICO lugar que conhece o formato do Atlas
     sources.ts     lista de arquivos e manifest
     sync.ts        download incremental
@@ -103,9 +116,11 @@ API mudar um campo, conserta-se em um lugar só.
 
 | Documento | Para quê |
 |---|---|
-| [`PLANO.md`](PLANO.md) | 18 decisões com justificativa, 14 riscos com mitigação, arquitetura, fases |
+| [`PLANO.md`](PLANO.md) | 21 decisões com justificativa, 20 riscos com mitigação, arquitetura, fases |
 | [`docs/SCHEMA.md`](docs/SCHEMA.md) | Modelo canônico campo a campo, glossário de unidades, structs da calculadora |
 | [`docs/DATA.md`](docs/DATA.md) | De onde vêm os dados, **como atualizar**, armadilhas conhecidas |
+| [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md) | Tags de busca: formato, limiares, como adicionar |
+| [`docs/DAMAGE.md`](docs/DAMAGE.md) | Fórmula, mapeamento buff→slot, sutilezas, estado da validação |
 | [`damage_formula.txt`](damage_formula.txt) | A fórmula de dano da comunidade (fonte da fase 3) |
 
 Se você herdou este projeto: comece pelo `PLANO.md`. Ele registra *por que* cada

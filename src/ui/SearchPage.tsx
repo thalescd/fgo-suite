@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import type { IndexEntry } from "../core/model.js";
+import { labelForTag } from "../core/capabilities.js";
 import { facetCounts, isDefaultFilters, search, type FacetOption } from "../core/search.js";
 import { Facet, ResultCard } from "./components.js";
 import type { Bootstrap } from "./data.js";
@@ -89,6 +90,20 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
       }));
   }, [index, filters, traits]);
 
+  /**
+   * 166 tags existem; listar todas seria inútil. Mostramos as mais frequentes
+   * dentro dos resultados atuais, mais as já marcadas — assim a faceta se
+   * adapta ao que está filtrado em vez de ser uma lista fixa gigante.
+   */
+  const capabilityOpts = useMemo(() => {
+    const counts = fc("capabilities", (e) => e.capabilities);
+    return [...counts.entries()]
+      .map(([value, count]) => ({ value: value as string | number, label: labelForTag(value), count }))
+      .filter((o) => filters.capabilities.includes(String(o.value)) || o.count > 0)
+      .sort((a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value)))
+      .slice(0, 45);
+  }, [index, filters]);
+
   const isServant = filters.kind === "servant";
   const visible = results.slice(0, shown);
 
@@ -102,6 +117,14 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
           isSelected={(v) => filters.rarity.includes(Number(v))}
           onToggle={(v) => { toggle("rarity", Number(v)); setShown(PAGE); }}
           open
+        />
+        <Facet
+          title="What it does"
+          selectedCount={filters.capabilities.length}
+          options={capabilityOpts}
+          open
+          isSelected={(v) => filters.capabilities.includes(String(v))}
+          onToggle={(v) => { toggle("capabilities", String(v)); setShown(PAGE); }}
         />
         {isServant ? (
           <>
