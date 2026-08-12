@@ -148,6 +148,11 @@ export function DamageReport({ result, constants }: { result: DamageResult; cons
                 <span className="val">{b.slot === "flatDamage" ? `+${num(b.value)}` : pct(b.value / 100)}</span>
                 <span className="src">{b.source}</span>
                 {b.chance < 100 && <span className="warn">{b.chance}% chance</span>}
+                {b.boostedFrom !== undefined && (
+                  <span className="reason">
+                    boosted from {pct(b.boostedFrom / 100)} by {b.boostedBy}
+                  </span>
+                )}
                 {idle && (
                   <span className="reason">
                     not counted: {b.slot === "npDamageMod" ? "only applies to NP damage" : "only applies to critical hits"}

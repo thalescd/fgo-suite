@@ -176,6 +176,9 @@ function toEffect(f: AtlasFunction): Effect {
     condTarget: toTraits(buff?.ckOpIndv),
     condFunc: toTraits(f.functvals),
     superEffective: toSuperEffective(f),
+    buffTraits: toTraits(buff?.vals),
+    // `null`, não `[]`: o efeito ou é um boost ou não é, e a diferença importa.
+    boostsBuffTraits: buff?.script?.UpBuffRateBuffIndiv ? toTraits(buff.script.UpBuffRateBuffIndiv) : null,
     supported: isSupportedBuff(buffType),
   };
 }

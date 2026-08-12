@@ -88,6 +88,26 @@ export interface Effect {
    */
   superEffective: SuperEffective | null;
 
+  /**
+   * Traits do **próprio buff** (`buff.vals`), não do portador.
+   *
+   * Marcam o buff como alvo de outros efeitos: todo `upNpdamage` carrega
+   * `buffNpDamageUp`, todo buff positivo carrega `buffPositiveEffect`. É o que
+   * permite a um efeito dizer "multiplique os buffs de dano de NP" sem citar
+   * `upNpdamage` pelo nome.
+   */
+  buffTraits: Trait[];
+
+  /**
+   * Só em `buffRate`: os traits de buff cujo **valor** este efeito multiplica
+   * (`buff.script.UpBuffRateBuffIndiv`). `null` quando o efeito não é um boost.
+   *
+   * A skill 3 do Oberon é o único caso no jogo hoje: `buffNpDamageUp` a 100%,
+   * ou seja, um `upNpdamage` de 20% conta como 40%. Não está em
+   * `damage_formula.txt` porque o post é anterior ao Oberon (R21).
+   */
+  boostsBuffTraits: Trait[] | null;
+
   /** false => a calculadora reporta em `assumptions.unmodeled` em vez de ignorar (R12). */
   supported: boolean;
 }

@@ -195,6 +195,11 @@ interface Effect {
   condFunc: Trait[];             // functvals: condições adicionais da função
 
   superEffective: SuperEffective | null;  // dano extra por trait do alvo (§3.4.1)
+
+  // BUFF SOBRE BUFF — R21. Traits do PRÓPRIO buff, não do portador.
+  buffTraits: Trait[];           // buff.vals: "buffNpDamageUp", "buffPositiveEffect"...
+  boostsBuffTraits: Trait[] | null;  // buff.script.UpBuffRateBuffIndiv (§3.4.2)
+
   supported: boolean;            // false => entra em `assumptions` como não modelado (R12)
 }
 
@@ -222,6 +227,28 @@ Afeta **139 NPs no índice**, e o `Correction` **varia com overcharge em 69 dele
 O `Target` traz só o id. O nome vem de um dicionário montado varrendo todos os pares `{id, name}` do dump (1070 ids), em vez de uma lista à mão. `Target: 0` é placeholder de "sem trait" e é descartado.
 
 > **`svals` tem 114 campos distintos; lemos 6.** Os demais são engine e apresentação (`ShowState`, `HideMiss`, `PriorityBgm`). Ficaram de fora, e são candidatos a revisão se algo mais faltar: `Value2` (314 casos, em `addState`), `ParamAdd`/`ParamMax` (bônus acumulativo por trait), `RatioHPLow`/`RatioHPHigh` (condição de HP, adiada por D14).
+
+#### 3.4.2 Buff que multiplica buff (R21)
+
+Um buff pode aumentar o **valor** de outros buffs. Dois campos do Atlas descrevem
+isso, e nenhum deles é o `Value`:
+
+| Campo do Atlas | Vira | Significado |
+|---|---|---|
+| `buff.vals` | `buffTraits` | traits do próprio buff — `buffNpDamageUp`, `buffPositiveEffect` |
+| `buff.script.UpBuffRateBuffIndiv` | `boostsBuffTraits` | quais desses traits este buff multiplica |
+
+O casamento é por **trait**, não por nome de buff. A skill 3 do Oberon diz
+"multiplique o que tiver `buffNpDamageUp`", e os 794 `upNpdamage` do jogo
+carregam esse trait — nenhum lado precisa conhecer o outro.
+
+**Uma ocorrência em todo o dump** (`buffRate`, Oberon). O modelo carrega os dois
+campos para todos os efeitos mesmo assim: são 2 arrays quase sempre vazios, e a
+alternativa seria um caso especial com nome de servo dentro da calculadora.
+
+`boostsBuffTraits` é `null` quando o efeito não é boost, não `[]` — a diferença
+entre "não é boost" e "é um boost que não alcança nada" muda o que a calculadora
+reporta. Ver [`DAMAGE.md`](DAMAGE.md) §3.5.
 
 ### 3.5 `CraftEssence`
 

@@ -40,11 +40,11 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 99 testes: busca, renderização, a fórmula termo a termo e a tela da calculadora. |
+| `npm test` | 105 testes: busca, renderização, a fórmula termo a termo e a tela da calculadora. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
-| `npm run data:validate` | Confere a saída contra 65 valores conhecidos do jogo. |
+| `npm run data:validate` | Confere a saída contra 69 valores conhecidos do jogo. |
 | `npm run data:all` | Os três de dados em sequência. |
 | `npm run typecheck` | `tsc --noEmit`. |
 
@@ -93,6 +93,10 @@ da fórmula com o valor que assumiu, cada buff que entrou, e cada buff que **nã
 entrou com o motivo. Foi lendo um desses motivos que o bug do card do NP
 apareceu.
 
+A fórmula da comunidade é de 2018 e o jogo andou: mecânicas mais novas entram
+como exceção documentada. A primeira é a skill 3 do **Oberon**, que dobra os
+buffs de dano de NP (R21).
+
 Fora por enquanto: CE e Mystic Code no cálculo, suportes e comparação lado a
 lado — tudo fase 5. E os números **nunca foram conferidos contra o jogo** (R4).
 
@@ -140,7 +144,7 @@ API mudar um campo, conserta-se em um lugar só.
 
 | Documento | Para quê |
 |---|---|
-| [`PLANO.md`](PLANO.md) | 21 decisões com justificativa, 20 riscos com mitigação, arquitetura, fases |
+| [`PLANO.md`](PLANO.md) | 21 decisões com justificativa, 21 riscos com mitigação, arquitetura, fases |
 | [`docs/SCHEMA.md`](docs/SCHEMA.md) | Modelo canônico campo a campo, glossário de unidades, structs da calculadora |
 | [`docs/DATA.md`](docs/DATA.md) | De onde vêm os dados, **como atualizar**, armadilhas conhecidas |
 | [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md) | Tags de busca: formato, limiares, como adicionar |

@@ -34,10 +34,11 @@ const loadEquip = (cn: number): CraftEssence => {
 
 const ARTORIA = loadServant(2); // saber, Excalibur AoE buster 400..600%
 const GIL = loadServant(12); // archer, super-efetivo vs weakToEnumaElish, buff próprio antes do dano
+const OBERON = loadServant(316); // único servo com `buffRate`: dobra buffs de dano de NP (R21)
 const KALEID = loadEquip(34);
 
 const data: DamageData = {
-  servants: new Map([ARTORIA, GIL].map((s) => [s.id, s])),
+  servants: new Map([ARTORIA, GIL, OBERON].map((s) => [s.id, s])),
   equips: new Map([[KALEID.id, KALEID]]),
   mysticCodes: new Map(mysticCodes.map((m) => [m.id, m])),
   constants,
@@ -309,5 +310,81 @@ describe("assumptions", () => {
     // Nada filtra por chance (D18); o registro é o que mantém a resposta honesta.
     const r = calculateDamage(input({ buffStack: [{ kind: "ownSkill", skillNum: 1, level: 10 }] }), data);
     for (const u of r.assumptions.uncertainBuffs) expect(u.chance).toBeLessThan(100);
+  });
+});
+
+/**
+ * Buffs que multiplicam o valor de outros buffs (R21).
+ *
+ * `damage_formula.txt` não prevê isto: o post é anterior ao Oberon, que é o
+ * único servo do jogo com `buffRate`. Sem este tratamento, a skill 3 dele
+ * apareceria como "não modelada" e o dano sairia calculado pela metade.
+ */
+describe("boost de buff — Oberon (R21)", () => {
+  const ober = (over: Partial<DamageInput> = {}): DamageInput =>
+    input({
+      attacker: { servantId: OBERON.id, level: OBERON.lvMax, fou: 1000, npLevel: 1, overcharge: 1 },
+      ...over,
+    });
+  const skill = (num: number, level = 10) => ({ kind: "ownSkill" as const, skillNum: num, level });
+
+  it("a skill 3 dobra o buff de dano de NP: 30% vira 60%", () => {
+    const semBoost = calculateDamage(ober({ buffStack: [skill(1)] }), data);
+    const comBoost = calculateDamage(ober({ buffStack: [skill(1), skill(3)] }), data);
+
+    expect(semBoost.breakdown.npDamageMod).toBeCloseTo(0.3, 5);
+    expect(comBoost.breakdown.npDamageMod).toBeCloseTo(0.6, 5);
+
+    const boosted = comBoost.assumptions.appliedBuffs.find((b) => b.buffType === "upNpdamage")!;
+    expect(boosted.boostedFrom).toBe(30);
+    expect(boosted.value).toBe(60);
+  });
+
+  it("o boost escala com o nível da skill — 50% no lv1", () => {
+    // upNpdamage lv1 = 20%, boost lv1 = 50% -> 30%.
+    const r = calculateDamage(ober({ buffStack: [skill(1, 1), skill(3, 1)] }), data);
+    expect(r.breakdown.npDamageMod).toBeCloseTo(0.3, 5);
+  });
+
+  it("boost sem nada para dobrar é reportado, não some", () => {
+    const r = calculateDamage(ober({ buffStack: [skill(3)] }), data);
+    expect(r.breakdown.npDamageMod).toBe(0);
+    expect(r.assumptions.skippedBuffs.some((s) => s.buffType === "buffRate" && /nothing to boost/.test(s.reason))).toBe(true);
+    // E não pode virar aviso de "não modelado": o buff é conhecido.
+    expect(r.assumptions.unmodeled).not.toContain("buffRate");
+  });
+
+  it("o boost alcança só quem tem o trait, não todo buff da mesma skill", () => {
+    // A própria skill 3 dá upCommandall; ele não carrega `buffNpDamageUp`.
+    const r = calculateDamage(ober({ buffStack: [skill(1), skill(3)] }), data);
+    const card = r.assumptions.appliedBuffs.find((b) => b.buffType === "upCommandall")!;
+    expect(card.boostedFrom).toBeUndefined();
+    expect(card.value).toBe(50);
+  });
+
+  it("o boost chega pelo caminho de suporte, não só quando o Oberon ataca", () => {
+    const sozinha = calculateDamage(input({ buffStack: [] }), data);
+    const comOberon = calculateDamage(
+      input({
+        buffStack: [
+          { kind: "support", servantId: OBERON.id, skills: [1, 3], skillLevel: 10, targetsAttacker: true },
+        ],
+      }),
+      data,
+    );
+    expect(sozinha.breakdown.npDamageMod).toBe(0);
+    expect(comOberon.breakdown.npDamageMod).toBeCloseTo(0.6, 5);
+  });
+
+  it("nenhum outro servo tem buffRate — se isso mudar, o teste avisa", () => {
+    // Medido no dump inteiro: 1 ocorrência, a skill 3 do Oberon. O dia em que
+    // aparecer outra, vale conferir se o novo boost é do mesmo formato.
+    const withBuffRate = servantIndex.filter((e) => {
+      const s = JSON.parse(readFileSync(`public/data/servant/${e.id}.json`, "utf8")) as Servant;
+      return [...s.skills, ...s.classPassive, ...s.appendPassive, ...(s.np ? [s.np] : [])].some((sk) =>
+        sk.effects.some((ef) => ef.boostsBuffTraits !== null),
+      );
+    });
+    expect(withBuffRate.map((e) => e.name)).toEqual(["Oberon"]);
   });
 });

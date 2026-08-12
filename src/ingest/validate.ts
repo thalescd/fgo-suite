@@ -171,6 +171,18 @@ async function main(): Promise<void> {
   check("139 NPs com super-efetivo no índice, 69 escalando com OC", [seCount, seOc], [139, 69]);
   check("nenhum trait placeholder id 0 sobrou", seZero, 0);
 
+  console.log("\n§3.4.2 — buff que multiplica buff (R21)");
+  // Sem estes campos a skill 3 do Oberon vira "buff não modelado" e o dano dele
+  // sai pela metade — sem sintoma, porque o número continua plausível.
+  const oberon = await servant(byCn(316).id);
+  const boost = oberon.skills.find((s) => s.num === 3)?.effects.find((e) => e.boostsBuffTraits !== null);
+  check("Oberon skill 3 traz o boost", boost?.buffType, "buffRate");
+  check("multiplica buffNpDamageUp", boost?.boostsBuffTraits?.map((t) => t.name), ["buffNpDamageUp"]);
+  check("100% no nível 10 (dobra)", boost?.values[9], 100);
+  const npUp = oberon.skills.find((s) => s.num === 1)?.effects.find((e) => e.buffType === "upNpdamage");
+  check("o buff alvo carrega o trait que o boost procura",
+    npUp?.buffTraits.some((t) => t.name === "buffNpDamageUp"), true);
+
   console.log("\nFormas de combate");
   const jekyll = await servant(600700);
   const hyde = await read<Servant>("servant/600710.json");

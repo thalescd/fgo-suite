@@ -79,6 +79,13 @@ const DAMAGE: Record<string, BuffSpec> = {
 
   pierceDefence: { slot: "pierceDefence", tag: "pierce_defence" },
   pierceInvincible: { slot: null, tag: "pierce_invincible" },
+
+  /**
+   * Multiplica o **valor de outros buffs**, então não tem slot próprio: age
+   * sobre o slot de quem ele alcança. Quem alcança está em
+   * `Effect.boostsBuffTraits`, e a aplicação fica em `damage.ts`.
+   */
+  buffRate: { slot: null, tag: "buff_boost" },
 };
 
 /**

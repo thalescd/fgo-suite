@@ -91,8 +91,12 @@ export interface ResolvedBuff {
   source: string;
   buffType: string;
   slot: DamageSlot;
+  /** Já com o boost aplicado, quando houver. */
   value: number;
   chance: number;
+  /** Valor antes do boost, e de onde ele veio. Ausentes quando não houve boost. */
+  boostedFrom?: number;
+  boostedBy?: string;
 }
 
 export interface SkippedBuff {
@@ -226,8 +230,25 @@ function resolveBuffs(
   actionCard: CardType,
 ): { applied: ResolvedBuff[]; skipped: SkippedBuff[]; unmodeled: string[] } {
   const applied: ResolvedBuff[] = [];
+  /** Traits de cada buff aplicado, paralelo a `applied` — só para casar boosts. */
+  const appliedTraits: number[][] = [];
+  const boosts: Boost[] = [];
   const skipped: SkippedBuff[] = [];
   const unmodeled = new Set<string>();
+
+  /** Condições de aplicação. Devolve o motivo da recusa, ou `null` se o efeito vale. */
+  const rejectionOf = (e: Effect): string | null => {
+    // condSelf: restrição do lado do atacante — quase sempre tipo de card.
+    const cardConds = e.condSelf.filter((t) => t.name.startsWith("card"));
+    if (cardConds.length > 0 && !cardConds.some((t) => t.name === CARD_TRAIT[actionCard])) {
+      return `restricted to ${cardConds.map((t) => t.name).join("/")}, this attack uses ${CARD_TRAIT[actionCard]}`;
+    }
+    // condTarget: restrição do lado do inimigo.
+    if (e.condTarget.length > 0 && !e.condTarget.some((t) => enemyTraits.has(t.name))) {
+      return `requires a target with ${e.condTarget.map((t) => t.name).join("/")}`;
+    }
+    return null;
+  };
 
   for (const c of candidates) {
     const e = c.effect;
@@ -244,43 +265,96 @@ function resolveBuffs(
       unmodeled.add(e.buffType);
       continue;
     }
-    if (spec.slot === null) continue; // conhecido, mas não afeta dano
 
-    // condSelf: restrição do lado do atacante — quase sempre tipo de card.
-    const cardConds = e.condSelf.filter((t) => t.name.startsWith("card"));
-    if (cardConds.length > 0) {
-      const wanted = CARD_TRAIT[actionCard];
-      if (!cardConds.some((t) => t.name === wanted)) {
-        skipped.push({
-          source: c.source,
-          buffType: label,
-          reason: `restricted to ${cardConds.map((t) => t.name).join("/")}, this attack uses ${wanted}`,
-        });
-        continue;
-      }
-    }
+    // Um boost não tem slot próprio: age sobre o slot de quem ele alcança.
+    const boostTargets = e.boostsBuffTraits ?? [];
+    if (spec.slot === null && boostTargets.length === 0) continue; // conhecido, mas não afeta dano
 
-    // condTarget: restrição do lado do inimigo.
-    if (e.condTarget.length > 0 && !e.condTarget.some((t) => enemyTraits.has(t.name))) {
-      skipped.push({
-        source: c.source,
-        buffType: label,
-        reason: `requires a target with ${e.condTarget.map((t) => t.name).join("/")}`,
-      });
+    const reason = rejectionOf(e);
+    if (reason !== null) {
+      skipped.push({ source: c.source, buffType: label, reason });
       continue;
     }
 
     const raw = valueOf(e, c.levelIndex, input.attacker.overcharge);
+
+    if (boostTargets.length > 0) {
+      boosts.push({
+        source: c.source,
+        buffType: label,
+        // Por id, nunca por nome: o Atlas não traduz todos os traits (R10).
+        traitIds: new Set(boostTargets.map((t) => t.id)),
+        traitNames: boostTargets.map((t) => t.name).join("/"),
+        rate: raw,
+      });
+      continue;
+    }
+
     applied.push({
       source: c.source,
       buffType: label,
-      slot: spec.slot,
+      slot: spec.slot!,
       value: raw * signOf(e.buffType),
       chance: e.chance,
     });
+    appliedTraits.push(e.buffTraits.map((t) => t.id));
   }
 
+  applyBoosts(applied, appliedTraits, boosts, skipped);
   return { applied, skipped, unmodeled: [...unmodeled] };
+}
+
+interface Boost {
+  source: string;
+  buffType: string;
+  traitIds: Set<number>;
+  traitNames: string;
+  /** Em %: 100 dobra o valor do buff alcançado. */
+  rate: number;
+}
+
+/**
+ * Buffs que multiplicam o valor de outros buffs (R21).
+ *
+ * A skill 3 do Oberon é o único caso no jogo: `buffRate` a 100% sobre os buffs
+ * marcados `buffNpDamageUp`, ou seja, um `upNpdamage` de 20% passa a contar 40%.
+ * `damage_formula.txt` não prevê isso — o post é de antes do Oberon existir.
+ *
+ * A correspondência é por **trait de buff**, não por nome do buff: se o jogo um
+ * dia lançar um boost de ATK up, ele já funciona sem tocar aqui.
+ *
+ * Um boost que não alcançou nada vai para `skipped` em vez de sumir — a skill do
+ * Oberon num alvo sem buff de NP damage não faz nada, e isso precisa aparecer.
+ */
+function applyBoosts(
+  applied: ResolvedBuff[],
+  appliedTraits: number[][],
+  boosts: Boost[],
+  skipped: SkippedBuff[],
+): void {
+  const used = new Set<Boost>();
+
+  applied.forEach((b, i) => {
+    const ids = appliedTraits[i] ?? [];
+    const reaching = boosts.filter((x) => ids.some((id) => x.traitIds.has(id)));
+    if (reaching.length === 0) return;
+
+    // O estado é 重複不可 (não empilha). Entre vários, vale o maior.
+    const best = reaching.reduce((m, x) => (x.rate > m.rate ? x : m));
+    used.add(best);
+    b.boostedFrom = b.value;
+    b.value = b.value * (1 + best.rate / 100);
+    b.boostedBy = `${best.source} +${best.rate}%`;
+  });
+
+  for (const x of boosts) {
+    if (used.has(x)) continue;
+    skipped.push({
+      source: x.source,
+      buffType: x.buffType,
+      reason: `nothing to boost — no active buff carries ${x.traitNames}`,
+    });
+  }
 }
 
 /** Monta os candidatos a partir das fontes declaradas no `BuffStack`. */

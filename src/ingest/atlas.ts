@@ -15,6 +15,12 @@ export interface AtlasBuff {
   type?: string;
   ckSelfIndv?: AtlasTrait[];
   ckOpIndv?: AtlasTrait[];
+  /** Traits do próprio buff: `buffNpDamageUp`, `buffPositiveEffect`... */
+  vals?: AtlasTrait[];
+  script?: {
+    /** Só em `buffRate`: quais traits de buff este efeito multiplica. */
+    UpBuffRateBuffIndiv?: AtlasTrait[];
+  };
 }
 
 export interface AtlasSval {

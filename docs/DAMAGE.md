@@ -60,6 +60,7 @@ as tags de busca (ver [`CAPABILITIES.md`](CAPABILITIES.md) §1).
 | `specialDefMod` | resistência especial do alvo |
 | `flatDamage` | `addDamage`, `subSelfdamage` |
 | `pierceDefence` | `pierceDefence`, `funcType: damageNpPierce` |
+| *nenhum — age sobre o slot alheio* | `buffRate`, que multiplica o valor de outros buffs (§3.5) |
 
 `downX` e `subX` entram no mesmo slot com sinal invertido (`signOf`), em vez de
 duplicar linhas.
@@ -98,7 +99,40 @@ como "primeira posição do tipo dele" só para o `cardDamageValue`.
 (redução de defesa aplicada por você) continua valendo. `specialDefMod` **não** é
 ignorado por pierce.
 
-### 3.5 O que um NP não pode ser
+### 3.5 Buffs que multiplicam outros buffs (R21)
+
+**Este termo não está em `damage_formula.txt`** — o post é de antes do Oberon
+existir. A skill 3 dele dobra o valor dos buffs de dano de NP: um `upNpdamage`
+de 20% conta como 40%.
+
+O dado descreve o mecanismo sem precisar citar ninguém:
+
+```
+buff buffRate  →  script.UpBuffRateBuffIndiv: [buffNpDamageUp]
+buff upNpdamage →  vals: [buffPositiveEffect, buffIncreaseDamage, buffNpDamageUp]
+```
+
+Ou seja, o boost declara **qual trait de buff** multiplica, e os buffs declaram
+quais traits carregam. Por isso a implementação casa por trait, não por nome:
+se o jogo lançar um boost de ATK up amanhã, ele já funciona.
+
+| | |
+|---|---:|
+| Ocorrências de `buffRate` no jogo | **1** (Oberon skill 3) |
+| Buffs `upNpdamage` marcados `buffNpDamageUp` | 794 de 794 |
+
+Duas decisões que o dado não responde sozinho:
+
+- **Não empilha** (o estado é 重複不可). Entre vários boosts que alcancem o mesmo
+  buff, vale o de maior valor.
+- **Boost que não alcança nada vai para `skippedBuffs`.** A skill do Oberon num
+  alvo sem buff de dano de NP não faz nada, e sumir em silêncio seria pior que
+  aparecer como recusa.
+
+Um teste falha se um segundo servo ganhar `buffRate` — não porque quebraria,
+mas porque vale conferir se o novo é do mesmo formato.
+
+### 3.6 O que um NP não pode ser
 
 Duas regras do jogo sobre **ações válidas**, não sobre como o dano é calculado —
 mas moram no núcleo, para que nenhum chamador (inclusive o MCP da fase 4)
@@ -115,7 +149,7 @@ Chain"* — uma chain é formada por três **command cards**, e um NP não é co
 card. Testar só "buster chain aumenta o dano de um card Buster" deixa a metade
 errada passar; o teste cobre as duas.
 
-### 3.6 Traits derivados do inimigo (D15)
+### 3.7 Traits derivados do inimigo (D15)
 
 `className: "saber"` injeta o trait `classSaber`; `attribute: "human"` injeta
 `attributeHuman`. Sem isso, 71 checagens anti-classe e 16 anti-atributo falham em
@@ -145,7 +179,7 @@ Só o que difere do padrão aparece na URL — `serializeCalc(DEFAULT_CALC)` é 
 | Regra | Por quê |
 |---|---|
 | Os buffs pré-dano do NP entram sozinhos | O Gilgamesh *sempre* leva o `upNpdamage` dele no próprio golpe (§3.2). Uma checkbox sugeriria uma escolha que o jogador não tem. |
-| Crítico e buster chain ficam desabilitados num NP | As regras de §3.5. A tela desabilita para explicar; **o núcleo ignora de qualquer jeito**, porque a garantia não pode depender da interface. |
+| Crítico e buster chain ficam desabilitados num NP | As regras de §3.6. A tela desabilita para explicar; **o núcleo ignora de qualquer jeito**, porque a garantia não pode depender da interface. |
 
 ### 4.2 O que a tela mostra de propósito
 
@@ -156,7 +190,7 @@ Cada item existe porque escondê-lo produz número plausível e errado:
 - **Que buffs de cada skill afetam dano** — marcar uma skill de cura não muda
   nada, e sem a dica nada diria por quê.
 - **Traits derivados** — `classLancer`, `attributeSky` aparecem listados, para
-  ficar claro que classe e atributo já injetam trait (§3.5).
+  ficar claro que classe e atributo já injetam trait (§3.7).
 - **NP de suporte** — os 50 NPs sem função de dano dizem isso em vez de exibir
   um número calculado como se fossem card.
 - **Buff presente mas não contado** — um `upNpdamage` num ataque de card aparece
@@ -188,12 +222,12 @@ Buster.
 
 ## 6. Estado da validação
 
-**O que está provado.** 27 testes em
+**O que está provado.** 33 testes em
 [`src/core/damage.test.ts`](../src/core/damage.test.ts) isolam **um termo por
 teste** e verificam a razão entre dois cenários que diferem só nele: vantagem de
 classe dobra, crítico dobra, NP5/NP1 = 600/400, Buster em 1ª posição dá
 `cardTerm` 2.0, NP Buster dá 1.5, super-efetivo do Gilgamesh 150% no OC1 e 200%
-no OC5, `min`/`max` = 0.9/1.1 da média, e as duas negativas de §3.5 (NP não
+no OC5, `min`/`max` = 0.9/1.1 da média, e as duas negativas de §3.6 (NP não
 critica, NP não entra em chain).
 
 Comparar razões em vez de valores absolutos testa a fórmula sem depender de um
