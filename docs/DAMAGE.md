@@ -109,7 +109,46 @@ E "humano" são cinco traits distintos — `human`, `attributeHuman`, `livingHum
 
 ---
 
-## 4. O que o resultado sempre informa
+## 4. A tela
+
+`/calc`. O cenário inteiro vive na **query string**
+([`src/ui/calcState.ts`](../src/ui/calcState.ts)), pela mesma razão dos filtros
+de busca: link compartilhável, botão voltar funcionando, e os mesmos parâmetros
+viram a assinatura da tool de dano no MCP da fase 4.
+
+```
+/calc?s=100100&sk=1,2,3&ec=lancer&ea=sky&oc=5
+/calc?s=201200&act=buster&pos=1&crit=1&roll=min
+```
+
+Só o que difere do padrão aparece na URL — `serializeCalc(DEFAULT_CALC)` é vazio.
+
+### 4.1 Duas regras que moram na tela, não na fórmula
+
+São sobre **o que é uma ação válida**, não sobre como o dano é calculado:
+
+| Regra | Por quê |
+|---|---|
+| NP nunca é crítico | O jogo não permite. Deixar `crit=1` passar num NP dobraria o número em silêncio. |
+| Os buffs pré-dano do NP entram sozinhos | O Gilgamesh *sempre* leva o `upNpdamage` dele no próprio golpe (§3.2). Uma checkbox sugeriria uma escolha que o jogador não tem. |
+
+### 4.2 O que a tela mostra de propósito
+
+Cada item existe porque escondê-lo produz número plausível e errado:
+
+- **Multiplicador na escolha do inimigo** — a classe aparece como `lancer — x2`,
+  então dá para ver o que a escolha fez sem ir procurar a matriz.
+- **Que buffs de cada skill afetam dano** — marcar uma skill de cura não muda
+  nada, e sem a dica nada diria por quê.
+- **Traits derivados** — `classLancer`, `attributeSky` aparecem listados, para
+  ficar claro que classe e atributo já injetam trait (§3.5).
+- **NP de suporte** — os 50 NPs sem função de dano dizem isso em vez de exibir
+  um número calculado como se fossem card.
+- **Buff presente mas não contado** — um `upNpdamage` num ataque de card aparece
+  na lista marcado `only applies to NP damage`. A alternativa (somá-lo) inflaria
+  o fator; a outra (omiti-lo) esconderia um buff que o jogador tem.
+
+## 5. O que o resultado sempre informa
 
 `assumptions` não é opcional. Além do número, todo cálculo devolve:
 
@@ -127,7 +166,7 @@ Buster.
 
 ---
 
-## 5. Estado da validação
+## 6. Estado da validação
 
 **O que está provado.** 25 testes em
 [`src/core/damage.test.ts`](../src/core/damage.test.ts) isolam **um termo por
@@ -138,6 +177,14 @@ no OC5, `min`/`max` = 0.9/1.1 da média.
 
 Comparar razões em vez de valores absolutos testa a fórmula sem depender de um
 número de referência externo.
+
+Mais 25 em [`src/ui/calc.test.tsx`](../src/ui/calc.test.tsx) cobrem a tradução
+que a tela acrescenta: defaults por raridade, limites de faixa, as duas regras
+de §4.1, e o relatório mostrando o que entrou e o que não entrou.
+
+**Ordem de grandeza, para quem quiser conferir de relance:** Artoria NP1 lv90 com
+1000 fou, sem buff nenhum, contra alvo neutro dá **18.551** de média (16.696 no
+roll mínimo). Com as três skills contra um lancer sky, **88.794**.
 
 > ⚠️ **R4 continua aberto.** Isto prova que a implementação corresponde a
 > `damage_formula.txt`. **Não** prova que o resultado bate com o jogo. Falta um

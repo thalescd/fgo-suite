@@ -501,7 +501,7 @@ Cada fase entrega algo usável sozinho.
 | **0** | Ingestão + manifest + modelo canônico + `DATA.md`/`SCHEMA.md` | tudo |
 | **1** | Busca com filtros diretos (raridade, classe, NP ST/AoE/support, card do NP) | site já útil; valida o modelo |
 | ~~**2**~~ | ~~Capabilities + busca por skill~~ | ✅ 166 tags, faceta na busca |
-| ~~**3**~~ | ~~`damage.ts` + testes de regressão~~ | ✅ núcleo puro e testado; **falta a tela** |
+| ~~**3**~~ | ~~`damage.ts` + testes + tela `/calc`~~ | ✅ núcleo puro, testado e utilizável; **R4 aberto** |
 | **4** | MCP server sobre 1–3 | itens 2 e 3 fechados |
 | **5** | Buffs condicionais, CEs/MCs no cálculo, comparação lado a lado | refinamento |
 

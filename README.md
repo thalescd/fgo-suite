@@ -18,7 +18,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **0** | Ingestão, manifest, modelo canônico | ✅ pronta |
 | **1** | Busca com filtros diretos (servos e CEs) | ✅ pronta |
 | **2** | Capabilities + busca por skill | ✅ pronta |
-| **3** | Calculadora (núcleo + testes) | ✅ núcleo pronto — **sem tela ainda** |
+| **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **valores nunca conferidos contra o jogo (R4)** |
 | 4 | MCP server | pendente |
 | 5 | Condicionais de estado, comparação, templates | pendente |
 
@@ -40,11 +40,11 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 71 testes: busca, renderização, e a fórmula termo a termo. |
+| `npm test` | 96 testes: busca, renderização, a fórmula termo a termo e a tela da calculadora. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
-| `npm run data:validate` | Confere a saída contra 64 valores conhecidos do jogo. |
+| `npm run data:validate` | Confere a saída contra 65 valores conhecidos do jogo. |
 | `npm run data:all` | Os três de dados em sequência. |
 | `npm run typecheck` | `tsc --noEmit`. |
 
@@ -77,6 +77,27 @@ filtro AND:
 
 Detalhes em [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md).
 
+## A calculadora
+
+Em `/calc`. O cenário inteiro também vive na query string, pelas mesmas razões:
+
+```
+/calc?s=100100&sk=1,2,3&ec=lancer&ea=sky        Artoria com as três skills vs lancer sky
+/calc?s=201200&act=buster&pos=1&crit=1&roll=min crítico Buster em 1ª posição, dano garantido
+```
+
+Escolhe-se atacante, nível/fou/NP/overcharge, a ação (NP ou card, posição na
+chain, crítico), quais skills estão ativas, e o inimigo — classe, atributo,
+traits. O resultado vem com **min / média / max** e a auditoria junto: cada termo
+da fórmula com o valor que assumiu, cada buff que entrou, e cada buff que **não**
+entrou com o motivo. Foi lendo um desses motivos que o bug do card do NP
+apareceu.
+
+Fora por enquanto: CE e Mystic Code no cálculo, suportes e comparação lado a
+lado — tudo fase 5. E os números **nunca foram conferidos contra o jogo** (R4).
+
+Detalhes em [`docs/DAMAGE.md`](docs/DAMAGE.md).
+
 ## Estrutura
 
 ```
@@ -99,7 +120,10 @@ src/
     main.tsx       rotas
     SearchPage.tsx listagem, facetas
     DetailPages.tsx servo e craft essence
+    CalcPage.tsx   montagem do cenário de dano
+    DamageReport.tsx resultado + auditoria dos termos e buffs
     useFilters.ts  filtros <-> query string
+    calcState.ts   cenário <-> query string <-> DamageInput
     data.ts        carregamento dos artefatos
 data/
   aliases.json   apelidos curados à mão (AUO, Skadi, Mashu...)

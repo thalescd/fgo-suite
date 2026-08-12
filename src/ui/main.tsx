@@ -1,7 +1,8 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, NavLink, Route, Routes } from "react-router-dom";
 
+import { CalcPage } from "./CalcPage.js";
 import { EquipPage, ServantPage } from "./DetailPages.js";
 import { SearchPage } from "./SearchPage.js";
 import { loadBootstrap, type Bootstrap } from "./data.js";
@@ -37,6 +38,10 @@ function App() {
         <h1>
           <Link to="/" style={{ color: "inherit" }}>FGO Tools</Link>
         </h1>
+        <nav className="nav">
+          <NavLink to="/" end>Search</NavLink>
+          <NavLink to="/calc">Damage</NavLink>
+        </nav>
         <span className="meta">
           {boot.meta.region} · gamedata {boot.meta.gameDataHash} · built {built} ·{" "}
           {boot.meta.counts.servants} servants, {boot.meta.counts.craftEssences} CEs
@@ -44,6 +49,7 @@ function App() {
       </header>
       <Routes>
         <Route path="/" element={<SearchPage boot={boot} />} />
+        <Route path="/calc" element={<CalcPage boot={boot} />} />
         <Route path="/servant/:id" element={<ServantPage />} />
         <Route path="/equip/:id" element={<EquipPage />} />
         <Route path="*" element={<div className="empty">Page not found. <Link to="/">Back to search</Link></div>} />

@@ -13,6 +13,7 @@ import {
   SCHEMA_VERSION,
   type Constants,
   type CraftEssence,
+  type Effect,
   type IndexEntry,
   type Meta,
   type MysticCode,
@@ -97,8 +98,21 @@ async function loadAliases(servants: Servant[]): Promise<string[]> {
  * Gerado a partir dos dados (D16) para que servo novo traga o trait dele sem
  * edição manual. Exclui os namespaces que não são identidade do inimigo:
  * buff* (estado), card* (lado do atacante), class* (derivado da classe).
+ *
+ * Três origens, e as três importam:
+ *  - `condTarget` — o efeito só vale contra alvo com o trait;
+ *  - `condFunc` — condição extra da função;
+ *  - `superEffective.traits` — o dano extra do NP.
+ *
+ * A terceira ficou de fora até a fase 3 e o buraco só apareceu na tela: sem ela
+ * `weakToEnumaElish` não existia no catálogo, ou seja, era impossível declarar o
+ * alvo do Enuma Elish — justamente o caso que a calculadora precisa acertar.
  */
-function buildTraitCatalog(servants: Servant[]): { id: number; name: string; uses: number }[] {
+function buildTraitCatalog(
+  servants: Servant[],
+  equips: CraftEssence[],
+  mysticCodes: MysticCode[],
+): { id: number; name: string; uses: number }[] {
   const counts = new Map<number, { name: string; uses: number }>();
 
   const bump = (t: Trait) => {
@@ -109,18 +123,22 @@ function buildTraitCatalog(servants: Servant[]): { id: number; name: string; use
     else counts.set(t.id, { name: t.name, uses: 1 });
   };
 
-  for (const s of servants) {
-    const skills = [...s.skills, ...s.classPassive, ...s.appendPassive];
-    const effects = [
-      ...skills.flatMap((sk) => sk.effects),
-      ...(s.np?.effects ?? []),
-      ...s.npAlternatives.flatMap((np) => np.effects),
-    ];
+  const scan = (effects: Effect[]) => {
     for (const e of effects) {
       for (const t of e.condTarget) bump(t);
       for (const t of e.condFunc) bump(t);
+      for (const t of e.superEffective?.traits ?? []) bump(t);
     }
+  };
+
+  for (const s of servants) {
+    const skills = [...s.skills, ...s.classPassive, ...s.appendPassive];
+    scan(skills.flatMap((sk) => sk.effects));
+    scan(s.np?.effects ?? []);
+    scan(s.npAlternatives.flatMap((np) => np.effects));
   }
+  for (const e of equips) scan([...e.effectsBase, ...e.effectsMlb]);
+  for (const mc of mysticCodes) scan(mc.skills.flatMap((sk) => sk.effects));
 
   return [...counts.entries()]
     .map(([id, v]) => ({ id, name: v.name, uses: v.uses }))
@@ -248,7 +266,7 @@ export async function build(): Promise<BuildStats> {
     })),
   ];
 
-  const traitCatalog = buildTraitCatalog(servants);
+  const traitCatalog = buildTraitCatalog(servants, equips, mysticCodes);
 
   // ---- escrita
   console.log("Gravando artefatos...");

@@ -119,11 +119,27 @@ export interface DamageResult {
     atkMod: number;
     defMod: number;
     powerMod: number;
+    /**
+     * Soma dos buffs no slot, **esteja ou não valendo nesta ação**.
+     *
+     * `critDamageMod` só entra na fórmula num crítico e `npDamageMod` só num NP.
+     * Quem lê o breakdown precisa dos dois fatos separados — "tenho o buff" e
+     * "ele contou" —, por isso o valor fica cru aqui e `isCrit`/`isNP` dizem se
+     * foi usado. Zerar o campo esconderia um buff que o jogador tem.
+     */
     critDamageMod: number;
     npDamageMod: number;
+    isNP: boolean;
+    isCrit: boolean;
     specialDefMod: number;
     superEffectiveModifier: number;
+    /** 1 ou `CRITICAL_ATTACK_RATE`. */
+    criticalModifier: number;
+    /** 1, `EXTRA_ATTACK_RATE_SINGLE` ou `_GRAND`. */
+    extraCardModifier: number;
     flatDamage: number;
+    /** `servantAtk * busterChainMod`, somado fora do produto. */
+    busterChainBonus: number;
     pierceDefence: boolean;
   };
   assumptions: {
@@ -452,9 +468,14 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
       powerMod,
       critDamageMod,
       npDamageMod,
+      isNP,
+      isCrit: input.action.isCrit,
       specialDefMod,
       superEffectiveModifier,
+      criticalModifier,
+      extraCardModifier,
       flatDamage,
+      busterChainBonus,
       pierceDefence: pierce,
     },
     assumptions: {

@@ -213,8 +213,13 @@ async function main(): Promise<void> {
   check("human -> sky = 1.1", constants.attributeRelation.human.sky, 1.1);
 
   console.log("\nCatálogo de traits");
-  check("89 traits de identidade", traits.length, 89);
+  // 89 até a fase 3, quando `superEffective.traits` e os efeitos de CE/Mystic Code
+  // entraram no catálogo: sem eles não havia como declarar o alvo de um NP
+  // super-efetivo.
+  check("102 traits de identidade", traits.length, 102);
   check("ordenado por frequência", traits[0]!.uses >= traits[traits.length - 1]!.uses, true);
+  // O caso que motivou a inclusão: o Enuma Elish do Gilgamesh.
+  check("weakToEnumaElish está no catálogo", traits.some((t) => t.name === "weakToEnumaElish"), true);
 
   console.log();
   if (failures.length) {

@@ -1,29 +1,12 @@
-import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import type { CraftEssence, Servant, Skill } from "../core/model.js";
 import { Block, EffectRow, EffectTable, NpTable, Stars } from "./components.js";
 import { loadEquip, loadServant } from "./data.js";
+import { useAsync } from "./useAsync.js";
 
 /** Números seguem en-US para casar com o resto da interface. */
 const num = (n: number) => n.toLocaleString("en-US");
-
-function useAsync<T>(load: () => Promise<T>, deps: unknown[]): { data: T | null; error: string | null } {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    let alive = true;
-    setData(null);
-    setError(null);
-    load().then(
-      (d) => alive && setData(d),
-      (e: unknown) => alive && setError(e instanceof Error ? e.message : String(e)),
-    );
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  return { data, error };
-}
 
 const Back = () => <Link className="back" to="/">← back to search</Link>;
 
@@ -122,6 +105,9 @@ export function ServantPage() {
               in battle
             </div>
           )}
+          <p style={{ margin: "0 0 10px" }}>
+            <Link className="linkish" to={`/calc?s=${s.id}`}>calculate damage →</Link>
+          </p>
           <dl className="kv">
             <dt>class</dt><dd>{s.className}</dd>
             <dt>rarity</dt><dd><Stars n={s.rarity} /></dd>
