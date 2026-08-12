@@ -18,7 +18,8 @@
     "test:watch": "vitest",
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node -e \"require('fs').copyFileSync('dist/index.html','dist/404.html')\"",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "damage:cases": "tsx src/ingest/cases.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

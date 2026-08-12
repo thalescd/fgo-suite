@@ -15,7 +15,7 @@ import { calculateDamage, type DamageData } from "../core/damage.js";
 import type { Constants, IndexEntry, IndexEntryServant, Meta, Servant } from "../core/model.js";
 import { CalcPage } from "./CalcPage.js";
 import { DamageReport } from "./DamageReport.js";
-import { DEFAULT_CALC, defaultNpLevel, parseCalc, serializeCalc, toDamageInput } from "./calcState.js";
+import { DEFAULT_CALC, defaultNpLevel, parseCalc, serializeCalc, toDamageInput } from "../core/scenario.js";
 import type { Bootstrap, TraitEntry } from "./data.js";
 
 const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as IndexEntry[];

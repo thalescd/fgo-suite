@@ -1,5 +1,5 @@
 /**
- * Estado da calculadora na query string.
+ * O cenário de dano: query string <-> estado <-> `DamageInput`.
  *
  * Mesma razão dos filtros de busca (`useFilters.ts`): o cenário vira um link
  * compartilhável, o botão voltar desfaz um passo, e — o que decide — estes
@@ -9,12 +9,14 @@
  *
  *   /calc?s=100100&act=np&sk=1,2,3&ec=lancer&ea=sky
  *
- * Este módulo é puro: traduz `URLSearchParams` <-> `CalcState` <-> `DamageInput`.
- * Quem carrega documento e chama a fórmula é a página.
+ * Puro e sem React, e por isso mora em `core/`: a tela usa para montar o
+ * cenário, o MCP da fase 4 vai usar para receber a mesma coisa como argumento de
+ * tool, e a validação (`docs/VALIDATION.md`) usa para que cada caso conferido
+ * seja literalmente um link que abre na tela.
  */
 
-import type { BuffSource, DamageInput, RollMode } from "../core/damage.js";
-import type { CardType, Servant, Trait } from "../core/model.js";
+import type { BuffSource, DamageInput, RollMode } from "./damage.js";
+import type { CardType, Servant, Trait } from "./model.js";
 
 /** Um NP ou um card. `extra` é o card extra, que tem multiplicador próprio. */
 export type ActionKind = "np" | "buster" | "arts" | "quick" | "extra";

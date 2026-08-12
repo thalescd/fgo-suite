@@ -40,12 +40,13 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 125 testes: busca, renderização, a fórmula termo a termo e a tela da calculadora. |
+| `npm test` | 129 testes: busca, renderização, a fórmula termo a termo e a tela da calculadora. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
 | `npm run data:validate` | Confere a saída contra 72 valores conhecidos do jogo. |
 | `npm run data:all` | Os três de dados em sequência. |
+| `npm run damage:cases` | Casos de conferência da calculadora e o nosso número em cada um (R4). |
 | `npm run typecheck` | `tsc --noEmit`. |
 
 ## A busca
@@ -99,7 +100,12 @@ buffs de dano de NP (R21), e a passiva da **Kiara**, que sobrescreve a matriz de
 classe (R22).
 
 Fora por enquanto: CE e Mystic Code no cálculo, suportes e comparação lado a
-lado — tudo fase 5. E os números **nunca foram conferidos contra o jogo** (R4).
+lado — tudo fase 5.
+
+E os números **nunca foram conferidos contra o jogo** (R4). Existe um
+procedimento pronto para isso: `npm run damage:cases` imprime 16 cenários, cada
+um prendendo um termo da fórmula, com o link que reproduz na tela. Ver
+[`docs/VALIDATION.md`](docs/VALIDATION.md).
 
 Detalhes em [`docs/DAMAGE.md`](docs/DAMAGE.md).
 
@@ -150,6 +156,7 @@ API mudar um campo, conserta-se em um lugar só.
 | [`docs/DATA.md`](docs/DATA.md) | De onde vêm os dados, **como atualizar**, armadilhas conhecidas |
 | [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md) | Tags de busca: formato, limiares, como adicionar |
 | [`docs/DAMAGE.md`](docs/DAMAGE.md) | Fórmula, mapeamento buff→slot, sutilezas, estado da validação |
+| [`docs/VALIDATION.md`](docs/VALIDATION.md) | **Como conferir a calculadora contra o jogo** — os 16 casos e o procedimento |
 | [`damage_formula.txt`](damage_formula.txt) | A fórmula de dano da comunidade (fonte da fase 3) |
 
 Se você herdou este projeto: comece pelo `PLANO.md`. Ele registra *por que* cada

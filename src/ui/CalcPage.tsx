@@ -27,7 +27,7 @@ import {
   toDamageInput,
   type ActionKind,
   type CalcState,
-} from "./calcState.js";
+} from "../core/scenario.js";
 import { loadServant, type Bootstrap } from "./data.js";
 import { useAsync } from "./useAsync.js";
 

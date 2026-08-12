@@ -1,0 +1,165 @@
+{
+  "_": [
+    "Casos de conferência da calculadora (R4). Ver docs/VALIDATION.md.",
+    "",
+    "`calc` é a query string de /calc — o caso abre na tela exatamente como está aqui.",
+    "`expected` começa null. Preencha com o valor obtido na fonte e o teste passa a",
+    "cobrir aquele caso para sempre. NÃO preencha com o nosso próprio número: isso",
+    "transformaria a validação em tautologia.",
+    "",
+    "`source`: 'calc' = qualquer calculadora da comunidade dá conta.",
+    "          'game' = mecânica que calculadora da comunidade costuma não ter;",
+    "                   precisa de número visto no jogo.",
+    "`mode`:   'avg'  = o valor esperado é determinístico (média, sem o roll).",
+    "          'roll' = valor observado no jogo; conferido como min <= x <= max."
+  ],
+
+  "preset": "Todos os casos: nível natural máximo, 1000 fou de ATK, sem CE, sem Mystic Code, sem suporte.",
+
+  "cases": [
+    {
+      "id": "base-artoria-np",
+      "why": "Caso base. Prende de uma vez servantAtk x npDamageMultiplier x cardTerm x classAtkBonus x ATTACK_RATE. Se este bater, toda a espinha multiplicativa e as unidades estão certas.",
+      "scenario": "Artoria NP1 lv90, sem buff, contra Saber/earth (classe e atributo neutros)",
+      "calc": "s=100100&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "triangle-lancer",
+      "why": "Só muda a classe do inimigo. Prende triangleModifier = 2.0.",
+      "scenario": "Igual ao base, contra Lancer/earth",
+      "calc": "s=100100&ec=lancer&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "attribute-human",
+      "why": "Só muda o atributo. Prende attributeModifier = 1.1 (earth -> human na matriz).",
+      "scenario": "Igual ao base, contra Saber/human",
+      "calc": "s=100100&ec=saber&ea=human",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "np5",
+      "why": "Só muda o nível do NP. Prende damageMultiplier 400% -> 600%.",
+      "scenario": "Igual ao base, NP5",
+      "calc": "s=100100&np=5&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "card-buster-1st",
+      "why": "Troca NP por card. Prende firstCardBonus 0.5 + cardDamageValue 1.5 do Buster em 1a posicao.",
+      "scenario": "Artoria, card Buster em 1a posicao, sem buff, contra Saber/earth",
+      "calc": "s=100100&act=buster&pos=1&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "card-buster-3rd",
+      "why": "Prende cardDamageValue 2.1 na 3a posicao E a ausencia do firstCardBonus fora da 1a.",
+      "scenario": "Igual, card Buster em 3a posicao",
+      "calc": "s=100100&act=buster&pos=3&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "card-arts-crit",
+      "why": "Prende criticalModifier = 2.0 e cardDamageValue 1.0 do Arts.",
+      "scenario": "Igual, card Arts em 1a posicao, critico",
+      "calc": "s=100100&act=arts&pos=1&crit=1&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "card-extra",
+      "why": "Prende extraCardModifier = 2.0 (extra fora de brave chain).",
+      "scenario": "Igual, card Extra",
+      "calc": "s=100100&act=extra&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "buster-chain",
+      "why": "Prende busterChainMod = 0.2 x ATK, somado fora do produto.",
+      "scenario": "Igual, card Buster 1a posicao, dentro de Buster Chain",
+      "calc": "s=100100&act=buster&pos=1&bchain=1&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "buffs-atk-card-np",
+      "why": "Tres slots de uma vez: atkMod +50%, cardMod +50% (Buster) e npDamageMod +30%. Se falhar, conferir um por um trocando as skills marcadas.",
+      "scenario": "Artoria NP1, skills 1/2/3 no nivel 10, contra Saber/earth",
+      "calc": "s=100100&sk=1,2,3&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "berserker-and-class-passive",
+      "why": "Prende classAtkBonus do Berserker E as passivas de classe: Mad Enhancement (+8% Buster) e Divinity (+20 de dano plano). Foi o furo do R22.",
+      "scenario": "Heracles NP1 lv80, sem skill, contra Saber/sky (atributo neutro)",
+      "calc": "s=700100&ec=saber&ea=sky",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "super-effective-oc",
+      "why": "Prende superEffectiveModifier no overcharge 5 (200%) e o upNpdamage 30% que o proprio NP aplica antes do dano.",
+      "scenario": "Gilgamesh NP5 OC5, sem skill, contra Saber/sky com o trait weakToEnumaElish",
+      "calc": "s=200200&np=5&oc=5&et=2008&ec=saber&ea=sky",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "np-variant-st",
+      "why": "Prende a escolha de variante de NP: mesma carta, alvo diferente, multiplicador dobrado (R24).",
+      "scenario": "UDK-Barghest, versao ST do NP (900%), NP1 lv80, sem skill, contra Saber/earth",
+      "calc": "s=204900&npid=204998&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "class-relation-override",
+      "why": "Prende a sobrescrita da matriz de classe: Nega-Saver da Kiara, alterEgo -> ruler = 1.5x, onde a matriz da 1.0x (R22).",
+      "scenario": "Sessyoin Kiara (Alter Ego) NP1, sem skill, contra Ruler/human",
+      "calc": "s=1000300&ec=ruler&ea=human",
+      "source": "game",
+      "mode": "roll",
+      "expected": null
+    },
+    {
+      "id": "card-res-down-on-target",
+      "why": "Prende a restricao de card vinda de condTarget: Arts resistance down valendo no NP Arts (R23).",
+      "scenario": "Sessyoin Kiara NP1, skill 1 no nivel 10, contra Ruler/human",
+      "calc": "s=1000300&sk=1&ec=ruler&ea=human",
+      "source": "game",
+      "mode": "roll",
+      "expected": null
+    },
+    {
+      "id": "buff-boost",
+      "why": "Prende o buffRate: skill 3 do Oberon dobrando o upNpdamage da skill 1, 30% -> 60% (R21).",
+      "scenario": "Oberon NP1, skills 1 e 3 no nivel 10, contra Saber/earth (atributo neutro)",
+      "calc": "s=2800100&sk=1,3&ec=saber&ea=earth",
+      "source": "game",
+      "mode": "roll",
+      "expected": null
+    }
+  ]
+}

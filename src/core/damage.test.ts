@@ -87,8 +87,9 @@ describe("termos da fórmula", () => {
     expect(ratio(ruim, neutro)).toBeCloseTo(0.5, 2);
   });
 
-  it("afinidade de atributo aplica 1.1x (earth -> ?)", () => {
-    // Artoria é earth. earth -> sky = 1.1 na matriz.
+  it("afinidade de atributo aplica o valor da matriz", () => {
+    // Artoria é earth, e earth -> sky é 0.9 (não 1.1 — o comentário anterior
+    // dizia o contrário; a asserção sempre leu a matriz, então nada quebrou).
     const neutro = dmg(input({ enemy: enemy({ attribute: "earth" }) }));
     const bom = dmg(input({ enemy: enemy({ attribute: "sky" }) }));
     expect(ratio(bom, neutro)).toBeCloseTo(constants.attributeRelation.earth.sky, 2);
