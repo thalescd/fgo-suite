@@ -421,3 +421,33 @@ roll mínimo). Com as três skills contra um lancer sky, **88.794**.
 | Overkill, NP gain, geração de estrelas | fora da fórmula de dano |
 
 Nada disso some em silêncio: buff não modelado aparece em `assumptions.unmodeled`.
+
+### Onde procurar o próximo erro
+
+Quatro defeitos foram achados por relato de quem joga (R21–R24), e **em três
+deles a fórmula estava certa** — o erro era leitura do dado. O padrão vale mais
+que os casos:
+
+| Padrão | Exemplo |
+|---|---|
+| Um campo guarda coisas de significados diferentes | `condTarget` com card, estado e identidade (R23) |
+| Um valor não diz de quem ele é | `defMod` sem lado, `selfDmgCutAdd` no atacante (R22) |
+| Uma lista mistura escolha com histórico | `npAlternatives` com variante e rank up (R24) |
+| O que sempre está ligado não é declarado | passiva de classe fora do `buffStack` (R22) |
+| A fórmula é de 2018 e o jogo andou | `buffRate` do Oberon (R21) |
+
+Os pontos que **ainda** leio como se fossem uniformes, e portanto são os próximos
+candidatos:
+
+- **`condFunc`** — hoje é carregado no modelo e **nunca consultado** pela
+  calculadora. Se contiver condição de card ou de alvo como o `condTarget`
+  continha, há efeito entrando ou saindo errado.
+- **`condSelf` fora de card** — só 4 casos hoje (`faceCard` tratado, `fieldShore…`
+  não), mas a checagem é por prefixo e um namespace novo passaria batido.
+- **`svals` não lidos** — `Value2`, `ParamAdd`/`ParamMax`, `RatioHPLow/High`
+  (SCHEMA §3.4.1). São 108 dos 114 campos.
+- **Alvos `enemy*` novos** — o lado do efeito sai de um prefixo; um
+  `enemyOther` inédito cairia certo, mas um alvo com outro nome, não.
+
+Um relato de "esse número parece baixo" continua sendo a forma mais barata de
+achar qualquer um destes, porque todos produzem número plausível.
