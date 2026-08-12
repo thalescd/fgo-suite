@@ -45,8 +45,9 @@
       "scenario": "Igual ao base, contra Saber/human",
       "calc": "s=100100&ec=saber&ea=human",
       "source": "calc",
+      "sourceName": "maketakunai.github.io",
       "mode": "avg",
-      "expected": null
+      "expected": 18551
     },
     {
       "id": "np5",
@@ -54,8 +55,9 @@
       "scenario": "Igual ao base, NP5",
       "calc": "s=100100&np=5&ec=saber&ea=earth",
       "source": "calc",
+      "sourceName": "maketakunai.github.io",
       "mode": "avg",
-      "expected": null
+      "expected": 25297
     },
     {
       "id": "card-buster-1st",

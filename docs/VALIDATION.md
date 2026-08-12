@@ -114,52 +114,54 @@ motivos que o primeiro bug apareceu.
 
 Contra **maketakunai.github.io**, nos dois primeiros casos:
 
-| | eles | nós | |
-|---|---:|---:|---|
-| caso 1 low | 15.178 | 15.178 | igual |
-| caso 1 average | 16.865 | 16.864 | ±1 |
-| caso 1 high | 18.535 | 18.551 | −0,09% |
-| caso 2 low | 30.357 | 30.356 | ±1 |
-| caso 2 average | 33.730 | 33.729 | ±1 |
-| caso 2 high | 37.069 | 37.102 | −0,09% |
+| Caso | exato antes do roll | low | average | high |
+|---|---:|---|---|---|
+| 1 base | 16.864,98 | igual | ±1 | −0,09% |
+| 2 lancer | 33.729,96 | ±1 | ±1 | −0,09% |
+| 3 human | 18.551,48 | **igual** | **igual** | −0,09% |
+| 4 NP5 | 25.297,47 | ±1 | **igual** | −0,09% |
 
-O valor exato antes do roll é **16.864,98** no caso 1 e **33.729,96** no caso 2.
-Os seis números saem daí com **duas** diferenças, e nenhuma terceira:
+Doze números, **duas** diferenças, nenhuma terceira:
 
-**Arredondamento.** Eles arredondam, nós truncamos. `16864,98` vira 16.865 lá e
-16.864 aqui. Diferença de 1 ponto. O jogo trunca, então `Math.floor` fica.
+**Arredondamento.** Eles arredondam, nós truncamos. Diferença de 1 ponto, e só
+quando a fração passa de `,5` — por isso o `average` do caso 3 e do 4 bate exato.
+O jogo trunca, então `Math.floor` fica.
 
 **Teto do random.** `ATTACK_RATE_RANDOM_MIN/MAX` no dump são `900` e `1100`. Eles
 usam **1,099** como máximo, nós usamos 1,100:
 
 ```
-caso 1:  16864,98 × 1,100 = 18551,48   (nosso)
-         16864,98 × 1,099 = 18534,61   (deles, arredondado: 18535)
-caso 2:  33729,96 × 1,100 = 37102,96   (nosso)
-         33729,96 × 1,099 = 37069,23   (deles: 37069)
+caso   exato × 1,100 (nosso)    exato × 1,099 (deles)
+  1        18551 ≠ 18535            18534,61 → 18535  ✓
+  2        37102 ≠ 37069            37069,23 → 37069  ✓
+  3        20406 ≠ 20388            20388,06 → 20388  ✓
+  4        27827 ≠ 27802            27801,91 → 27802  ✓
 ```
 
-Bate nos dois casos, o que torna a explicação certa. A leitura por trás do 1,099
+Quatro em quatro, na casa decimal. A leitura por trás do 1,099
 é que o jogo sorteia um **inteiro** em `[900, 1100)` — limite superior exclusivo,
 como é convenção em RNG —, e nesse caso 1,100 é um número que **não pode
 acontecer**.
 
 > **Em aberto, de propósito.** A constante do jogo diz 1100; a interpretação de
-> RNG exclusivo diz 1099. Uma calculadora de terceiro escolhendo 1099 é
-> argumento, não prova. Fica registrado até haver evidência direta — um teto
-> observado in-game resolveria. O impacto é 0,09% e só no `max`, que é o menos
-> decisivo dos três números; o `min`, que é o que interessa para "dano
-> garantido", **bate exatamente**.
+> RNG exclusivo diz 1099. Quatro casos batendo confirmam que a escolha *deles* é
+> essa — não que ela esteja certa. É uma fonte só, repetida.
+>
+> **O que resolveria:** um dano in-game acima de `exato × 1,099`. Um único acerto
+> desses fecha a favor do 1,100; muitos tiros parando abaixo do teto fecham a
+> favor do 1,099. Até lá, impacto de 0,09% e só no `max` — o `min`, que é o que
+> interessa para "dano garantido", **bate em todos os quatro**.
 
-**O que estes dois casos já provam:** ATK 12.221 (`atkGrowth` + fou, sem
-`atkMax`), multiplicador de NP 400%, `cardTerm` 1,5 do NP Buster sem
-`firstCardBonus`, `classAtkBonus` 1,0, `triangleModifier` 2,0, `ATTACK_RATE` 0,23
-— e, junto com eles, **todos os divisores de unidade**. Era o que o caso base
-existia para prender.
+**O que estes quatro casos já provam:** ATK 12.221 (`atkGrowth` + fou, sem
+`atkMax` — que daria 11.221 e erraria 8%), `cardTerm` 1,5 do NP Buster sem
+`firstCardBonus`, `classAtkBonus` 1,0, `ATTACK_RATE` 0,23, `triangleModifier` 2,0,
+`attributeModifier` 1,1, e o multiplicador de NP em 400% **e** 600% — e, junto
+com todos eles, os divisores de unidade. R7 e R14, riscos declarados desde a fase
+0, saem confirmados.
 
 ## 6. Estado
 
-`npm run damage:cases` termina imprimindo `R4: N de 16 casos conferidos`. Hoje: **2 de 16**, ambos contra maketakunai.github.io.
+`npm run damage:cases` termina imprimindo `R4: N de 16 casos conferidos`. Hoje: **4 de 16**, todos contra maketakunai.github.io.
 
 Um teste em [`validation.test.ts`](../src/core/validation.test.ts) **falha de
 propósito quando todos estiverem preenchidos** — é o lembrete de fechar o R4 no
