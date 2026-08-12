@@ -190,7 +190,40 @@ suporte precisa alcançar o atacante" só vale para buff de aliado; o def down q
 o suporte joga no inimigo estava sendo recusado com `does not reach the
 attacker`, e def down de suporte é uma das maiores fontes de dano do jogo.
 
-### 3.8 Passiva de classe está sempre ligada
+### 3.8 `condTarget` carrega três coisas diferentes (R23)
+
+O nome sugere "identidade do alvo", e é o que o campo é na maioria das vezes. Mas
+ele também guarda outras duas, e tratar as três como identidade recusa efeito que
+vale:
+
+| Família | Exemplo | Como checar |
+|---|---|---|
+| **Card** | `downDefencecommandall` + `condTarget: [cardArts]` | contra o card da **ação** |
+| **Estado de buff** | `upCriticaldamage` + `condTarget: [buffEvade]` | não modelado (D14) |
+| **Identidade** | `upDamage` + `condTarget: [alignmentGood]` | contra os traits do inimigo |
+
+O caso que revelou isto é a Arts resistance down da Kiara. A restrição de card
+está do lado do **alvo** porque o debuff é de resistência *ao card que vem* — e
+nenhum inimigo "é" um card Arts, então ela era recusada em 100% dos casos.
+
+| | |
+|---|---:|
+| `card*` em `condTarget`, em slots de dano | 85 (84 são `downDefencecommandall`) |
+| Servos afetados | **62** |
+| `buff*` em `condTarget`, em slots de dano | 22 |
+
+Restrição de card é a **mesma pergunta** dos dois lados — em `condSelf` é o card
+com que se golpeia, em `condTarget` é o card que acerta — então uma função só
+responde as duas.
+
+`faceCard` entra na mesma família: significa "command card", ou seja, vale em
+card comum e não em NP.
+
+Estado de buff do inimigo é recusado, o que é conservador, mas **com o motivo
+certo**: `enemy buff state is not modelled`, em vez de fingir que `buffCurse` é
+um trait de identidade que o alvo não tem.
+
+### 3.9 Passiva de classe está sempre ligada
 
 Não é declarável, e por isso não é opcional: `calculateDamage` sempre inclui
 `attacker.classPassive`. Append passive é o oposto — o jogador escolhe destravar,
@@ -209,7 +242,7 @@ Todos saíam subestimados, sem sintoma. Passiva de classe passa pelos mesmos
 filtros dos outros buffs: a Riding da Artoria é Quick up e é recusada num NP
 Buster, como deve ser.
 
-### 3.9 O que um NP não pode ser
+### 3.10 O que um NP não pode ser
 
 Duas regras do jogo sobre **ações válidas**, não sobre como o dano é calculado —
 mas moram no núcleo, para que nenhum chamador (inclusive o MCP da fase 4)
@@ -226,7 +259,7 @@ Chain"* — uma chain é formada por três **command cards**, e um NP não é co
 card. Testar só "buster chain aumenta o dano de um card Buster" deixa a metade
 errada passar; o teste cobre as duas.
 
-### 3.10 Traits derivados do inimigo (D15)
+### 3.11 Traits derivados do inimigo (D15)
 
 `className: "saber"` injeta o trait `classSaber`; `attribute: "human"` injeta
 `attributeHuman`. Sem isso, 71 checagens anti-classe e 16 anti-atributo falham em
@@ -256,7 +289,7 @@ Só o que difere do padrão aparece na URL — `serializeCalc(DEFAULT_CALC)` é 
 | Regra | Por quê |
 |---|---|
 | Os buffs pré-dano do NP entram sozinhos | O Gilgamesh *sempre* leva o `upNpdamage` dele no próprio golpe (§3.2). Uma checkbox sugeriria uma escolha que o jogador não tem. |
-| Crítico e buster chain ficam desabilitados num NP | As regras de §3.9. A tela desabilita para explicar; **o núcleo ignora de qualquer jeito**, porque a garantia não pode depender da interface. |
+| Crítico e buster chain ficam desabilitados num NP | As regras de §3.10. A tela desabilita para explicar; **o núcleo ignora de qualquer jeito**, porque a garantia não pode depender da interface. |
 
 ### 4.2 O que a tela mostra de propósito
 
@@ -267,7 +300,7 @@ Cada item existe porque escondê-lo produz número plausível e errado:
 - **Que buffs de cada skill afetam dano** — marcar uma skill de cura não muda
   nada, e sem a dica nada diria por quê.
 - **Traits derivados** — `classLancer`, `attributeSky` aparecem listados, para
-  ficar claro que classe e atributo já injetam trait (§3.10).
+  ficar claro que classe e atributo já injetam trait (§3.11).
 - **NP de suporte** — os 50 NPs sem função de dano dizem isso em vez de exibir
   um número calculado como se fossem card.
 - **Buff presente mas não contado** — um `upNpdamage` num ataque de card aparece
@@ -299,12 +332,12 @@ Buster.
 
 ## 6. Estado da validação
 
-**O que está provado.** 39 testes em
+**O que está provado.** 44 testes em
 [`src/core/damage.test.ts`](../src/core/damage.test.ts) isolam **um termo por
 teste** e verificam a razão entre dois cenários que diferem só nele: vantagem de
 classe dobra, crítico dobra, NP5/NP1 = 600/400, Buster em 1ª posição dá
 `cardTerm` 2.0, NP Buster dá 1.5, super-efetivo do Gilgamesh 150% no OC1 e 200%
-no OC5, `min`/`max` = 0.9/1.1 da média, e as duas negativas de §3.9 (NP não
+no OC5, `min`/`max` = 0.9/1.1 da média, e as duas negativas de §3.10 (NP não
 critica, NP não entra em chain).
 
 Comparar razões em vez de valores absolutos testa a fórmula sem depender de um

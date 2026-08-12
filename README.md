@@ -40,7 +40,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 111 testes: busca, renderização, a fórmula termo a termo e a tela da calculadora. |
+| `npm test` | 116 testes: busca, renderização, a fórmula termo a termo e a tela da calculadora. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -145,7 +145,7 @@ API mudar um campo, conserta-se em um lugar só.
 
 | Documento | Para quê |
 |---|---|
-| [`PLANO.md`](PLANO.md) | 21 decisões com justificativa, 22 riscos com mitigação, arquitetura, fases |
+| [`PLANO.md`](PLANO.md) | 21 decisões com justificativa, 23 riscos com mitigação, arquitetura, fases |
 | [`docs/SCHEMA.md`](docs/SCHEMA.md) | Modelo canônico campo a campo, glossário de unidades, structs da calculadora |
 | [`docs/DATA.md`](docs/DATA.md) | De onde vêm os dados, **como atualizar**, armadilhas conhecidas |
 | [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md) | Tags de busca: formato, limiares, como adicionar |

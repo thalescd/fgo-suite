@@ -246,16 +246,48 @@ function resolveBuffs(
   const skipped: SkippedBuff[] = [];
   const unmodeled = new Set<string>();
 
+  const isNPAction = input.action.kind === "np";
+  const cardName = CARD_TRAIT[actionCard];
+
+  /** `faceCard` é "command card", ou seja, qualquer coisa que não seja NP. */
+  const isCardTrait = (name: string) => name.startsWith("card") || name === "faceCard";
+
+  /**
+   * Restrição de tipo de card.
+   *
+   * Aparece dos **dois lados** e quer dizer a mesma coisa nos dois: em
+   * `condSelf` é o card com que o atacante golpeia; em `condTarget`, num debuff
+   * de resistência, é o card que vai acertar o alvo. A Arts resistance down da
+   * Kiara é `downDefencecommandall → enemy` com `condTarget: [cardArts]` — lida
+   * como identidade do inimigo, era recusada sempre, porque nenhum inimigo
+   * "é" um card Arts.
+   */
+  const cardRejection = (traits: Trait[]): string | null => {
+    const conds = traits.filter((t) => isCardTrait(t.name));
+    if (conds.length === 0) return null;
+    const ok = conds.some((t) => (t.name === "faceCard" ? !isNPAction : t.name === cardName));
+    if (ok) return null;
+    const what = isNPAction ? `an NP (${cardName})` : cardName;
+    return `restricted to ${conds.map((t) => t.name).join("/")}, this attack is ${what}`;
+  };
+
   /** Condições de aplicação. Devolve o motivo da recusa, ou `null` se o efeito vale. */
   const rejectionOf = (e: Effect): string | null => {
-    // condSelf: restrição do lado do atacante — quase sempre tipo de card.
-    const cardConds = e.condSelf.filter((t) => t.name.startsWith("card"));
-    if (cardConds.length > 0 && !cardConds.some((t) => t.name === CARD_TRAIT[actionCard])) {
-      return `restricted to ${cardConds.map((t) => t.name).join("/")}, this attack uses ${CARD_TRAIT[actionCard]}`;
+    const byCard = cardRejection(e.condSelf) ?? cardRejection(e.condTarget);
+    if (byCard) return byCard;
+
+    // `buff*` em condTarget é estado de buff do inimigo, não identidade — e
+    // estado ainda não é modelado (D14). Recusar é conservador; o que não pode
+    // é recusar dizendo "exige alvo com buffCurse", como se fosse um trait.
+    const buffConds = e.condTarget.filter((t) => t.name.startsWith("buff"));
+    if (buffConds.length > 0) {
+      return `requires the target to carry ${buffConds.map((t) => t.name).join("/")} — enemy buff state is not modelled`;
     }
-    // condTarget: restrição do lado do inimigo.
-    if (e.condTarget.length > 0 && !e.condTarget.some((t) => enemyTraits.has(t.name))) {
-      return `requires a target with ${e.condTarget.map((t) => t.name).join("/")}`;
+
+    // O que sobra é identidade do alvo: classe, atributo, trait.
+    const identity = e.condTarget.filter((t) => !isCardTrait(t.name) && !t.name.startsWith("buff"));
+    if (identity.length > 0 && !identity.some((t) => enemyTraits.has(t.name))) {
+      return `requires a target with ${identity.map((t) => t.name).join("/")}`;
     }
     return null;
   };

@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { calculateDamage, type DamageData, type DamageInput, type Enemy } from "./damage.js";
-import type { Constants, CraftEssence, IndexEntry, IndexEntryServant, MysticCode, Servant } from "./model.js";
+import type { CardType, Constants, CraftEssence, IndexEntry, IndexEntryServant, MysticCode, Servant } from "./model.js";
 
 const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as IndexEntry[];
 const constants = JSON.parse(readFileSync("public/data/constants.json", "utf8")) as Constants;
@@ -482,5 +482,70 @@ describe("passiva de classe e lado do efeito (R22)", () => {
     });
     expect(comTamamo.breakdown.defMod).toBeCloseTo(-0.3, 5);
     expect(comTamamo.avg / sozinha.avg).toBeCloseTo(1.3, 3);
+  });
+});
+
+/**
+ * Três famílias de condição dentro de `condTarget` (R23).
+ *
+ * O campo é lido como "identidade do alvo", mas carrega três coisas diferentes,
+ * e tratar as três como identidade recusa efeitos que valem.
+ */
+describe("famílias de condição em condTarget (R23)", () => {
+  const KIARA = loadServant(167); // NP Arts; skill 1 dá Arts resistance down
+  const MUSASHI = loadServant(153); // skill 1: upDamage restrito a `faceCard`
+
+  const dataWith = (s: Servant): DamageData => ({ ...data, servants: new Map([...data.servants, [s.id, s]]) });
+  const act = (s: Servant, action: DamageInput["action"], skills: number[]) =>
+    calculateDamage(
+      input({
+        attacker: { servantId: s.id, level: s.lvMax, fou: 1000, npLevel: 1, overcharge: 1 },
+        buffStack: skills.map((n) => ({ kind: "ownSkill" as const, skillNum: n, level: 10 })),
+        action,
+      }),
+      dataWith(s),
+    );
+
+  const np: DamageInput["action"] = { kind: "np", isCrit: false, busterChain: false, braveChain: false };
+  const card = (c: CardType): DamageInput["action"] => ({
+    kind: "card", card: c, position: 1, isCrit: false, busterChain: false, braveChain: false,
+  });
+
+  it("Arts resistance down vale no NP Arts e no card Arts", () => {
+    // `downDefencecommandall -> enemy` com condTarget [cardArts]: a restrição de
+    // card está do lado do ALVO, porque o debuff é de resistência ao card que
+    // vem. Lida como identidade, era recusada sempre.
+    expect(KIARA.np!.card).toBe("arts");
+    expect(act(KIARA, np, [1]).breakdown.defMod).toBeCloseTo(-0.3, 5);
+    expect(act(KIARA, card("arts"), [1]).breakdown.defMod).toBeCloseTo(-0.3, 5);
+  });
+
+  it("e não vale num card de outro tipo", () => {
+    const buster = act(KIARA, card("buster"), [1]);
+    expect(buster.breakdown.defMod).toBe(0);
+    expect(
+      buster.assumptions.skippedBuffs.some((s) => /restricted to cardArts/.test(s.reason)),
+    ).toBe(true);
+  });
+
+  it("def down sem restrição de card soma com o restrito", () => {
+    // Skill 2 é def down puro; as duas fontes entram no mesmo slot.
+    expect(act(KIARA, np, [1, 2]).breakdown.defMod).toBeCloseTo(-0.6, 5);
+  });
+
+  it("`faceCard` restringe a command card, não a NP", () => {
+    // Skill 1 da Musashi: upDamage 30% só em card comum.
+    expect(act(MUSASHI, card("arts"), [1]).breakdown.powerMod).toBeCloseTo(0.3, 5);
+    expect(act(MUSASHI, np, [1]).breakdown.powerMod).toBe(0);
+  });
+
+  it("condição de estado do inimigo é recusada dizendo que é estado", () => {
+    // `buff*` em condTarget é buff no alvo, não trait — e estado é D14. O que
+    // não pode é recusar como se fosse identidade, escondendo o motivo real.
+    const muramasa = loadServant(302); // crit damage se o alvo tiver evade/invencibilidade
+    const r = act(muramasa, card("buster"), [1, 2, 3]);
+    const state = r.assumptions.skippedBuffs.filter((s) => /enemy buff state is not modelled/.test(s.reason));
+    expect(state.length).toBeGreaterThan(0);
+    expect(state.every((s) => /buff/.test(s.reason))).toBe(true);
   });
 });
