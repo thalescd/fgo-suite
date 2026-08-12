@@ -14,7 +14,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { specFor } from "../core/buffs.js";
-import { calculateDamage, enemyTraitNames, type DamageData, type RollMode } from "../core/damage.js";
+import { calculateDamage, enemyTraitNames, selectableNps, type DamageData, type RollMode } from "../core/damage.js";
 import type { IndexEntryServant, Servant, Skill } from "../core/model.js";
 import { EMPTY_FILTERS, search } from "../core/search.js";
 import { Block, Stars } from "./components.js";
@@ -200,7 +200,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
       <div className="detail">
         <h2>Damage calculator</h2>
         <p className="detail-text">Pick the attacking servant to start.</p>
-        <ServantPicker boot={boot} onPick={(id) => patch({ servantId: id, skills: [], appends: [] })} />
+        <ServantPicker boot={boot} onPick={(id) => patch({ servantId: id, skills: [], appends: [], npId: null })} />
         {state.servantId !== null && <p className="empty">loading…</p>}
       </div>
     );
@@ -211,12 +211,16 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
   const atk = (servant.atkGrowth[level - 1] ?? 0) + state.fou;
   const deck = [...new Set(servant.cards)];
   const isNP = state.action === "np";
-  const activeCard = isNP ? servant.np?.card : state.action;
-  const preDamageEffects = servant.np?.damageEffectIndex ?? 0;
+  // O NP escolhido, não o "ativo": cinco servos trocam o card do NP, e o
+  // multiplicador troca junto (R24).
+  const npOptions = selectableNps(servant);
+  const np = npOptions.find((n) => n.id === state.npId) ?? npOptions[0] ?? servant.np;
+  const activeCard = isNP ? np?.card : state.action;
+  const preDamageEffects = np?.damageEffectIndex ?? 0;
   /** Chain é feita de command cards; NP e extra ficam de fora mesmo sendo Buster. */
   const canBusterChain = state.action === "buster";
   /** 50 servos têm NP de suporte. Calcular "dano" ali daria um número sem sentido. */
-  const npDealsNoDamage = isNP && (servant.np === null || servant.np.damageEffectIndex === null);
+  const npDealsNoDamage = isNP && (np == null || np.damageEffectIndex === null);
 
   const classRow = boot.constants.classRelation[servant.className] ?? {};
   const attrRow = boot.constants.attributeRelation[servant.attribute] ?? {};
@@ -254,7 +258,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                   <strong>{num(atk)}</strong> ATK
                 </div>
               </div>
-              <button className="linkish" type="button" onClick={() => patch({ servantId: null, skills: [], appends: [] })}>
+              <button className="linkish" type="button" onClick={() => patch({ servantId: null, skills: [], appends: [], npId: null })}>
                 change
               </button>
             </div>
@@ -288,13 +292,33 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 <Seg
                   value={state.action}
                   options={[
-                    ...(servant.np ? [{ value: "np" as ActionKind, label: `NP (${servant.np.card})` }] : []),
+                    ...(np ? [{ value: "np" as ActionKind, label: `NP (${np.card})` }] : []),
                     ...deck.map((c) => ({ value: c as ActionKind, label: c })),
                     { value: "extra" as ActionKind, label: "extra" },
                   ]}
                   onChange={(v) => patch({ action: v })}
                 />
               </Field>
+
+              {/*
+                Só aparece para os cinco servos que têm mais de um NP. O
+                multiplicador vai no rótulo porque é ele que muda junto com o
+                card — sem isso a escolha pareceria só cosmética.
+              */}
+              {npOptions.length > 1 && (
+                <Field label="Which NP" hint="the multiplier changes with the card">
+                  <select
+                    value={np?.id ?? ""}
+                    onChange={(e) => patch({ npId: Number(e.target.value) })}
+                  >
+                    {npOptions.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.card} — {o.damageMultiplier ? `${o.damageMultiplier[0]}%` : "no damage"} · {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
 
               {state.action !== "np" && state.action !== "extra" && (
                 <Field label="Position in the chain" hint="1st, 2nd or 3rd card">

@@ -223,7 +223,42 @@ Estado de buff do inimigo é recusado, o que é conservador, mas **com o motivo
 certo**: `enemy buff state is not modelled`, em vez de fingir que `buffCurse` é
 um trait de identidade que o alvo não tem.
 
-### 3.9 Passiva de classe está sempre ligada
+### 3.9 Um servo pode ter mais de um NP (R24)
+
+Cinco trocam o card do NP, e **o multiplicador troca junto** — não é só o tipo:
+
+| Servo | NPs |
+|---|---|
+| Space Ishtar | buster 300% · arts 450% · quick 600% |
+| Mélusine | Hollow Heart Albion buster 300% · Innocence Arondight arts 900% |
+| Ptolemaîos | Bibliothēkē arts 450% · Pharos buster 600% |
+| Emiya | buster 400% · arts 600% |
+| Mash | Lord Chaldeas arts (sem dano) · Rayproof Kyrielight buster 400% |
+
+Calcular sempre pelo `np` de maior prioridade erra por **2,18×** na Mélusine.
+
+**O que separa escolha de histórico é o card.** `npAlternatives` mistura as duas
+coisas: a Mash tem oito versões Arts, que são rank ups, e uma Buster, que é a
+forma Ortenaus. Dentro do mesmo card vale a de maior `priority` (R8); cards
+diferentes coexistem. `selectableNps()` aplica isso e devolve 2 para a Mash, 3
+para a Space Ishtar, 1 para quase todo mundo.
+
+O Emiya tem os **dois eixos ao mesmo tempo** — Buster e Arts, cada um em versão
+pré e pós rank up — e as duas Arts empatam em `priority`. O desempate é
+`condQuestId`, senão a escolha seria a ordem do array.
+
+O que a calculadora **não** tenta responder é como o servo chega àquele estado: a
+Space Ishtar troca por mecânica própria, o Ptolemaîos por `transformServant`, a
+Mash por forma. Isso é estado (D14) e é decisão de quem monta o cenário — o mesmo
+princípio de D18 para buffs.
+
+> Curiosidade que serve de sanidade: no Emiya e na Space Ishtar os
+> multiplicadores compensam o card quase exatamente (400×1,5 = 600×1,0), então
+> trocar o tipo do NP mal muda o número cru. O que muda é **quais buffs pegam** —
+> e é aí que a Mélusine abre 2,18×, porque a passiva Territory Creation é +9% de
+> Arts e só vale num dos dois.
+
+### 3.10 Passiva de classe está sempre ligada
 
 Não é declarável, e por isso não é opcional: `calculateDamage` sempre inclui
 `attacker.classPassive`. Append passive é o oposto — o jogador escolhe destravar,
@@ -242,7 +277,7 @@ Todos saíam subestimados, sem sintoma. Passiva de classe passa pelos mesmos
 filtros dos outros buffs: a Riding da Artoria é Quick up e é recusada num NP
 Buster, como deve ser.
 
-### 3.10 O que um NP não pode ser
+### 3.11 O que um NP não pode ser
 
 Duas regras do jogo sobre **ações válidas**, não sobre como o dano é calculado —
 mas moram no núcleo, para que nenhum chamador (inclusive o MCP da fase 4)
@@ -259,7 +294,7 @@ Chain"* — uma chain é formada por três **command cards**, e um NP não é co
 card. Testar só "buster chain aumenta o dano de um card Buster" deixa a metade
 errada passar; o teste cobre as duas.
 
-### 3.11 Traits derivados do inimigo (D15)
+### 3.12 Traits derivados do inimigo (D15)
 
 `className: "saber"` injeta o trait `classSaber`; `attribute: "human"` injeta
 `attributeHuman`. Sem isso, 71 checagens anti-classe e 16 anti-atributo falham em
@@ -280,6 +315,7 @@ viram a assinatura da tool de dano no MCP da fase 4.
 ```
 /calc?s=100100&sk=1,2,3&ec=lancer&ea=sky&oc=5
 /calc?s=201200&act=buster&pos=1&crit=1&roll=min
+/calc?s=304800&npid=304801                 qual NP, quando o servo tem mais de um
 ```
 
 Só o que difere do padrão aparece na URL — `serializeCalc(DEFAULT_CALC)` é vazio.
@@ -289,7 +325,7 @@ Só o que difere do padrão aparece na URL — `serializeCalc(DEFAULT_CALC)` é 
 | Regra | Por quê |
 |---|---|
 | Os buffs pré-dano do NP entram sozinhos | O Gilgamesh *sempre* leva o `upNpdamage` dele no próprio golpe (§3.2). Uma checkbox sugeriria uma escolha que o jogador não tem. |
-| Crítico e buster chain ficam desabilitados num NP | As regras de §3.10. A tela desabilita para explicar; **o núcleo ignora de qualquer jeito**, porque a garantia não pode depender da interface. |
+| Crítico e buster chain ficam desabilitados num NP | As regras de §3.11. A tela desabilita para explicar; **o núcleo ignora de qualquer jeito**, porque a garantia não pode depender da interface. |
 
 ### 4.2 O que a tela mostra de propósito
 
@@ -300,7 +336,7 @@ Cada item existe porque escondê-lo produz número plausível e errado:
 - **Que buffs de cada skill afetam dano** — marcar uma skill de cura não muda
   nada, e sem a dica nada diria por quê.
 - **Traits derivados** — `classLancer`, `attributeSky` aparecem listados, para
-  ficar claro que classe e atributo já injetam trait (§3.11).
+  ficar claro que classe e atributo já injetam trait (§3.12).
 - **NP de suporte** — os 50 NPs sem função de dano dizem isso em vez de exibir
   um número calculado como se fossem card.
 - **Buff presente mas não contado** — um `upNpdamage` num ataque de card aparece
@@ -343,12 +379,12 @@ Buster.
 
 ## 6. Estado da validação
 
-**O que está provado.** 44 testes em
+**O que está provado.** 51 testes em
 [`src/core/damage.test.ts`](../src/core/damage.test.ts) isolam **um termo por
 teste** e verificam a razão entre dois cenários que diferem só nele: vantagem de
 classe dobra, crítico dobra, NP5/NP1 = 600/400, Buster em 1ª posição dá
 `cardTerm` 2.0, NP Buster dá 1.5, super-efetivo do Gilgamesh 150% no OC1 e 200%
-no OC5, `min`/`max` = 0.9/1.1 da média, e as duas negativas de §3.10 (NP não
+no OC5, `min`/`max` = 0.9/1.1 da média, e as duas negativas de §3.11 (NP não
 critica, NP não entra em chain).
 
 Comparar razões em vez de valores absolutos testa a fórmula sem depender de um

@@ -15,7 +15,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { calculateDamage, type DamageData, type DamageInput, type Enemy } from "./damage.js";
+import { calculateDamage, selectableNps, type DamageData, type DamageInput, type Enemy } from "./damage.js";
 import type { CardType, Constants, CraftEssence, IndexEntry, IndexEntryServant, MysticCode, Servant } from "./model.js";
 
 const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as IndexEntry[];
@@ -547,5 +547,86 @@ describe("famílias de condição em condTarget (R23)", () => {
     const state = r.assumptions.skippedBuffs.filter((s) => /enemy buff state is not modelled/.test(s.reason));
     expect(state.length).toBeGreaterThan(0);
     expect(state.every((s) => /buff/.test(s.reason))).toBe(true);
+  });
+});
+
+/**
+ * Escolha entre vários NPs (R24).
+ *
+ * Cinco servos trocam o card do NP, e o multiplicador troca junto. Calcular
+ * sempre pelo `np` de maior prioridade erra por quase o dobro na Mélusine.
+ */
+describe("mais de um NP por servo (R24)", () => {
+  const ISHTAR = loadServant(268); // 3 cards: arts 450%, buster 300%, quick 600%
+  const MELUSINE = loadServant(312); // 2 NPs de nomes diferentes: 300% e 900%
+  const EMIYA = loadServant(11); // dois eixos: card E rank up
+  const MASH = loadServant(1); // 8 versões Arts de histórico + 1 Buster de forma
+
+  const dataWith = (s: Servant): DamageData => ({ ...data, servants: new Map([...data.servants, [s.id, s]]) });
+  const npDamage = (s: Servant, npId: number) =>
+    calculateDamage(
+      input({
+        attacker: { servantId: s.id, level: s.lvMax, fou: 1000, npLevel: 1, overcharge: 1, npId },
+        buffStack: [],
+      }),
+      dataWith(s),
+    );
+
+  it("agrupa por card: variante é escolha, rank up é histórico", () => {
+    // A Mash tem 9 NPs no documento, mas só 2 são escolha — as outras 7 são
+    // versões Arts antigas, e dentro do mesmo card vale a de maior prioridade.
+    expect(MASH.npAlternatives.length + 1).toBe(9);
+    expect(selectableNps(MASH).map((n) => n.card)).toEqual(["arts", "buster"]);
+    expect(selectableNps(ARTORIA)).toHaveLength(1);
+  });
+
+  it("Space Ishtar: três cards, três multiplicadores", () => {
+    const byCard = new Map(selectableNps(ISHTAR).map((n) => [n.card, n]));
+    expect([...byCard.keys()].sort()).toEqual(["arts", "buster", "quick"]);
+    expect(byCard.get("buster")!.damageMultiplier![0]).toBe(300);
+    expect(byCard.get("arts")!.damageMultiplier![0]).toBe(450);
+    expect(byCard.get("quick")!.damageMultiplier![0]).toBe(600);
+  });
+
+  it("o NP escolhido muda o número, não só o rótulo", () => {
+    const opts = selectableNps(MELUSINE);
+    const buster = opts.find((n) => n.card === "buster")!;
+    const arts = opts.find((n) => n.card === "arts")!;
+    expect(npDamage(MELUSINE, arts.id).breakdown.npDamageMultiplier).toBe(9);
+    expect(npDamage(MELUSINE, buster.id).breakdown.npDamageMultiplier).toBe(3);
+    // 900% num Arts (x1.0) contra 300% num Buster (x1.5) daria 2,0x. Dá 2,18
+    // porque a passiva Territory Creation B+ é +9% de Arts, e só vale num deles
+    // — exatamente o tipo de interação que some quando a passiva é ignorada.
+    expect(npDamage(MELUSINE, arts.id).avg / npDamage(MELUSINE, buster.id).avg).toBeCloseTo(2.18, 2);
+  });
+
+  it("Emiya: com card e rank up cruzados, vence a versão pós rank up dos dois", () => {
+    // As duas Arts empatam em `priority`; sem desempate por `condQuestId` a
+    // escolha seria a ordem do array.
+    const opts = selectableNps(EMIYA);
+    expect(opts.map((n) => n.damageMultiplier?.[0] ?? 0).sort((a, b) => a - b)).toEqual([400, 600]);
+    expect(opts.every((n) => n.condQuestId > 0)).toBe(true);
+  });
+
+  it("sem escolha explícita, usa o NP ativo do servo", () => {
+    const semId = calculateDamage(
+      input({ attacker: { servantId: MELUSINE.id, level: MELUSINE.lvMax, fou: 1000, npLevel: 1, overcharge: 1 }, buffStack: [] }),
+      dataWith(MELUSINE),
+    );
+    expect(semId.avg).toBe(npDamage(MELUSINE, MELUSINE.np!.id).avg);
+  });
+
+  it("id desconhecido cai no padrão em vez de quebrar", () => {
+    expect(npDamage(MELUSINE, 999999).avg).toBe(npDamage(MELUSINE, MELUSINE.np!.id).avg);
+  });
+
+  it("só cinco servos têm mais de um card de NP — se mudar, o teste avisa", () => {
+    const many = servantIndex.filter((e) => {
+      const s = JSON.parse(readFileSync(`public/data/servant/${e.id}.json`, "utf8")) as Servant;
+      return selectableNps(s).length > 1;
+    });
+    expect(many.map((e) => e.name).sort()).toEqual([
+      "Emiya", "Mash Kyrielight", "Mélusine", "Ptolemaîos", "Space Ishtar",
+    ]);
   });
 });

@@ -29,6 +29,7 @@ import type {
   CraftEssence,
   Effect,
   MysticCode,
+  NoblePhantasm,
   Servant,
   Trait,
 } from "./model.js";
@@ -63,6 +64,11 @@ export interface DamageInput {
     fou: number;
     npLevel: 1 | 2 | 3 | 4 | 5;
     overcharge: 1 | 2 | 3 | 4 | 5;
+    /**
+     * Qual NP usar, quando o servo tem mais de um (R24). Omitido = o padrão de
+     * `selectableNps`. Id desconhecido cai no padrão em vez de falhar.
+     */
+    npId?: number;
     ce?: { id: number; level: number; mlb: boolean };
   };
   buffStack: BuffSource[];
@@ -176,6 +182,52 @@ export interface DamageResult {
     uncertainBuffs: { source: string; buffType: string; chance: number }[];
     unmodeled: string[];
   };
+}
+
+// ----------------------------------------------------------- escolha do NP
+
+/**
+ * Os NPs entre os quais dá para escolher (R24).
+ *
+ * Cinco servos têm mais de um card de NP, e o multiplicador muda junto: a Space
+ * Ishtar vai de 300–500% no Buster a 600–1000% no Quick, e a Mélusine tem dois
+ * NPs de nomes diferentes, 300–500% e 900–1500%. Calcular sempre pelo `np`
+ * "ativo" erra por quase o dobro nesses casos.
+ *
+ * `npAlternatives` mistura duas coisas: variante de card, que é escolha, e rank
+ * up, que é história (a Mash tem oito versões Arts). O que separa as duas é o
+ * **card**: dentro do mesmo card, a de maior `priority` é a atual (R8); cards
+ * diferentes coexistem.
+ *
+ * Desempate por `condQuestId` porque o Emiya tem os dois eixos ao mesmo tempo —
+ * Buster e Arts, cada um em versão pré e pós rank up, e as duas Arts empatam em
+ * `priority`. Sem o desempate a escolha seria a ordem do array.
+ *
+ * O que a tela **não** tenta responder é como o servo chega àquele estado: a
+ * Space Ishtar troca por mecânica própria, o Ptolemaîos por `transformServant`,
+ * a Mash por forma. Isso é estado (D14), e quem monta o cenário decide — o mesmo
+ * princípio de D18 para buffs.
+ */
+export function selectableNps(servant: Servant): NoblePhantasm[] {
+  const best = new Map<CardType, NoblePhantasm>();
+  for (const np of [servant.np, ...servant.npAlternatives]) {
+    if (!np) continue;
+    const cur = best.get(np.card);
+    const better =
+      !cur || np.priority > cur.priority || (np.priority === cur.priority && np.condQuestId > cur.condQuestId);
+    if (better) best.set(np.card, np);
+  }
+  // O ativo primeiro; o resto por card, para a ordem não depender do Map.
+  const all = [...best.values()];
+  return all.sort((a, b) =>
+    a.id === servant.np?.id ? -1 : b.id === servant.np?.id ? 1 : a.card.localeCompare(b.card),
+  );
+}
+
+/** O NP escolhido, ou o padrão quando não há escolha (ou o id não existe). */
+function chosenNp(servant: Servant, npId: number | undefined): NoblePhantasm | null {
+  const options = selectableNps(servant);
+  return options.find((n) => n.id === npId) ?? options[0] ?? servant.np;
 }
 
 // ------------------------------------------------------------------ inimigo
@@ -484,7 +536,7 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
       case "npSelfBuff": {
         // Efeitos do NP que vêm ANTES da função de dano entram no próprio golpe
         // (D20/R20). Os de depois, não — e é por isso que a ordem é contratual.
-        const np = attacker.np;
+        const np = chosenNp(attacker, input.attacker.npId);
         if (!np || np.damageEffectIndex === null) break;
         for (const e of np.effects.slice(0, np.damageEffectIndex)) {
           out.push({ effect: e, source: `${attacker.name} NP (before the damage)`, levelIndex: input.attacker.npLevel - 1, fromSupport: false });
@@ -581,7 +633,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
   // O card precisa ser resolvido ANTES dos buffs: as restrições `condSelf` são
   // quase todas de tipo de card, e num NP o card vem do NP, não da ação.
   const isNP = input.action.kind === "np";
-  const np = attacker.np;
+  const np = chosenNp(attacker, input.attacker.npId);
   const card: CardType = isNP
     ? np?.card ?? "arts"
     : input.action.kind === "extra"

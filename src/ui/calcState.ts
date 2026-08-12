@@ -27,6 +27,13 @@ export interface CalcState {
   /** `null` = padrão por raridade: NP5 para 1–3★ e welfare, NP1 para 4–5★. */
   npLevel: number | null;
   overcharge: number;
+  /**
+   * Qual NP, quando o servo tem mais de um (R24). `null` = o padrão.
+   *
+   * Cinco servos trocam o card do NP, e o multiplicador troca junto — a
+   * Mélusine vai de 300% no Buster a 900% no Arts.
+   */
+  npId: number | null;
 
   /** `num` das skills próprias marcadas. Um nível só para todas — é como se pensa. */
   skills: number[];
@@ -56,6 +63,7 @@ export const DEFAULT_CALC: CalcState = {
   fou: 1000,
   npLevel: null,
   overcharge: 1,
+  npId: null,
   skills: [],
   skillLevel: 10,
   appends: [],
@@ -90,6 +98,7 @@ const KEYS = {
   fou: "fou",
   npLevel: "np",
   overcharge: "oc",
+  npId: "npid",
   skills: "sk",
   skillLevel: "sklv",
   appends: "ap",
@@ -138,6 +147,7 @@ export function parseCalc(p: URLSearchParams): CalcState {
     fou: clamp(int(p, KEYS.fou, DEFAULT_CALC.fou), 0, 2000),
     npLevel: maybeInt(p, KEYS.npLevel),
     overcharge: clamp(int(p, KEYS.overcharge, 1), 1, 5),
+    npId: maybeInt(p, KEYS.npId),
     skills: nums(p, KEYS.skills),
     skillLevel: clamp(int(p, KEYS.skillLevel, 10), 1, 10),
     appends: nums(p, KEYS.appends),
@@ -166,6 +176,7 @@ export function serializeCalc(s: CalcState): URLSearchParams {
   putNum(KEYS.fou, s.fou, DEFAULT_CALC.fou);
   if (s.npLevel !== null) p.set(KEYS.npLevel, String(s.npLevel));
   putNum(KEYS.overcharge, s.overcharge, 1);
+  if (s.npId !== null) p.set(KEYS.npId, String(s.npId));
   put(KEYS.skills, s.skills.join(","));
   putNum(KEYS.skillLevel, s.skillLevel, 10);
   put(KEYS.appends, s.appends.join(","));
@@ -224,6 +235,7 @@ export function toDamageInput(
       fou: state.fou,
       npLevel,
       overcharge: clamp(state.overcharge, 1, 5) as 1 | 2 | 3 | 4 | 5,
+      ...(state.npId !== null ? { npId: state.npId } : {}),
     },
     buffStack,
     enemy: {
