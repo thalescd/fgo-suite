@@ -416,14 +416,23 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
     : 100;
 
   // ---- termos fixos
-  const criticalModifier = input.action.isCrit ? k.criticalAttackRate : 1;
+  // Duas regras do jogo sobre o que uma ação pode ser, não sobre como o dano é
+  // calculado — mas moram aqui, e não na tela, para que nenhum chamador
+  // (inclusive o MCP da fase 4) consiga pedir o impossível:
+  //   1. um NP nunca é crítico;
+  //   2. um NP nunca faz parte de uma chain, que é feita de command cards.
+  const isCrit = input.action.isCrit && !isNP;
+  const criticalModifier = isCrit ? k.criticalAttackRate : 1;
   const extraCardModifier =
     input.action.kind === "extra"
       ? input.action.braveChain
         ? k.extraAttackRateGrand
         : k.extraAttackRateSingle
       : 1;
-  const busterChainBonus = input.action.busterChain && card === "buster" ? servantAtk * k.busterChainMod : 0;
+  const busterChainBonus =
+    input.action.kind === "card" && card === "buster" && input.action.busterChain
+      ? servantAtk * k.busterChainMod
+      : 0;
 
   const constantPart =
     servantAtk *
@@ -437,7 +446,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
     criticalModifier *
     extraCardModifier *
     (1 - specialDefMod) *
-    (1 + powerMod + (input.action.isCrit ? critDamageMod : 0) + (isNP ? npDamageMod : 0)) *
+    (1 + powerMod + (isCrit ? critDamageMod : 0) + (isNP ? npDamageMod : 0)) *
     (1 + (superEffectiveModifier / 100 - 1) * (seApplies ? 1 : 0));
 
   const withRoll = (roll: number) => Math.max(1, Math.floor(constantPart * roll + flatDamage + busterChainBonus));
@@ -469,7 +478,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
       critDamageMod,
       npDamageMod,
       isNP,
-      isCrit: input.action.isCrit,
+      isCrit,
       specialDefMod,
       superEffectiveModifier,
       criticalModifier,
@@ -487,7 +496,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
         `OC${input.attacker.overcharge}`,
         `alvo ${input.enemy.className}/${input.enemy.attribute}`,
         input.action.kind === "np" ? "NP" : `card ${card} pos${position}`,
-        ...(input.action.isCrit ? ["crítico"] : []),
+        ...(isCrit ? ["crítico"] : []),
         ...(seApplies ? [`super-efetivo ${superEffectiveModifier}%`] : []),
       ],
       appliedBuffs: applied,

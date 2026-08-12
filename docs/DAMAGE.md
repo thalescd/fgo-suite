@@ -98,7 +98,24 @@ como "primeira posição do tipo dele" só para o `cardDamageValue`.
 (redução de defesa aplicada por você) continua valendo. `specialDefMod` **não** é
 ignorado por pierce.
 
-### 3.5 Traits derivados do inimigo (D15)
+### 3.5 O que um NP não pode ser
+
+Duas regras do jogo sobre **ações válidas**, não sobre como o dano é calculado —
+mas moram no núcleo, para que nenhum chamador (inclusive o MCP da fase 4)
+consiga pedir o impossível:
+
+| Regra | O que aconteceria sem ela |
+|---|---|
+| **NP nunca é crítico** | `criticalModifier` dobraria o golpe. |
+| **NP nunca entra numa chain** | `+servantAtk * 0.2` num golpe que jamais recebe isso. |
+
+A segunda é fácil de errar porque o Excalibur *é* um card Buster. A palavra que
+resolve está na própria fórmula: *"0.2 if it's a Buster **card** in a Buster
+Chain"* — uma chain é formada por três **command cards**, e um NP não é command
+card. Testar só "buster chain aumenta o dano de um card Buster" deixa a metade
+errada passar; o teste cobre as duas.
+
+### 3.6 Traits derivados do inimigo (D15)
 
 `className: "saber"` injeta o trait `classSaber`; `attribute: "human"` injeta
 `attributeHuman`. Sem isso, 71 checagens anti-classe e 16 anti-atributo falham em
@@ -123,14 +140,12 @@ viram a assinatura da tool de dano no MCP da fase 4.
 
 Só o que difere do padrão aparece na URL — `serializeCalc(DEFAULT_CALC)` é vazio.
 
-### 4.1 Duas regras que moram na tela, não na fórmula
-
-São sobre **o que é uma ação válida**, não sobre como o dano é calculado:
+### 4.1 O que a tela decide sozinha
 
 | Regra | Por quê |
 |---|---|
-| NP nunca é crítico | O jogo não permite. Deixar `crit=1` passar num NP dobraria o número em silêncio. |
 | Os buffs pré-dano do NP entram sozinhos | O Gilgamesh *sempre* leva o `upNpdamage` dele no próprio golpe (§3.2). Uma checkbox sugeriria uma escolha que o jogador não tem. |
+| Crítico e buster chain ficam desabilitados num NP | As regras de §3.5. A tela desabilita para explicar; **o núcleo ignora de qualquer jeito**, porque a garantia não pode depender da interface. |
 
 ### 4.2 O que a tela mostra de propósito
 
@@ -168,12 +183,13 @@ Buster.
 
 ## 6. Estado da validação
 
-**O que está provado.** 25 testes em
+**O que está provado.** 27 testes em
 [`src/core/damage.test.ts`](../src/core/damage.test.ts) isolam **um termo por
 teste** e verificam a razão entre dois cenários que diferem só nele: vantagem de
 classe dobra, crítico dobra, NP5/NP1 = 600/400, Buster em 1ª posição dá
 `cardTerm` 2.0, NP Buster dá 1.5, super-efetivo do Gilgamesh 150% no OC1 e 200%
-no OC5, `min`/`max` = 0.9/1.1 da média.
+no OC5, `min`/`max` = 0.9/1.1 da média, e as duas negativas de §3.5 (NP não
+critica, NP não entra em chain).
 
 Comparar razões em vez de valores absolutos testa a fórmula sem depender de um
 número de referência externo.

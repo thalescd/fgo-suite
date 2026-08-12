@@ -213,6 +213,8 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
   const isNP = state.action === "np";
   const activeCard = isNP ? servant.np?.card : state.action;
   const preDamageEffects = servant.np?.damageEffectIndex ?? 0;
+  /** Chain é feita de command cards; NP e extra ficam de fora mesmo sendo Buster. */
+  const canBusterChain = state.action === "buster";
   /** 50 servos têm NP de suporte. Calcular "dano" ali daria um número sem sentido. */
   const npDealsNoDamage = isNP && (servant.np === null || servant.np.damageEffectIndex === null);
 
@@ -318,10 +320,10 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                     onChange={() => patch({ isCrit: !state.isCrit })} />
                   <span>critical hit{isNP && " — NPs cannot crit"}</span>
                 </label>
-                <label className={`opt${activeCard === "buster" ? "" : " inert"}`}>
-                  <input type="checkbox" disabled={activeCard !== "buster"} checked={state.busterChain}
+                <label className={`opt${canBusterChain ? "" : " inert"}`}>
+                  <input type="checkbox" disabled={!canBusterChain} checked={state.busterChain}
                     onChange={() => patch({ busterChain: !state.busterChain })} />
-                  <span>buster chain bonus</span>
+                  <span>buster chain bonus{isNP && " — an NP is not part of a chain"}</span>
                 </label>
                 <label className={`opt${state.action === "extra" ? "" : " inert"}`}>
                   <input type="checkbox" disabled={state.action !== "extra"} checked={state.braveChain}

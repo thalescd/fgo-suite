@@ -126,6 +126,33 @@ describe("termos da fórmula", () => {
     expect(r.breakdown.cardTerm).toBeCloseTo(1.5, 5);
   });
 
+  it("buster chain soma 0.2 x ATK num card Buster — e nada num NP Buster", () => {
+    const atk = ARTORIA.atkGrowth[89]! + 1000;
+    const card = (busterChain: boolean) =>
+      calculateDamage(
+        input({ action: { kind: "card", card: "buster", position: 1, isCrit: false, busterChain, braveChain: false } }),
+        data,
+      );
+    expect(card(true).breakdown.busterChainBonus).toBeCloseTo(atk * constants.busterChainMod, 5);
+    expect(card(true).avg).toBeGreaterThan(card(false).avg);
+
+    // Excalibur é Buster, mas uma chain é feita de três command cards e um NP
+    // não é command card — jamais entra em uma.
+    const np = (busterChain: boolean) =>
+      calculateDamage(input({ action: { kind: "np", isCrit: false, busterChain, braveChain: false } }), data);
+    expect(ARTORIA.np!.card).toBe("buster");
+    expect(np(true).breakdown.busterChainBonus).toBe(0);
+    expect(np(true).avg).toBe(np(false).avg);
+  });
+
+  it("NP ignora isCrit, porque NP não critica", () => {
+    const plain = calculateDamage(input({ action: { kind: "np", isCrit: false, busterChain: false, braveChain: false } }), data);
+    const asked = calculateDamage(input({ action: { kind: "np", isCrit: true, busterChain: false, braveChain: false } }), data);
+    expect(asked.avg).toBe(plain.avg);
+    expect(asked.breakdown.criticalModifier).toBe(1);
+    expect(asked.breakdown.isCrit).toBe(false);
+  });
+
   it("rollMode min/max são 0.9 e 1.1 da média", () => {
     const r = calculateDamage(input(), data);
     expect(r.min / r.avg).toBeCloseTo(0.9, 2);
