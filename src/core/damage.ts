@@ -194,10 +194,15 @@ export interface DamageResult {
  * NPs de nomes diferentes, 300–500% e 900–1500%. Calcular sempre pelo `np`
  * "ativo" erra por quase o dobro nesses casos.
  *
- * `npAlternatives` mistura duas coisas: variante de card, que é escolha, e rank
- * up, que é história (a Mash tem oito versões Arts). O que separa as duas é o
- * **card**: dentro do mesmo card, a de maior `priority` é a atual (R8); cards
- * diferentes coexistem.
+ * `npAlternatives` mistura duas coisas: variante, que é escolha, e rank up, que é
+ * história (a Mash tem oito versões Arts). O que separa as duas é o par
+ * **card + alvo**: dentro do mesmo par, a de maior `priority` é a atual (R8);
+ * pares diferentes coexistem.
+ *
+ * O alvo faz parte da chave porque nem toda variante muda o card: a
+ * UDK-Barghest tem dois NPs Arts, AoE a 450% e ST a 900%, e o Jade Rabbit e a
+ * BB Dubai são iguais. Agrupar só por card escondia justamente a versão de
+ * dobro do multiplicador.
  *
  * Desempate por `condQuestId` porque o Emiya tem os dois eixos ao mesmo tempo —
  * Buster e Arts, cada um em versão pré e pós rank up, e as duas Arts empatam em
@@ -209,18 +214,19 @@ export interface DamageResult {
  * princípio de D18 para buffs.
  */
 export function selectableNps(servant: Servant): NoblePhantasm[] {
-  const best = new Map<CardType, NoblePhantasm>();
+  const best = new Map<string, NoblePhantasm>();
   for (const np of [servant.np, ...servant.npAlternatives]) {
     if (!np) continue;
-    const cur = best.get(np.card);
+    const key = `${np.card}/${np.target}`;
+    const cur = best.get(key);
     const better =
       !cur || np.priority > cur.priority || (np.priority === cur.priority && np.condQuestId > cur.condQuestId);
-    if (better) best.set(np.card, np);
+    if (better) best.set(key, np);
   }
-  // O ativo primeiro; o resto por card, para a ordem não depender do Map.
-  const all = [...best.values()];
-  return all.sort((a, b) =>
-    a.id === servant.np?.id ? -1 : b.id === servant.np?.id ? 1 : a.card.localeCompare(b.card),
+  // O ativo primeiro; o resto por card e alvo, para a ordem não depender do Map.
+  const rank = (n: NoblePhantasm) => `${n.card}/${n.target}`;
+  return [...best.values()].sort((a, b) =>
+    a.id === servant.np?.id ? -1 : b.id === servant.np?.id ? 1 : rank(a).localeCompare(rank(b)),
   );
 }
 

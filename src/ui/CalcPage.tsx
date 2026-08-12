@@ -306,14 +306,14 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 card — sem isso a escolha pareceria só cosmética.
               */}
               {npOptions.length > 1 && (
-                <Field label="Which NP" hint="the multiplier changes with the card">
+                <Field label="Which NP" hint="the multiplier changes with it">
                   <select
                     value={np?.id ?? ""}
                     onChange={(e) => patch({ npId: Number(e.target.value) })}
                   >
                     {npOptions.map((o) => (
                       <option key={o.id} value={o.id}>
-                        {o.card} — {o.damageMultiplier ? `${o.damageMultiplier[0]}%` : "no damage"} · {o.name}
+                        {o.card} {o.target} — {o.damageMultiplier ? `${o.damageMultiplier[0]}%` : "no damage"} · {o.name}
                       </option>
                     ))}
                   </select>

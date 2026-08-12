@@ -580,6 +580,18 @@ describe("mais de um NP por servo (R24)", () => {
     expect(selectableNps(ARTORIA)).toHaveLength(1);
   });
 
+  it("mesma carta, alvos diferentes: a chave é card + alvo", () => {
+    // UDK-Barghest tem dois NPs Arts, AoE 450% e ST 900%. Agrupar só por card
+    // escondia justamente a versão de dobro do multiplicador.
+    const udk = loadServant(391);
+    const opts = selectableNps(udk);
+    expect(opts.map((n) => `${n.card}/${n.target}`).sort()).toEqual(["arts/aoe", "arts/st"]);
+    const st = opts.find((n) => n.target === "st")!;
+    const aoe = opts.find((n) => n.target === "aoe")!;
+    expect((st.damageMultiplier?.[0] ?? 0) / (aoe.damageMultiplier?.[0] ?? 1)).toBe(2);
+    expect(npDamage(udk, st.id).avg / npDamage(udk, aoe.id).avg).toBeCloseTo(2, 3);
+  });
+
   it("Space Ishtar: três cards, três multiplicadores", () => {
     const byCard = new Map(selectableNps(ISHTAR).map((n) => [n.card, n]));
     expect([...byCard.keys()].sort()).toEqual(["arts", "buster", "quick"]);
@@ -620,13 +632,14 @@ describe("mais de um NP por servo (R24)", () => {
     expect(npDamage(MELUSINE, 999999).avg).toBe(npDamage(MELUSINE, MELUSINE.np!.id).avg);
   });
 
-  it("só cinco servos têm mais de um card de NP — se mudar, o teste avisa", () => {
+  it("oito servos têm mais de uma variante de NP — se mudar, o teste avisa", () => {
     const many = servantIndex.filter((e) => {
       const s = JSON.parse(readFileSync(`public/data/servant/${e.id}.json`, "utf8")) as Servant;
       return selectableNps(s).length > 1;
     });
     expect(many.map((e) => e.name).sort()).toEqual([
-      "Emiya", "Mash Kyrielight", "Mélusine", "Ptolemaîos", "Space Ishtar",
+      "BB Dubai", "Emiya", "Jade Rabbit", "Mash Kyrielight",
+      "Mélusine", "Ptolemaîos", "Space Ishtar", "UDK-Barghest",
     ]);
   });
 });

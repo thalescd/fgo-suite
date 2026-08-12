@@ -225,23 +225,31 @@ um trait de identidade que o alvo não tem.
 
 ### 3.9 Um servo pode ter mais de um NP (R24)
 
-Cinco trocam o card do NP, e **o multiplicador troca junto** — não é só o tipo:
+Oito têm variantes, e **o multiplicador muda junto** — não é só o tipo:
 
-| Servo | NPs |
-|---|---|
-| Space Ishtar | buster 300% · arts 450% · quick 600% |
-| Mélusine | Hollow Heart Albion buster 300% · Innocence Arondight arts 900% |
-| Ptolemaîos | Bibliothēkē arts 450% · Pharos buster 600% |
-| Emiya | buster 400% · arts 600% |
-| Mash | Lord Chaldeas arts (sem dano) · Rayproof Kyrielight buster 400% |
+| Servo | Varia | NPs |
+|---|---|---|
+| Space Ishtar | card | buster 300% · arts 450% · quick 600% |
+| Emiya | card | buster 400% · arts 600% |
+| **UDK-Barghest** | **alvo** | arts AoE 450% · arts ST 900% |
+| **Jade Rabbit** | **alvo** | arts AoE 450% · arts ST 900% |
+| **BB Dubai** | **alvo** | C.C.C. arts AoE 450% · G.G.G. arts support |
+| Mélusine | card+alvo | Hollow Heart Albion buster AoE 300% · Innocence Arondight arts ST 900% |
+| Ptolemaîos | card+alvo | Bibliothēkē arts AoE 450% · Pharos buster ST 600% |
+| Mash | card+alvo | Lord Chaldeas arts support · Rayproof Kyrielight buster AoE 400% |
 
-Calcular sempre pelo `np` de maior prioridade erra por **2,18×** na Mélusine.
+Calcular sempre pelo `np` de maior prioridade erra **2,18×** na Mélusine e **2×**
+na UDK-Barghest.
 
-**O que separa escolha de histórico é o card.** `npAlternatives` mistura as duas
-coisas: a Mash tem oito versões Arts, que são rank ups, e uma Buster, que é a
-forma Ortenaus. Dentro do mesmo card vale a de maior `priority` (R8); cards
-diferentes coexistem. `selectableNps()` aplica isso e devolve 2 para a Mash, 3
-para a Space Ishtar, 1 para quase todo mundo.
+**O que separa escolha de histórico é o par card + alvo.** `npAlternatives`
+mistura as duas coisas: a Mash tem oito versões Arts, que são rank ups, e uma
+Buster, que é a forma Ortenaus. Dentro do mesmo par vale a de maior `priority`
+(R8); pares diferentes coexistem.
+
+O **alvo** precisa estar na chave porque nem toda variante muda o card: três
+servos alternam ST e AoE com a mesma carta, e é sempre o dobro do multiplicador
+na versão ST. Agrupar só por card escondia exatamente a metade que interessa —
+foi o que aconteceu na primeira versão disto.
 
 O Emiya tem os **dois eixos ao mesmo tempo** — Buster e Arts, cada um em versão
 pré e pós rank up — e as duas Arts empatam em `priority`. O desempate é
@@ -379,7 +387,7 @@ Buster.
 
 ## 6. Estado da validação
 
-**O que está provado.** 51 testes em
+**O que está provado.** 52 testes em
 [`src/core/damage.test.ts`](../src/core/damage.test.ts) isolam **um termo por
 teste** e verificam a razão entre dois cenários que diferem só nele: vantagem de
 classe dobra, crítico dobra, NP5/NP1 = 600/400, Buster em 1ª posição dá
