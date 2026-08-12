@@ -11,7 +11,9 @@
     "          'game' = mecânica que calculadora da comunidade costuma não ter;",
     "                   precisa de número visto no jogo.",
     "`mode`:   'avg'  = o valor esperado é determinístico (média, sem o roll).",
-    "          'roll' = valor observado no jogo; conferido como min <= x <= max."
+    "          'roll' = valor observado no jogo; conferido como min <= x <= max.",
+    "`sourceName` registra de onde veio o número — sem isso não dá para revisitar",
+    "uma divergência meses depois."
   ],
 
   "preset": "Todos os casos: nível natural máximo, 1000 fou de ATK, sem CE, sem Mystic Code, sem suporte.",
@@ -23,8 +25,9 @@
       "scenario": "Artoria NP1 lv90, sem buff, contra Saber/earth (classe e atributo neutros)",
       "calc": "s=100100&ec=saber&ea=earth",
       "source": "calc",
+      "sourceName": "maketakunai.github.io",
       "mode": "avg",
-      "expected": null
+      "expected": 16865
     },
     {
       "id": "triangle-lancer",
@@ -32,8 +35,9 @@
       "scenario": "Igual ao base, contra Lancer/earth",
       "calc": "s=100100&ec=lancer&ea=earth",
       "source": "calc",
+      "sourceName": "maketakunai.github.io",
       "mode": "avg",
-      "expected": null
+      "expected": 33730
     },
     {
       "id": "attribute-human",

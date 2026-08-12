@@ -25,6 +25,8 @@ export interface ValidationCase {
   /** Query string de `/calc` — o caso é literalmente um link. */
   calc: string;
   source: "calc" | "game";
+  /** De onde veio o número, quando já conferido. */
+  sourceName?: string;
   mode: "avg" | "roll";
   expected: number | null;
 }
@@ -105,7 +107,7 @@ function main(): void {
     }
     console.log(
       `    fonte:    ${c.source === "calc" ? "calculadora da comunidade" : "número visto no jogo"}` +
-        `  ·  esperado: ${c.expected === null ? "— a preencher" : c.expected.toLocaleString("en-US")}`,
+        `  ·  esperado: ${c.expected === null ? "— a preencher" : `${c.expected.toLocaleString("en-US")} (${c.sourceName ?? "?"})`}`,
     );
     // O servo é impresso para conferir que o link aponta para quem se pensa.
     console.log(`    servo:    ${servant.name} (${servant.className}, ${servant.attribute}, lv${servant.lvMax})\n`);
