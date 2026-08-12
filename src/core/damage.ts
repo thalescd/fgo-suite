@@ -95,6 +95,17 @@ export interface ResolvedBuff {
   /** Já com o boost aplicado, quando houver. */
   value: number;
   chance: number;
+  /**
+   * O slot deste buff entrou de fato **nesta ação**.
+   *
+   * `false` quando o buff resolveu num slot que a ação não usa: crit damage sem
+   * crítico, NP damage num card. O buff continua listado — o jogador o tem —,
+   * mas quem apresenta o resultado precisa separar "está no stack" de "somou".
+   *
+   * Vive aqui, e não na tela, para o MCP da fase 4 não ter que redescobrir a
+   * regra e chegar a uma resposta diferente da interface.
+   */
+  counted: boolean;
   /** Valor antes do boost, e de onde ele veio. Ausentes quando não houve boost. */
   boostedFrom?: number;
   boostedBy?: string;
@@ -364,6 +375,11 @@ function resolveBuffs(
       slot: spec.slot!,
       value: raw * signOf(e.buffType),
       chance: e.chance,
+      // Os dois slots condicionais da fórmula: `critDamageMod * isCrit` e
+      // `npDamageMod * isNP`.
+      counted:
+        (spec.slot !== "critDamageMod" || (input.action.isCrit && !isNPAction)) &&
+        (spec.slot !== "npDamageMod" || isNPAction),
     });
     appliedTraits.push(e.buffTraits.map((t) => t.id));
   }

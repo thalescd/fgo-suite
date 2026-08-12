@@ -207,8 +207,23 @@ describe("relatório", () => {
     // Skill 2 da Artoria é restrita a Buster; num Arts ela precisa ser recusada
     // com o motivo à vista, que foi como o bug do card apareceu.
     const html = render(artoria, `s=${artoria.id}&act=arts&sk=2`);
-    expect(html).toContain("Not applied");
+    expect(html).toContain("Not counted");
     expect(html).toContain("cardBuster");
+  });
+
+  it("`aplicado` conta só o que somou; o resto vai para a seção fechada", () => {
+    // Num card, o upNpdamage da Artoria está no stack e não soma. Contá-lo
+    // entre os aplicados faria o número ao lado do título mentir.
+    const html = render(artoria, `s=${artoria.id}&act=buster&sk=1,2,3`);
+    // 3 somam (dois upAtk da skill 1 e o Buster da skill 2); 3 não (o
+    // upNpdamage num card, a Riding que é Quick, o upCommandall de Extra).
+    expect(html).toContain("Buffs counted (3)");
+    expect(html).toContain("Not counted (3)");
+    // O buff continua visível — só mudou de lista, com o motivo.
+    expect(html).toContain("upNpdamage");
+    expect(html).toContain("only applies to NP damage");
+    // E a seção nasce fechada: sem `open` no <details>.
+    expect(html).not.toMatch(/<details class="sub" open/);
   });
 
   it("termo neutro não vira linha; o termo ativo vira", () => {

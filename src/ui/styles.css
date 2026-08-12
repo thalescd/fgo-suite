@@ -548,6 +548,16 @@ table.terms td.note { color: var(--muted); font-size: 11px; padding-left: 10px; 
 .bufflist .warn { color: #ff9b6f; font-size: 11px; }
 .bufflist.skipped { opacity: .8; }
 
+.report details.sub { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 9px; }
+.report details.sub > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11.5px;
+  user-select: none;
+}
+.report details.sub > summary:hover { color: var(--text); }
+.report details.sub .bufflist { margin-top: 8px; }
+
 .footnote { color: var(--muted); font-size: 11.5px; margin: 8px 0 0; }
 .footnote.warn { color: #ff9b6f; }
 

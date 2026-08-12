@@ -314,7 +314,7 @@ Cada item existe porque escondê-lo produz número plausível e errado:
 | Campo | Para quê |
 |---|---|
 | `resolved` | nível, fou, NP, OC, alvo, ação — as premissas em texto |
-| `appliedBuffs` | cada buff que entrou, com origem, slot e valor |
+| `appliedBuffs` | cada buff que entrou, com origem, slot, valor e `counted` |
 | `skippedBuffs` | cada buff que **não** entrou, **com o motivo** |
 | `uncertainBuffs` | buffs ativos com chance < 100% (informativo, nunca filtro — D18) |
 | `unmodeled` | buff types fora da tabela (R12) |
@@ -323,6 +323,17 @@ Cada item existe porque escondê-lo produz número plausível e errado:
 > resposta do MCP, então são escritas **em inglês** — ao contrário dos
 > comentários do projeto. Um teste varre o roster inteiro (462 servos × 2
 > cenários, ~6 mil mensagens) e falha nomeando o servo se alguma escapar.
+
+`counted` separa "está no stack" de "somou": um crit damage up sem crítico, ou
+um NP damage up num card, resolve num slot que a ação não usa. O campo vive no
+núcleo, e não na tela, para o MCP da fase 4 não redescobrir a regra e responder
+diferente da interface.
+
+Na tela isso vira duas listas: **Buffs counted**, que é o que formou o número, e
+**Not counted**, fechada por padrão, com os não-contados e os recusados juntos —
+para quem lê o resultado, "está no servo e não está no total" é a mesma coisa. A
+contagem fica no rótulo mesmo fechada: esconder sem contar transformaria uma
+recusa errada em ausência invisível.
 
 `skippedBuffs` já se pagou: o bug de §3.1 foi encontrado lendo o motivo
 `"restrito a cardBuster, ação usa nenhum card"` num caso em que o card *era*

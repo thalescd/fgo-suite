@@ -100,8 +100,23 @@ function termsOf(r: DamageResult, k: Constants): Term[] {
   return t;
 }
 
+/** Por que um buff resolvido não somou nesta ação. */
+const idleReason = (slot: string) =>
+  slot === "npDamageMod" ? "only applies to NP damage" : "only applies to critical hits";
+
 export function DamageReport({ result, constants }: { result: DamageResult; constants: Constants }) {
   const a = result.assumptions;
+
+  // "Aplicado" passa a significar "somou". Um buff que resolveu num slot que
+  // esta ação não usa é, para quem lê o número, a mesma coisa que um buff
+  // recusado: está no servo e não está no total. As duas listas viram uma.
+  const counted = a.appliedBuffs.filter((b) => b.counted);
+  const notCounted = [
+    ...a.appliedBuffs
+      .filter((b) => !b.counted)
+      .map((b) => ({ buffType: b.buffType, source: b.source, reason: idleReason(b.slot) })),
+    ...a.skippedBuffs,
+  ];
   const chosen = a.rollMode === "min" ? result.min : a.rollMode === "max" ? result.max : result.avg;
   const rollLabel =
     a.rollMode === "min" ? "minimum roll (x0.9)" : a.rollMode === "max" ? "maximum roll (x1.1)" : "average roll";
@@ -140,46 +155,43 @@ export function DamageReport({ result, constants }: { result: DamageResult; cons
       </table>
       <p className="footnote">Terms not listed are neutral for this attack.</p>
 
-      <h4>Buffs applied ({a.appliedBuffs.length})</h4>
-      {a.appliedBuffs.length === 0 ? (
+      <h4>Buffs counted ({counted.length})</h4>
+      {counted.length === 0 ? (
         <p className="footnote">None — this is the bare damage, with no buffs at all.</p>
       ) : (
         <ul className="bufflist">
-          {a.appliedBuffs.map((b, i) => {
-            // O buff está no stack, mas o slot dele não vale para esta ação.
-            const idle =
-              (b.slot === "npDamageMod" && !result.breakdown.isNP) ||
-              (b.slot === "critDamageMod" && !result.breakdown.isCrit);
-            return (
-              <li key={i}>
-                <span className="slot">{b.slot}</span>
-                <span className="ftype">{b.buffType}</span>
-                <span className="val">
-                  {b.slot === "dmgPlusAdd" || b.slot === "selfDmgCutAdd" ? `+${num(b.value)}` : pct(b.value / 100)}
+          {counted.map((b, i) => (
+            <li key={i}>
+              <span className="slot">{b.slot}</span>
+              <span className="ftype">{b.buffType}</span>
+              <span className="val">
+                {b.slot === "dmgPlusAdd" || b.slot === "selfDmgCutAdd" ? `+${num(b.value)}` : pct(b.value / 100)}
+              </span>
+              <span className="src">{b.source}</span>
+              {b.chance < 100 && <span className="warn">{b.chance}% chance</span>}
+              {b.boostedFrom !== undefined && (
+                <span className="reason">
+                  boosted from {pct(b.boostedFrom / 100)} by {b.boostedBy}
                 </span>
-                <span className="src">{b.source}</span>
-                {b.chance < 100 && <span className="warn">{b.chance}% chance</span>}
-                {b.boostedFrom !== undefined && (
-                  <span className="reason">
-                    boosted from {pct(b.boostedFrom / 100)} by {b.boostedBy}
-                  </span>
-                )}
-                {idle && (
-                  <span className="reason">
-                    not counted: {b.slot === "npDamageMod" ? "only applies to NP damage" : "only applies to critical hits"}
-                  </span>
-                )}
-              </li>
-            );
-          })}
+              )}
+            </li>
+          ))}
         </ul>
       )}
 
-      {a.skippedBuffs.length > 0 && (
-        <>
-          <h4>Not applied ({a.skippedBuffs.length})</h4>
+      {/*
+        Fechado por padrão, mas com a contagem no rótulo: quem quer saber o
+        número não precisa passar os olhos por dez recusas, e quem desconfia de
+        uma ausência vê que há o que abrir. Esconder sem contar seria a versão
+        ruim disto — foi lendo uma dessas recusas que o bug do card apareceu.
+      */}
+      {notCounted.length > 0 && (
+        <details className="sub">
+          <summary>
+            Not counted ({notCounted.length}) — present, but adding nothing to this attack
+          </summary>
           <ul className="bufflist skipped">
-            {a.skippedBuffs.map((b, i) => (
+            {notCounted.map((b, i) => (
               <li key={i}>
                 <span className="ftype">{b.buffType}</span>
                 <span className="src">{b.source}</span>
@@ -187,7 +199,7 @@ export function DamageReport({ result, constants }: { result: DamageResult; cons
               </li>
             ))}
           </ul>
-        </>
+        </details>
       )}
 
       {a.uncertainBuffs.length > 0 && (
