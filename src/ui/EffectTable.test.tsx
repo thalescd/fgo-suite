@@ -12,7 +12,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { IndexEntry, IndexEntryServant, Servant } from "../core/model.js";
-import { EffectTable } from "./components.js";
+import { EffectTable, NpTable } from "./components.js";
 
 const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as IndexEntry[];
 const servants = index.filter((e): e is IndexEntryServant => e.kind === "servant");
@@ -63,91 +63,49 @@ describe("EffectTable — overcharge", () => {
   });
 });
 
-describe("EffectTable — super-efetivo", () => {
-  const gil = load(12); // Gilgamesh: Enuma Elish, 150% -> 200% vs weakToEnumaElish
+describe("NpTable — layout sem botões", () => {
+  const gil = load(12);  // buff antes do dano; super-efetivo escala com OC
+  const art = load(2);   // dano primeiro; multiplicador escala por nível de NP
 
-  const html = strip(
-    renderToString(
-      <EffectTable
-        effects={gil.np!.effects}
-        columns={["OC1", "OC2", "OC3", "OC4", "OC5"]}
-        valueAt={(e, oc) => (e.valuesByOvercharge ? e.valuesByOvercharge[oc] : e.values)?.[0]}
-        superEffectiveAt={(e, oc) => {
-          const se = e.superEffective;
-          if (!se) return undefined;
-          return (se.valuesByOvercharge ? se.valuesByOvercharge[oc] : se.values)?.[0];
-        }}
-        highlight={0}
-      />,
-    ),
-  );
+  const render = (s: typeof gil) => strip(renderToString(<NpTable np={s.np!} />));
 
-  it("nomeia o trait alvo em vez de mostrar o id cru", () => {
-    expect(html).toContain("weakToEnumaElish");
-    expect(html).not.toContain("trait 2008");
+  it("mostra os dois blocos com a mesma régua 1-5, sem clique", () => {
+    const html = render(gil);
+    expect(html).toContain(">NP Level<");
+    expect(html).toContain(">Overcharge<");
   });
 
-  it("mostra o multiplicador escalando de 150% a 200% pelo overcharge", () => {
+  it("multiplicador de dano fica no bloco de nível de NP", () => {
+    // Excalibur: 400/500/550/575/600 — antes vivia numa linha de texto solta.
+    const t = text(render(art));
+    for (const v of ["400%", "500%", "550%", "575%", "600%"]) expect(t).toContain(`|${v}|`);
+    expect(render(art)).toContain(">NP Level<");
+  });
+
+  it("super-efetivo fica no bloco de overcharge, com o trait nomeado", () => {
+    const html = render(gil);
     const t = text(html);
+    expect(html).toContain("weakToEnumaElish");
     for (const v of ["150%", "162.5%", "175%", "187.5%", "200%"]) expect(t).toContain(`|${v}|`);
   });
 
-  it("dá linha própria ao super-efetivo, separada do dano base", () => {
-    expect(html).toContain("se-row");
-    expect(html).toContain("super-effective");
-  });
-});
-
-describe("EffectTable — eixos e ordem de execução", () => {
-  const gil = load(12);   // buff ANTES do dano
-  const art = load(2);    // dano ANTES do refund
-
-  const renderNp = (s: typeof gil, axis: "oc" | "np", fixed: number) =>
-    strip(
-      renderToString(
-        <EffectTable
-          effects={s.np!.effects}
-          axisLabel={axis === "oc" ? `at NP${fixed}` : `at OC${fixed}`}
-          columns={axis === "oc" ? ["OC1", "OC2", "OC3", "OC4", "OC5"] : ["NP1", "NP2", "NP3", "NP4", "NP5"]}
-          valueAt={(e, i) => {
-            const row = (oc: number) => (e.valuesByOvercharge ? e.valuesByOvercharge[oc] : e.values);
-            return axis === "oc" ? row(i)?.[fixed - 1] : row(fixed - 1)?.[i];
-          }}
-          damageIndex={s.np!.damageEffectIndex}
-          highlight={0}
-        />,
-      ),
-    );
-
-  it("no eixo de NP level, o multiplicador de dano aparece na tabela", () => {
-    // Excalibur: 400/500/550/575/600. Antes isso vivia numa linha de texto solta.
-    const t = text(renderNp(art, "np", 1));
-    for (const v of ["400%", "500%", "550%", "575%", "600%"]) expect(t).toContain(`|${v}|`);
+  it("Gilgamesh: o buff que entra no próprio golpe é marcado", () => {
+    expect(render(gil)).toContain("activates first");
   });
 
-  it("o cabeçalho diz qual dimensão está fixa", () => {
-    expect(renderNp(art, "oc", 3)).toContain("at NP3");
-    expect(renderNp(art, "np", 2)).toContain("at OC2");
+  it("Artoria: nada é marcado, porque o dano vem primeiro", () => {
+    expect(render(art)).not.toContain("activates first");
   });
 
-  it("trocar de eixo muda a tabela", () => {
-    expect(renderNp(art, "oc", 1)).not.toBe(renderNp(art, "np", 1));
+  it("a linha do dano é destacada", () => {
+    expect(render(gil)).toContain("DAMAGE");
   });
 
-  it("marca a linha do dano", () => {
-    expect(renderNp(gil, "oc", 1)).toContain("DAMAGE");
-    expect(renderNp(gil, "oc", 1)).toContain("dmg-row");
-  });
-
-  it("Gilgamesh: o buff de NP é marcado como ANTES do dano", () => {
-    // upNpdamage no índice 0, dano no índice 1 -> o buff entra no próprio golpe.
-    expect(gil.np!.damageEffectIndex).toBe(1);
-    expect(renderNp(gil, "oc", 1)).toContain("pre-row");
-  });
-
-  it("Artoria: nada é marcado como antes — o dano vem primeiro", () => {
-    expect(art.np!.damageEffectIndex).toBe(0);
-    expect(renderNp(art, "oc", 1)).not.toContain("pre-row");
+  it("efeito constante não vira linha de tabela, aparece inline", () => {
+    // upNpdamage do Gil é 30% em qualquer nível/overcharge.
+    const html = render(gil);
+    expect(html).toContain("upNpdamage");
+    expect(text(html)).toContain("|30%|");
   });
 });
 

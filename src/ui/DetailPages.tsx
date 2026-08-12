@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import type { CraftEssence, Servant, Skill } from "../core/model.js";
-import { Block, EffectRow, EffectTable, Stars } from "./components.js";
+import { Block, EffectRow, EffectTable, NpTable, Stars } from "./components.js";
 import { loadEquip, loadServant } from "./data.js";
 
 /** Números seguem en-US para casar com o resto da interface. */
@@ -87,9 +87,6 @@ function SkillCard({ skill, highlight = 9 }: { skill: Skill; highlight?: number 
 export function ServantPage() {
   const { id } = useParams();
   const { data: s, error } = useAsync<Servant>(() => loadServant(Number(id)), [id]);
-  const [npLevelOverride, setNpLevel] = useState<number | null>(null);
-  const [axis, setAxis] = useState<"oc" | "np">("oc");
-  const [oc, setOc] = useState(1);
 
   if (error) return <div className="detail"><Back /><p className="empty">{error}</p></div>;
   if (!s) return <div className="detail"><Back /><p className="empty">loading…</p></div>;
@@ -97,7 +94,6 @@ export function ServantPage() {
   const atk = (lv: number) => s.atkGrowth[lv - 1] ?? null;
   const hp = (lv: number) => s.hpGrowth[lv - 1] ?? null;
   const npLevelDefault = s.rarity <= 3 || s.isWelfare ? 5 : 1;
-  const npLevel = npLevelOverride ?? npLevelDefault;
 
   return (
     <div className="detail">
@@ -173,68 +169,7 @@ export function ServantPage() {
               <div className="detail-text">{s.np.hits.length} hits ({s.np.hits.join("/")})</div>
             )}
 
-            {/*
-              Um NP tem DUAS dimensões de cinco valores — nível de NP e
-              overcharge — e misturá-las numa tabela só é o que confunde. Aqui
-              o usuário escolhe qual delas são as colunas; a outra vira um
-              valor fixo, dito no cabeçalho. Assim o multiplicador de dano
-              (que varia por nível de NP) e os buffs (que variam por
-              overcharge) cabem na mesma tabela sem mentir sobre o eixo.
-            */}
-            <div className="oc-picker">
-              <div className="axis-toggle">
-                <button aria-pressed={axis === "oc"} onClick={() => setAxis("oc")}>
-                  columns = overcharge
-                </button>
-                <button aria-pressed={axis === "np"} onClick={() => setAxis("np")}>
-                  columns = NP level
-                </button>
-              </div>
-              {axis === "oc" ? (
-                <>
-                  <label htmlFor="nplv">at</label>
-                  <select id="nplv" value={npLevel} onChange={(ev) => setNpLevel(Number(ev.target.value))}>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>NP{n}{n === npLevelDefault ? " (default)" : ""}</option>
-                    ))}
-                  </select>
-                </>
-              ) : (
-                <>
-                  <label htmlFor="oclv">at</label>
-                  <select id="oclv" value={oc} onChange={(ev) => setOc(Number(ev.target.value))}>
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>OC{n}{n === 1 ? " (usual)" : ""}</option>
-                    ))}
-                  </select>
-                </>
-              )}
-            </div>
-
-            <EffectTable
-              effects={s.np.effects}
-              axisLabel={axis === "oc" ? `at NP${npLevel}` : `at OC${oc}`}
-              columns={
-                axis === "oc"
-                  ? ["OC1", "OC2", "OC3", "OC4", "OC5"]
-                  : ["NP1", "NP2", "NP3", "NP4", "NP5"]
-              }
-              // valuesByOvercharge é null quando o efeito não escala com OC —
-              // nesse caso a linha de OC1 vale para todos os overcharges.
-              valueAt={(e, i) => {
-                const row = (ocIdx: number) =>
-                  e.valuesByOvercharge ? e.valuesByOvercharge[ocIdx] : e.values;
-                return axis === "oc" ? row(i)?.[npLevel - 1] : row(oc - 1)?.[i];
-              }}
-              superEffectiveAt={(e, i) => {
-                const se = e.superEffective;
-                if (!se) return undefined;
-                const row = (ocIdx: number) => (se.valuesByOvercharge ? se.valuesByOvercharge[ocIdx] : se.values);
-                return axis === "oc" ? row(i)?.[npLevel - 1] : row(oc - 1)?.[i];
-              }}
-              damageIndex={s.np.damageEffectIndex}
-              highlight={axis === "oc" ? 0 : npLevelDefault - 1}
-            />
+            <NpTable np={s.np} />
           </div>
           {s.npAlternatives.length > 0 && (
             <details className="skill" style={{ opacity: 0.85 }}>

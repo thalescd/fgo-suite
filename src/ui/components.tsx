@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
-import type { Effect, IndexEntry } from "../core/model.js";
+import type { Effect, IndexEntry, NoblePhantasm } from "../core/model.js";
 import type { FacetOption } from "../core/search.js";
 
 export const Stars = ({ n }: { n: number }) => (
@@ -82,6 +82,37 @@ export function ResultCard({ entry }: { entry: IndexEntry }) {
 
 const unitOf = (e: Effect) => (e.valueUnit === "percent" ? "%" : "");
 
+const varies = (xs: unknown[]) => new Set(xs.map((x) => JSON.stringify(x))).size > 1;
+
+/**
+ * Em qual eixo o valor deste efeito varia.
+ *
+ * Medido no dataset inteiro: **nenhum** efeito de NP varia nos dois eixos ao
+ * mesmo tempo — 469 variam só por nível de NP, 446 só por overcharge, 963 são
+ * constantes, 0 variam nos dois. Por isso uma coluna 1–5 pode servir aos dois
+ * blocos, cada linha caindo no seu.
+ *
+ * O caso "both" é impossível hoje, mas fica tratado: se o Atlas passar a ter um
+ * efeito assim, ele aparece marcado em vez de mostrar metade da verdade em
+ * silêncio.
+ */
+export type ValueAxis = "npLevel" | "overcharge" | "constant" | "both";
+
+export function axisOf(values: number[], byOvercharge: number[][] | null): ValueAxis {
+  const byNp = varies(values);
+  const byOc = byOvercharge !== null && varies(byOvercharge.map((r) => r[0]));
+  if (byNp && byOc) return "both";
+  if (byNp) return "npLevel";
+  if (byOc) return "overcharge";
+  return "constant";
+}
+
+/** Série de 5 valores no eixo em que o efeito varia. */
+export function seriesFor(values: number[], byOvercharge: number[][] | null, axis: ValueAxis): number[] {
+  if (axis === "overcharge" && byOvercharge) return byOvercharge.map((r) => r[0] ?? 0);
+  return values;
+}
+
 /**
  * Parte qualitativa de um efeito: o que ele faz, em quem, sob que condição.
  *
@@ -122,6 +153,110 @@ export function EffectRow({ effect, level }: { effect: Effect; level?: number })
 }
 
 /**
+ * Tabela do Noble Phantasm.
+ *
+ * Um NP tem duas dimensões de cinco valores — nível de NP e overcharge — mas
+ * **nenhum efeito varia nas duas** (medido: 0 de 1878). Então uma única régua de
+ * colunas 1–5 serve às duas, com uma linha de cabeçalho por bloco dizendo o que
+ * elas significam ali. É o que dispensa qualquer botão: tudo fica na tela.
+ *
+ * Os efeitos aparecem primeiro em ordem de execução, com o valor inline quando
+ * é constante e a marcação de quais entram no próprio dano do NP.
+ */
+export function NpTable({ np }: { np: NoblePhantasm }) {
+  interface Row {
+    label: ReactNode;
+    axis: ValueAxis;
+    series: number[];
+    unit: string;
+  }
+
+  const rows: Row[] = [];
+  for (const e of np.effects) {
+    const axis = axisOf(e.values, e.valuesByOvercharge);
+    if (axis !== "constant") {
+      rows.push({
+        label: e.funcType.startsWith("damageNp") ? "NP damage" : e.buffType ?? e.funcType,
+        axis,
+        series: seriesFor(e.values, e.valuesByOvercharge, axis),
+        unit: unitOf(e),
+      });
+    }
+    const se = e.superEffective;
+    if (se) {
+      const seAxis = axisOf(se.values, se.valuesByOvercharge);
+      const names = se.traits.map((t) => (t.name === "unknown" ? `trait ${t.id}` : t.name)).join(", ");
+      const label = <span className="super">vs {names || "target"} — extra damage</span>;
+      if (seAxis === "constant") {
+        rows.push({ label, axis: "overcharge", series: Array(5).fill(se.values[0] ?? 0), unit: "%" });
+      } else {
+        rows.push({ label, axis: seAxis, series: seriesFor(se.values, se.valuesByOvercharge, seAxis), unit: "%" });
+      }
+    }
+  }
+
+  const npRows = rows.filter((r) => r.axis === "npLevel" || r.axis === "both");
+  const ocRows = rows.filter((r) => r.axis === "overcharge");
+
+  const block = (title: string, list: Row[]) =>
+    list.length === 0 ? null : (
+      <>
+        <tr className="axis-head">
+          <th>{title}</th>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <th key={n}>{n}</th>
+          ))}
+        </tr>
+        {list.map((r, i) => (
+          <tr key={`${title}${i}`}>
+            <td className="label">
+              {r.label}
+              {r.axis === "both" && <span className="warn"> varia nos dois eixos — mostrando nível de NP</span>}
+            </td>
+            {[0, 1, 2, 3, 4].map((c) => (
+              <td key={c}>{r.series[c] === undefined ? "—" : `${r.series[c]}${r.unit}`}</td>
+            ))}
+          </tr>
+        ))}
+      </>
+    );
+
+  return (
+    <>
+      <div className="np-effects">
+        {np.effects.map((e, i) => {
+          const axis = axisOf(e.values, e.valuesByOvercharge);
+          const isDamage = np.damageEffectIndex === i;
+          const before = np.damageEffectIndex !== null && i < np.damageEffectIndex;
+          const v = e.values[0];
+          return (
+            <div key={i} className={`effect${isDamage ? " dmg" : ""}`}>
+              {isDamage && <span className="step">DAMAGE</span>}
+              {before && <span className="step pre">activates first</span>}
+              <EffectLabel effect={e} />
+              {axis === "constant" && v !== undefined && v !== 0 && (
+                <span className="val">{v}{unitOf(e)}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {(npRows.length > 0 || ocRows.length > 0) && (
+        <div style={{ overflowX: "auto" }}>
+          <table className="levels np">
+            <tbody>
+              {block("NP Level", npRows)}
+              {block("Overcharge", ocRows)}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
  * Progressão de valores em tabela: uma linha por efeito, uma coluna por nível
  * (skill 1–10) ou por overcharge (NP 1–5).
  *
@@ -134,9 +269,6 @@ export function EffectTable({
   columns,
   valueAt,
   highlight,
-  superEffectiveAt,
-  damageIndex,
-  axisLabel,
 }: {
   effects: Effect[];
   columns: string[];
@@ -144,17 +276,6 @@ export function EffectTable({
   valueAt: (effect: Effect, columnIndex: number) => number | undefined;
   /** Índice da coluna a destacar (nível de skill em uso, overcharge padrão). */
   highlight?: number;
-  /** Multiplicador super-efetivo na coluna i. Omitido em skills, que não têm. */
-  superEffectiveAt?: (effect: Effect, columnIndex: number) => number | undefined;
-  /**
-   * Índice do efeito que causa o dano. As linhas acima dele são buffs que
-   * entram no próprio dano deste NP; as abaixo, não. Sem essa marcação a
-   * tabela sugere que tudo se aplica igualmente — e 58% dos NPs de dano têm
-   * efeito antes do golpe.
-   */
-  damageIndex?: number | null;
-  /** Texto do cabeçalho da primeira coluna: diz o que as colunas significam. */
-  axisLabel?: string;
 }) {
   if (effects.length === 0) return null;
   return (
@@ -162,7 +283,7 @@ export function EffectTable({
       <table className="levels">
         <thead>
           <tr>
-            <th className="axis">{axisLabel ?? ""}</th>
+            <th />
             {columns.map((c, i) => (
               <th key={c} className={i === highlight ? "hl" : undefined}>{c}</th>
             ))}
@@ -173,17 +294,9 @@ export function EffectTable({
             const vals = columns.map((_, i) => valueAt(e, i));
             const first = vals[0];
             const constant = vals.every((v) => v === first);
-            const isDamage = damageIndex !== null && damageIndex !== undefined && ei === damageIndex;
-            const beforeDamage =
-              damageIndex !== null && damageIndex !== undefined && ei < damageIndex;
-
             const rows = [
-              <tr key={ei} className={isDamage ? "dmg-row" : beforeDamage ? "pre-row" : undefined}>
-                <td className="label">
-                  {isDamage && <span className="step">DAMAGE</span>}
-                  {beforeDamage && <span className="step pre">before</span>}
-                  <EffectLabel effect={e} />
-                </td>
+              <tr key={ei}>
+                <td className="label"><EffectLabel effect={e} /></td>
                 {constant ? (
                   <td className="same" colSpan={columns.length}>
                     {first === undefined || first === 0 ? "—" : `${first}${unitOf(e)} — constant`}
@@ -198,34 +311,6 @@ export function EffectTable({
               </tr>,
             ];
 
-            // Super-efetivo ganha linha própria: é um multiplicador separado do
-            // valor do efeito e escala com overcharge em 52% dos casos.
-            const se = e.superEffective;
-            if (se && superEffectiveAt) {
-              const sv = columns.map((_, i) => superEffectiveAt(e, i));
-              const sConst = sv.every((v) => v === sv[0]);
-              rows.push(
-                <tr key={`${ei}-se`} className="se-row">
-                  <td className="label">
-                    <span className="super">super-effective</span>
-                    {se.traits.length > 0 && (
-                      <span style={{ color: "var(--muted)", fontSize: 11 }}>
-                        {" "}vs {se.traits.map((t) => (t.name === "unknown" ? `trait ${t.id}` : t.name)).join(", ")}
-                      </span>
-                    )}
-                  </td>
-                  {sConst ? (
-                    <td className="same" colSpan={columns.length}>{sv[0]}% — constant</td>
-                  ) : (
-                    sv.map((v, i) => (
-                      <td key={i} className={i === highlight ? "hl" : undefined}>
-                        {v === undefined ? "—" : `${v}%`}
-                      </td>
-                    ))
-                  )}
-                </tr>,
-              );
-            }
             return rows;
           })}
         </tbody>

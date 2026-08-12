@@ -38,6 +38,7 @@ Insight que organiza tudo: **(2) e (3) são a mesma entrega** — um MCP server 
 | D16 | **Lista de traits do inimigo gerada no build** | 91 traits de identidade, ordenados por frequência de uso. Servo novo traz o trait dele sem edição manual. |
 | D17 | **MLB de CE é input do usuário** | `condLimitCount` `0`/`4` separa os dois conjuntos de efeito. Ver R13. |
 | D18 | **`rollMode` selecionável (`min`/`avg`/`max`/`range`)** | Controla **só** o `randomModifier`. Buffs com RNG de ativação não são filtrados — quem compõe o `BuffStack` decide. Chance é informativa. Ver §5.6. |
+| D21 | **Tabela do NP sem controles: uma régua 1–5 para os dois eixos** | Medido: **0 de 1878** efeitos de NP variam em nível de NP *e* overcharge ao mesmo tempo. Logo cada linha pertence a um eixo só, e dois blocos com a mesma régua mostram tudo sem clique. |
 | D20 | **`effects` do NP está em ordem de execução, e isso é contratual** | O que vem antes da função de dano entra no próprio dano; o que vem depois, não. `damageEffectIndex` marca o corte. Ver R20. |
 | D19 | **Formas de combate ficam fora do índice, não fora do modelo** | Hyde, a 2ª Aoko, Flora e Prelati continuam como artefato e ligadas ao base; só não aparecem na busca. Ver R15. |
 
