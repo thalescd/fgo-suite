@@ -365,6 +365,13 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
               <button className="linkish" type="button" onClick={() => patch({ skills: [] })}>none</button>
             </div>
 
+            {servant.classPassive.length > 0 && (
+              <p className="footnote">
+                Always on, no switch: {servant.classPassive.map((sk) => sk.name).join(", ")}. Class passives are
+                inherent — unlike append passives, the player never chooses them.
+              </p>
+            )}
+
             {isNP && preDamageEffects > 0 && (
               <p className="footnote">
                 This NP applies {preDamageEffects} effect(s) <strong>before</strong> the damage, so they are always

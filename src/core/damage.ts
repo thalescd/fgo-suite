@@ -21,9 +21,10 @@
  * Ver docs/DAMAGE.md.
  */
 
-import { PIERCE_FUNCS, signOf, specFor, type DamageSlot } from "./buffs.js";
+import { PIERCE_FUNCS, SLOT_SIDE, sideOfTarget, signOf, specFor, type DamageSlot } from "./buffs.js";
 import type {
   CardType,
+  ClassRelationOverride,
   Constants,
   CraftEssence,
   Effect,
@@ -118,7 +119,10 @@ export interface DamageResult {
     /** `firstCardBonus + cardDamageValue * (1 + cardMod)` já resolvido. */
     cardTerm: number;
     classAtkBonus: number;
+    /** Já com a sobrescrita aplicada, quando houver. */
     triangleModifier: number;
+    /** Da matriz padrão. Diferente de `triangleModifier` só quando houve override (R22). */
+    triangleModifierBase: number;
     attributeModifier: number;
     atkMod: number;
     defMod: number;
@@ -228,11 +232,17 @@ function resolveBuffs(
    * descartado num Excalibur, que é Buster.
    */
   actionCard: CardType,
-): { applied: ResolvedBuff[]; skipped: SkippedBuff[]; unmodeled: string[] } {
+): {
+  applied: ResolvedBuff[];
+  skipped: SkippedBuff[];
+  unmodeled: string[];
+  relationOverrides: { source: string; buffType: string; rows: ClassRelationOverride[] }[];
+} {
   const applied: ResolvedBuff[] = [];
   /** Traits de cada buff aplicado, paralelo a `applied` — só para casar boosts. */
   const appliedTraits: number[][] = [];
   const boosts: Boost[] = [];
+  const relationOverrides: { source: string; buffType: string; rows: ClassRelationOverride[] }[] = [];
   const skipped: SkippedBuff[] = [];
   const unmodeled = new Set<string>();
 
@@ -255,7 +265,11 @@ function resolveBuffs(
     if (e.buffType === null) continue; // funções sem buff não alimentam slots
     const label = e.buffType;
 
-    if (c.fromSupport && !REACHES_ALLY.has(e.target)) {
+    // Alcance: um buff `self` de um suporte fica no suporte. Debuff no inimigo
+    // não passa por aqui — qualquer um da party pode aplicá-lo, e o def down de
+    // um suporte é uma das maiores fontes de dano do jogo.
+    const side = sideOfTarget(e.target);
+    if (side === "attacker" && c.fromSupport && !REACHES_ALLY.has(e.target)) {
       skipped.push({ source: c.source, buffType: label, reason: `target ${e.target} does not reach the attacker` });
       continue;
     }
@@ -266,13 +280,35 @@ function resolveBuffs(
       continue;
     }
 
-    // Um boost não tem slot próprio: age sobre o slot de quem ele alcança.
+    // Nem boost nem override têm slot próprio: um age sobre o slot alheio, o
+    // outro sobre o `triangleModifier`.
     const boostTargets = e.boostsBuffTraits ?? [];
-    if (spec.slot === null && boostTargets.length === 0) continue; // conhecido, mas não afeta dano
+    const relationRows = e.classRelationOverrides ?? [];
+    if (spec.slot === null && boostTargets.length === 0 && relationRows.length === 0) continue;
+
+    // Lado errado: o Def Up do atacante não é a defesa do alvo, e o Atk Down
+    // aplicado no alvo não é o ataque do atacante. Nenhum dos dois muda o dano
+    // causado, e os dois entrariam se o slot fosse lido sem o lado.
+    if (spec.slot !== null && SLOT_SIDE[spec.slot] !== side) {
+      skipped.push({
+        source: c.source,
+        buffType: label,
+        reason:
+          SLOT_SIDE[spec.slot] === "enemy"
+            ? `lands on the attacker; only the target's ${spec.slot} changes damage dealt`
+            : `lands on the target; only the attacker's ${spec.slot} changes damage dealt`,
+      });
+      continue;
+    }
 
     const reason = rejectionOf(e);
     if (reason !== null) {
       skipped.push({ source: c.source, buffType: label, reason });
+      continue;
+    }
+
+    if (relationRows.length > 0) {
+      relationOverrides.push({ source: c.source, buffType: label, rows: relationRows });
       continue;
     }
 
@@ -301,7 +337,7 @@ function resolveBuffs(
   }
 
   applyBoosts(applied, appliedTraits, boosts, skipped);
-  return { applied, skipped, unmodeled: [...unmodeled] };
+  return { applied, skipped, unmodeled: [...unmodeled], relationOverrides };
 }
 
 interface Boost {
@@ -357,11 +393,27 @@ function applyBoosts(
   }
 }
 
-/** Monta os candidatos a partir das fontes declaradas no `BuffStack`. */
+/**
+ * Monta os candidatos: as fontes declaradas no `BuffStack` **mais** as passivas
+ * de classe, que não são declaráveis.
+ *
+ * Passiva de classe está sempre ativa no jogo — não se liga nem desliga, ao
+ * contrário do append passive, que o jogador escolhe destravar (D8). Deixá-la a
+ * cargo do chamador foi o que produziu o bug: **407 dos 462 servos** têm alguma
+ * que afeta dano (349 só de Mad Enhancement, que é Buster up), e todos saíam
+ * subestimados sem nenhum sintoma.
+ */
 function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
   const out: Candidate[] = [];
   const attacker = data.servants.get(input.attacker.servantId);
   if (!attacker) return out;
+
+  for (const sk of attacker.classPassive) {
+    for (const e of sk.effects) {
+      // Passiva de classe não tem nível: o array de valores é constante.
+      out.push({ effect: e, source: `${attacker.name} passive: ${sk.name}`, levelIndex: 0, fromSupport: false });
+    }
+  }
 
   for (const src of input.buffStack) {
     switch (src.kind) {
@@ -425,6 +477,47 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
   return out;
 }
 
+/**
+ * Sobrescrita da matriz de classe (R22).
+ *
+ * A regra casa por **par de classes**, então uma mesma passiva pode trazer
+ * várias linhas e nenhuma valer: a Nega-Saver da Kiara declara `assassin→ruler`
+ * e `alterEgo→ruler`, e ela é alterEgo. Contra um Saber, nenhuma das duas casa —
+ * e é isso que vira registro em `skipped`, para "não fez nada" ter explicação.
+ *
+ * `overwriteForce` é o único modo que aparece do lado do atacante hoje. O outro
+ * (`overwriteMoreThanTarget`) é tratado como "vale o maior", leitura **não
+ * conferida contra o jogo** por falta de caso real.
+ */
+function applyRelationOverrides(
+  base: number,
+  attackerClass: string,
+  targetClass: string,
+  overrides: { source: string; buffType: string; rows: ClassRelationOverride[] }[],
+  skipped: SkippedBuff[],
+): { triangleModifier: number; note: string | null } {
+  let value = base;
+  let note: string | null = null;
+
+  for (const o of overrides) {
+    const row = o.rows.find((r) => r.attackerClass === attackerClass && r.targetClass === targetClass);
+    if (!row) {
+      skipped.push({
+        source: o.source,
+        buffType: o.buffType,
+        reason: `no class relation rule for ${attackerClass} vs ${targetClass}`,
+      });
+      continue;
+    }
+    const next = row.mode === "overwriteForce" ? row.rate : Math.max(value, row.rate);
+    if (next === value) continue;
+    note = `class advantage x${next} from ${o.source} (was x${value})`;
+    value = next;
+  }
+
+  return { triangleModifier: value, note };
+}
+
 // ------------------------------------------------------------------- fórmula
 
 const sumSlot = (buffs: ResolvedBuff[], slot: DamageSlot): number =>
@@ -448,7 +541,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
       : input.action.card ?? "arts";
 
   const candidates = collectCandidates(input, data);
-  const { applied, skipped, unmodeled } = resolveBuffs(candidates, input, enemyTraits, card);
+  const { applied, skipped, unmodeled, relationOverrides } = resolveBuffs(candidates, input, enemyTraits, card);
 
   // ---- ATK
   const base = attacker.atkGrowth[input.attacker.level - 1] ?? 0;
@@ -469,7 +562,14 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
 
   // ---- multiplicadores de classe e atributo
   const classAtkBonus = k.classAttackRate[attacker.className] ?? 1;
-  const triangleModifier = k.classRelation[attacker.className]?.[input.enemy.className] ?? 1;
+  const triangleModifierBase = k.classRelation[attacker.className]?.[input.enemy.className] ?? 1;
+  const { triangleModifier, note: relationNote } = applyRelationOverrides(
+    triangleModifierBase,
+    attacker.className,
+    input.enemy.className,
+    relationOverrides,
+    skipped,
+  );
   const attributeModifier =
     k.attributeRelation[attacker.attribute]?.[input.enemy.attribute as keyof typeof k.attributeRelation] ?? 1;
 
@@ -484,7 +584,10 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
   const critDamageMod = sumSlot(applied, "critDamageMod");
   const npDamageMod = sumSlot(applied, "npDamageMod");
   const specialDefMod = sumSlot(applied, "specialDefMod") + input.enemy.specialDefMod / 100;
-  const flatDamage = applied.filter((b) => b.slot === "flatDamage").reduce((a, b) => a + b.value, 0);
+  // `dmgPlusAdd` é o dano plano do atacante; `selfDmgCutAdd` é o corte de dano
+  // do alvo, que entra negativo. Slots distintos porque os lados são distintos.
+  const flatDamage =
+    applied.filter((b) => b.slot === "dmgPlusAdd" || b.slot === "selfDmgCutAdd").reduce((a, b) => a + b.value, 0);
 
   // ---- super-efetivo
   const dmgEffect = isNP && np && np.damageEffectIndex !== null ? np.effects[np.damageEffectIndex] : undefined;
@@ -552,6 +655,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
       cardTerm,
       classAtkBonus,
       triangleModifier,
+      triangleModifierBase,
       attributeModifier,
       atkMod,
       defMod,
@@ -579,6 +683,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
         input.action.kind === "np" ? "NP" : `card ${card} pos${position}`,
         ...(isCrit ? ["critical"] : []),
         ...(seApplies ? [`super effective ${superEffectiveModifier}%`] : []),
+        ...(relationNote ? [relationNote] : []),
       ],
       appliedBuffs: applied,
       skippedBuffs: skipped,

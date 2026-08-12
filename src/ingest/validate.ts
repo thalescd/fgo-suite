@@ -183,6 +183,20 @@ async function main(): Promise<void> {
   check("o buff alvo carrega o trait que o boost procura",
     npUp?.buffTraits.some((t) => t.name === "buffNpDamageUp"), true);
 
+  console.log("\n§3.4.3 — sobrescrita da matriz de classe (R22)");
+  // Sem `atkSide` a Kiara perde 1/3 do dano dela contra Ruler, sem sintoma.
+  const kiara = await servant(byCn(167).id); // a alterEgo; a moonCancer é a 285
+  const negaSaver = kiara.classPassive
+    .flatMap((sk) => sk.effects)
+    .find((e) => e.classRelationOverrides !== null)
+    ?.classRelationOverrides?.find((r) => r.attackerClass === "alterEgo");
+  check("Kiara: Nega-Saver sobrescreve alterEgo -> ruler", negaSaver?.targetClass, "ruler");
+  check("para 1,5x, em modo overwriteForce", [negaSaver?.rate, negaSaver?.mode], [1.5, "overwriteForce"]);
+  // A passiva de classe precisa existir no documento para a calculadora achá-la.
+  const herc = await servant(byCn(47).id);
+  check("Heracles: Mad Enhancement é passiva de classe",
+    herc.classPassive.flatMap((sk) => sk.effects).some((e) => e.buffType === "upCommandall"), true);
+
   console.log("\nFormas de combate");
   const jekyll = await servant(600700);
   const hyde = await read<Servant>("servant/600710.json");

@@ -49,21 +49,26 @@ dos dumps — se o jogo rebalancear, o valor muda no próximo `data:sync`.
 Vive em [`src/core/buffs.ts`](../src/core/buffs.ts), a **mesma** tabela que gera
 as tags de busca (ver [`CAPABILITIES.md`](CAPABILITIES.md) §1).
 
-| Slot | Buffs |
-|---|---|
-| `atkMod` | `upAtk`, `downAtk` |
-| `defMod` | `upDefence`, `downDefence`, `downDefencecommandall` |
-| `cardMod` | `upCommandall`, `downCommandall` |
-| `powerMod` | `upDamage`, `upDamageIndividuality`, `upSpecialdamage` |
-| `critDamageMod` | `upCriticaldamage` |
-| `npDamageMod` | `upNpdamage` |
-| `specialDefMod` | resistência especial do alvo |
-| `flatDamage` | `addDamage`, `subSelfdamage` |
-| `pierceDefence` | `pierceDefence`, `funcType: damageNpPierce` |
-| *nenhum — age sobre o slot alheio* | `buffRate`, que multiplica o valor de outros buffs (§3.5) |
+| Slot | Cai em | Buffs |
+|---|---|---|
+| `atkMod` | atacante | `upAtk`, `downAtk` |
+| `defMod` | **alvo** | `upDefence`, `downDefence`, `downDefencecommandall` |
+| `cardMod` | atacante | `upCommandall`, `downCommandall` |
+| `powerMod` | atacante | `upDamage`, `upDamageIndividuality`, `upSpecialdamage` |
+| `critDamageMod` | atacante | `upCriticaldamage` |
+| `npDamageMod` | atacante | `upNpdamage` |
+| `specialDefMod` | **alvo** | resistência especial do alvo |
+| `dmgPlusAdd` | atacante | `addDamage` |
+| `selfDmgCutAdd` | **alvo** | `subSelfdamage` |
+| `pierceDefence` | atacante | `pierceDefence`, `funcType: damageNpPierce` |
+| *nenhum — age sobre o slot alheio* | — | `buffRate` (§3.5) |
+| *nenhum — age no `triangleModifier`* | — | `overwriteClassRelation` (§3.6) |
 
 `downX` e `subX` entram no mesmo slot com sinal invertido (`signOf`), em vez de
 duplicar linhas.
+
+A coluna **"cai em"** decide se o buff conta. Ver §3.7 — ignorá-la fazia o Def Up
+do próprio atacante reduzir o dano dele.
 
 ---
 
@@ -132,7 +137,79 @@ Duas decisões que o dado não responde sozinho:
 Um teste falha se um segundo servo ganhar `buffRate` — não porque quebraria,
 mas porque vale conferir se o novo é do mesmo formato.
 
-### 3.6 O que um NP não pode ser
+### 3.6 A matriz de classe pode ser sobrescrita (R22)
+
+`triangleModifier` não vem só de `NiceClassRelation`. Um buff
+`overwriteClassRelation` traz em `script.relationId.atkSide` linhas do tipo
+"quando um X ataca um Y, o multiplicador é Z":
+
+```
+Kiara, passiva Nega-Saver:  alterEgo -> ruler = 1.5x  (overwriteForce)
+```
+
+A matriz padrão dá 1,0× de alterEgo para ruler. Sem ler o override, o dano da
+Kiara contra Ruler sai **um terço abaixo** — e continua plausível.
+
+| | |
+|---|---:|
+| Buffs `overwriteClassRelation` | 8, em 6 servos |
+| Com linhas de `atkSide` (mudam o dano causado) | 5 |
+
+Os outros só têm `defSide`, que muda o dano **recebido** — deliberadamente não
+carregado, porque nada aqui calcula dano recebido.
+
+Uma passiva pode trazer várias linhas e nenhuma valer: a Nega-Saver declara
+`assassin→ruler` e `alterEgo→ruler`, e a Kiara é alterEgo. Contra um Saber
+nenhuma casa, e isso vira registro em `skippedBuffs` — "não fez nada" precisa de
+explicação.
+
+### 3.7 Em quem o buff cai decide se ele conta (R22)
+
+A fórmula é escrita da perspectiva **"dano deste card"**: `defMod` e
+`selfDmgCutAdd` descrevem o **defensor**, todo o resto descreve o atacante. Ler o
+slot sem olhar o alvo do efeito produz absurdos coerentes:
+
+| Efeito | Alvo | Lido sem o lado | Certo |
+|---|---|---|---|
+| `upDefence` 16% | o próprio atacante | **reduz** o dano dele em 16% | não afeta |
+| `downAtk` 20% | o inimigo | **reduz** o dano do atacante | não afeta |
+| `subSelfdamage` | o próprio atacante | subtrai do dano causado | não afeta |
+| `downDefence` 30% | o inimigo | aumenta o dano | aumenta o dano ✓ |
+
+Medido: **111** `upDefence` em aliados, **42** `downAtk` em inimigos, **48**
+`subSelfdamage` em aliados e **8** `downNpdamage` em inimigos estavam do lado
+errado. O que torna o erro difícil de ver é que a metade certa continua
+funcionando.
+
+A regra está em `SLOT_SIDE` ([`buffs.ts`](../src/core/buffs.ts)) e o lado do
+efeito sai do prefixo do `funcTargetType` — `enemy*` é o alvo, o resto é o
+atacante.
+
+**Isto também conserta o alcance dos suportes.** A checagem "o efeito de um
+suporte precisa alcançar o atacante" só vale para buff de aliado; o def down que
+o suporte joga no inimigo estava sendo recusado com `does not reach the
+attacker`, e def down de suporte é uma das maiores fontes de dano do jogo.
+
+### 3.8 Passiva de classe está sempre ligada
+
+Não é declarável, e por isso não é opcional: `calculateDamage` sempre inclui
+`attacker.classPassive`. Append passive é o oposto — o jogador escolhe destravar,
+então entra só se pedida (D8).
+
+Deixar isso a cargo de quem monta o `buffStack` foi o que produziu o bug:
+
+| | |
+|---|---:|
+| Servos com passiva de classe que afeta dano | **407 de 462** |
+| Só de `upCommandall` (Mad Enhancement e afins) | 349 |
+| `upCriticaldamage` (Independent Action e afins) | 180 |
+| `addDamage` (Divinity) | 137 |
+
+Todos saíam subestimados, sem sintoma. Passiva de classe passa pelos mesmos
+filtros dos outros buffs: a Riding da Artoria é Quick up e é recusada num NP
+Buster, como deve ser.
+
+### 3.9 O que um NP não pode ser
 
 Duas regras do jogo sobre **ações válidas**, não sobre como o dano é calculado —
 mas moram no núcleo, para que nenhum chamador (inclusive o MCP da fase 4)
@@ -149,7 +226,7 @@ Chain"* — uma chain é formada por três **command cards**, e um NP não é co
 card. Testar só "buster chain aumenta o dano de um card Buster" deixa a metade
 errada passar; o teste cobre as duas.
 
-### 3.7 Traits derivados do inimigo (D15)
+### 3.10 Traits derivados do inimigo (D15)
 
 `className: "saber"` injeta o trait `classSaber`; `attribute: "human"` injeta
 `attributeHuman`. Sem isso, 71 checagens anti-classe e 16 anti-atributo falham em
@@ -179,7 +256,7 @@ Só o que difere do padrão aparece na URL — `serializeCalc(DEFAULT_CALC)` é 
 | Regra | Por quê |
 |---|---|
 | Os buffs pré-dano do NP entram sozinhos | O Gilgamesh *sempre* leva o `upNpdamage` dele no próprio golpe (§3.2). Uma checkbox sugeriria uma escolha que o jogador não tem. |
-| Crítico e buster chain ficam desabilitados num NP | As regras de §3.6. A tela desabilita para explicar; **o núcleo ignora de qualquer jeito**, porque a garantia não pode depender da interface. |
+| Crítico e buster chain ficam desabilitados num NP | As regras de §3.9. A tela desabilita para explicar; **o núcleo ignora de qualquer jeito**, porque a garantia não pode depender da interface. |
 
 ### 4.2 O que a tela mostra de propósito
 
@@ -190,7 +267,7 @@ Cada item existe porque escondê-lo produz número plausível e errado:
 - **Que buffs de cada skill afetam dano** — marcar uma skill de cura não muda
   nada, e sem a dica nada diria por quê.
 - **Traits derivados** — `classLancer`, `attributeSky` aparecem listados, para
-  ficar claro que classe e atributo já injetam trait (§3.7).
+  ficar claro que classe e atributo já injetam trait (§3.10).
 - **NP de suporte** — os 50 NPs sem função de dano dizem isso em vez de exibir
   um número calculado como se fossem card.
 - **Buff presente mas não contado** — um `upNpdamage` num ataque de card aparece
@@ -222,12 +299,12 @@ Buster.
 
 ## 6. Estado da validação
 
-**O que está provado.** 33 testes em
+**O que está provado.** 39 testes em
 [`src/core/damage.test.ts`](../src/core/damage.test.ts) isolam **um termo por
 teste** e verificam a razão entre dois cenários que diferem só nele: vantagem de
 classe dobra, crítico dobra, NP5/NP1 = 600/400, Buster em 1ª posição dá
 `cardTerm` 2.0, NP Buster dá 1.5, super-efetivo do Gilgamesh 150% no OC1 e 200%
-no OC5, `min`/`max` = 0.9/1.1 da média, e as duas negativas de §3.6 (NP não
+no OC5, `min`/`max` = 0.9/1.1 da média, e as duas negativas de §3.9 (NP não
 critica, NP não entra em chain).
 
 Comparar razões em vez de valores absolutos testa a fórmula sem depender de um

@@ -48,7 +48,16 @@ function termsOf(r: DamageResult, k: Constants): Term[] {
   });
 
   t.push({ label: "Class ATK rate", value: mult(b.classAtkBonus) });
-  if (b.triangleModifier !== 1) t.push({ label: "Class advantage", value: mult(b.triangleModifier) });
+  if (b.triangleModifier !== 1 || b.triangleModifierBase !== b.triangleModifier) {
+    t.push({
+      label: "Class advantage",
+      value: mult(b.triangleModifier),
+      note:
+        b.triangleModifierBase !== b.triangleModifier
+          ? `overridden — the class chart gives ${mult(b.triangleModifierBase)}`
+          : undefined,
+    });
+  }
   if (b.attributeModifier !== 1) t.push({ label: "Attribute", value: mult(b.attributeModifier) });
   t.push({ label: "Attack rate", value: mult(k.attackRate), note: "game constant" });
 
@@ -145,7 +154,9 @@ export function DamageReport({ result, constants }: { result: DamageResult; cons
               <li key={i}>
                 <span className="slot">{b.slot}</span>
                 <span className="ftype">{b.buffType}</span>
-                <span className="val">{b.slot === "flatDamage" ? `+${num(b.value)}` : pct(b.value / 100)}</span>
+                <span className="val">
+                  {b.slot === "dmgPlusAdd" || b.slot === "selfDmgCutAdd" ? `+${num(b.value)}` : pct(b.value / 100)}
+                </span>
                 <span className="src">{b.source}</span>
                 {b.chance < 100 && <span className="warn">{b.chance}% chance</span>}
                 {b.boostedFrom !== undefined && (

@@ -199,6 +199,7 @@ interface Effect {
   // BUFF SOBRE BUFF — R21. Traits do PRÓPRIO buff, não do portador.
   buffTraits: Trait[];           // buff.vals: "buffNpDamageUp", "buffPositiveEffect"...
   boostsBuffTraits: Trait[] | null;  // buff.script.UpBuffRateBuffIndiv (§3.4.2)
+  classRelationOverrides: ClassRelationOverride[] | null;  // atkSide da matriz de classe (§3.4.3)
 
   supported: boolean;            // false => entra em `assumptions` como não modelado (R12)
 }
@@ -249,6 +250,24 @@ alternativa seria um caso especial com nome de servo dentro da calculadora.
 `boostsBuffTraits` é `null` quando o efeito não é boost, não `[]` — a diferença
 entre "não é boost" e "é um boost que não alcança nada" muda o que a calculadora
 reporta. Ver [`DAMAGE.md`](DAMAGE.md) §3.5.
+
+#### 3.4.3 Sobrescrita da matriz de classe (R22)
+
+`buff.script.relationId.atkSide` traz linhas "quando um X ataca um Y, o
+multiplicador é Z". A passiva Nega-Saver da Kiara dá `alterEgo -> ruler = 1.5x`,
+vantagem que `NiceClassRelation` não tem.
+
+```ts
+interface ClassRelationOverride {
+  attackerClass: ClassName;
+  targetClass: ClassName;
+  rate: number;                  // já dividido por 1000: 1500 -> 1.5
+  mode: string;                  // "overwriteForce" | "overwriteMoreThanTarget"
+}
+```
+
+`defSide` existe no dado e **não** é carregado: muda o dano recebido, e nada aqui
+calcula dano recebido. 8 buffs em 6 servos, 5 com `atkSide`.
 
 ### 3.5 `CraftEssence`
 

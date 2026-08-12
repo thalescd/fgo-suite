@@ -108,8 +108,35 @@ export interface Effect {
    */
   boostsBuffTraits: Trait[] | null;
 
+  /**
+   * Sobrescreve o multiplicador de classe **do lado do atacante**
+   * (`buff.script.relationId.atkSide`). `null` quando o efeito não faz isso.
+   *
+   * A passiva Nega-Saver da Kiara é o caso típico: `alterEgo -> ruler` vira
+   * 1,5×, uma vantagem que a matriz de classe padrão não tem. Sem isto o dano
+   * dela contra Ruler sai 33% abaixo.
+   *
+   * O lado `defSide` existe no dado e é deliberadamente descartado: ele muda o
+   * dano **recebido**, e nada aqui calcula isso.
+   */
+  classRelationOverrides: ClassRelationOverride[] | null;
+
   /** false => a calculadora reporta em `assumptions.unmodeled` em vez de ignorar (R12). */
   supported: boolean;
+}
+
+/** Uma linha de `atkSide`: "quando um X ataca um Y, o multiplicador é Z". */
+export interface ClassRelationOverride {
+  attackerClass: ClassName;
+  targetClass: ClassName;
+  /** Multiplicador já dividido por 1000: 1500 vira 1.5. */
+  rate: number;
+  /**
+   * `overwriteForce` substitui sempre — é o único modo que aparece no lado do
+   * atacante hoje. `overwriteMoreThanTarget` só substitui se for maior, e a
+   * leitura desse modo **não** foi conferida contra o jogo.
+   */
+  mode: string;
 }
 
 /**

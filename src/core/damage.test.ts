@@ -388,3 +388,99 @@ describe("boost de buff — Oberon (R21)", () => {
     expect(withBuffRate.map((e) => e.name)).toEqual(["Oberon"]);
   });
 });
+
+/**
+ * Passiva de classe e de que lado o buff cai (R22).
+ *
+ * Duas correções que vieram do mesmo relato — a passiva da Kiara não pegava:
+ *
+ *  1. passivas de classe nunca entravam no cálculo, e **407 dos 462 servos** têm
+ *     alguma que afeta dano;
+ *  2. o slot era escolhido sem olhar em quem o efeito cai, então um Def Up no
+ *     próprio atacante entrava como defesa do alvo e reduzia o dano dele.
+ */
+describe("passiva de classe e lado do efeito (R22)", () => {
+  const KIARA = loadServant(167); // alterEgo (a moonCancer é a 285); Nega-Saver: 1,5x vs Ruler
+  const HERC = loadServant(47); // berserker; Mad Enhancement e Divinity são passivas
+  const TAMAMO = loadServant(128); // a lancer; skill 2 dá def down no inimigo
+
+  const dataWith = (...extra: Servant[]): DamageData => ({
+    ...data,
+    servants: new Map([...data.servants, ...extra.map((s) => [s.id, s] as const)]),
+  });
+
+  const attack = (s: Servant, over: Partial<DamageInput> = {}) =>
+    calculateDamage(
+      input({
+        attacker: { servantId: s.id, level: s.lvMax, fou: 1000, npLevel: 1, overcharge: 1 },
+        buffStack: [],
+        ...over,
+      }),
+      dataWith(s, TAMAMO),
+    );
+
+  it("passiva de classe entra sem ser declarada", () => {
+    // Mad Enhancement B = +8% Buster; Divinity A = +20 de dano plano.
+    const r = attack(HERC);
+    const passives = r.assumptions.appliedBuffs.filter((b) => /passive/.test(b.source));
+    expect(passives.map((b) => b.buffType).sort()).toEqual(["addDamage", "upCommandall"]);
+    expect(r.breakdown.cardMod).toBeCloseTo(0.08, 5);
+    expect(r.breakdown.flatDamage).toBe(20);
+  });
+
+  it("passiva de classe respeita restrição de card como qualquer buff", () => {
+    // Riding da Artoria é Quick up: vale num card Quick, não no NP Buster.
+    const np = calculateDamage(input({ buffStack: [] }), data);
+    const quick = calculateDamage(
+      input({
+        buffStack: [],
+        action: { kind: "card", card: "quick", position: 1, isCrit: false, busterChain: false, braveChain: false },
+      }),
+      data,
+    );
+    expect(np.breakdown.cardMod).toBe(0);
+    expect(quick.breakdown.cardMod).toBeGreaterThan(0);
+  });
+
+  it("Nega-Saver dá 1,5x contra Ruler, onde a matriz dava 1x", () => {
+    const vsRuler = attack(KIARA, { enemy: enemy({ className: "ruler" }) });
+    expect(vsRuler.breakdown.triangleModifierBase).toBe(1);
+    expect(vsRuler.breakdown.triangleModifier).toBe(1.5);
+    expect(vsRuler.assumptions.resolved.some((r) => /class advantage x1.5/.test(r))).toBe(true);
+  });
+
+  it("contra classe sem regra, a matriz vale e a recusa é registrada", () => {
+    const vsSaber = attack(KIARA, { enemy: enemy({ className: "saber" }) });
+    expect(vsSaber.breakdown.triangleModifier).toBe(vsSaber.breakdown.triangleModifierBase);
+    expect(
+      vsSaber.assumptions.skippedBuffs.some((s) => /no class relation rule for alterEgo vs saber/.test(s.reason)),
+    ).toBe(true);
+  });
+
+  it("Def Up no próprio atacante não reduz o dano que ele causa", () => {
+    // Logos Eater da Kiara: upDefence 16% em si mesma, condicionado a alvo
+    // `humanoid`. Lido sem o lado, virava defesa do inimigo e cortava 16%.
+    const humanoid = enemy({ className: "ruler", traits: [{ id: 1000, name: "humanoid" }] });
+    const semTrait = attack(KIARA, { enemy: enemy({ className: "ruler" }) });
+    const comTrait = attack(KIARA, { enemy: humanoid });
+
+    expect(comTrait.breakdown.defMod).toBe(0);
+    expect(comTrait.avg).toBe(semTrait.avg);
+    expect(
+      comTrait.assumptions.skippedBuffs.some(
+        (s) => s.buffType === "upDefence" && /lands on the attacker/.test(s.reason),
+      ),
+    ).toBe(true);
+  });
+
+  it("def down de um suporte alcança o inimigo — não precisa alcançar o atacante", () => {
+    // O alcance só vale para buff de aliado. Debuff no inimigo qualquer um
+    // aplica, e def down de suporte é das maiores fontes de dano do jogo.
+    const sozinha = attack(ARTORIA);
+    const comTamamo = attack(ARTORIA, {
+      buffStack: [{ kind: "support", servantId: TAMAMO.id, skills: [2], skillLevel: 10, targetsAttacker: false }],
+    });
+    expect(comTamamo.breakdown.defMod).toBeCloseTo(-0.3, 5);
+    expect(comTamamo.avg / sozinha.avg).toBeCloseTo(1.3, 3);
+  });
+});

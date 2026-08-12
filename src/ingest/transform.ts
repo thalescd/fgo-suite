@@ -9,6 +9,7 @@
 import type {
   Attribute,
   CardType,
+  ClassRelationOverride,
   Constants,
   CraftEssence,
   Effect,
@@ -136,6 +137,34 @@ function toSuperEffective(f: AtlasFunction): SuperEffective | null {
   return { traits: ids.map(traitById), values, valuesByOvercharge };
 }
 
+/**
+ * `atkSide` da matriz sobrescrita, achatado.
+ *
+ * O Atlas guarda `{ [classe do atacante]: { [classe do alvo]: {...} } }`; um
+ * array de linhas é mais fácil de consultar e de imprimir. Só o lado do
+ * atacante: `defSide` muda o dano recebido, que nada aqui calcula.
+ *
+ * `damageRate` vem por mil, como o resto da matriz de classe (§2 do SCHEMA).
+ */
+function toClassRelationOverrides(
+  atkSide: Record<string, Record<string, { damageRate?: number; type?: string }>> | undefined,
+): ClassRelationOverride[] | null {
+  if (!atkSide) return null;
+  const out: ClassRelationOverride[] = [];
+  for (const [attackerClass, targets] of Object.entries(atkSide)) {
+    for (const [targetClass, v] of Object.entries(targets)) {
+      out.push({
+        attackerClass,
+        targetClass,
+        rate: (v.damageRate ?? 1000) / 1000,
+        mode: v.type ?? "overwriteForce",
+      });
+    }
+  }
+  // `null` quando só havia `defSide`: nada a aplicar é diferente de não existir.
+  return out.length > 0 ? out : null;
+}
+
 function toEffect(f: AtlasFunction): Effect {
   const buff = f.buffs?.[0];
   const buffType = buff?.type ?? null;
@@ -179,6 +208,7 @@ function toEffect(f: AtlasFunction): Effect {
     buffTraits: toTraits(buff?.vals),
     // `null`, não `[]`: o efeito ou é um boost ou não é, e a diferença importa.
     boostsBuffTraits: buff?.script?.UpBuffRateBuffIndiv ? toTraits(buff.script.UpBuffRateBuffIndiv) : null,
+    classRelationOverrides: toClassRelationOverrides(buff?.script?.relationId?.atkSide),
     supported: isSupportedBuff(buffType),
   };
 }

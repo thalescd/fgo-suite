@@ -20,6 +20,13 @@ export interface AtlasBuff {
   script?: {
     /** Só em `buffRate`: quais traits de buff este efeito multiplica. */
     UpBuffRateBuffIndiv?: AtlasTrait[];
+    /** Só em `overwriteClassRelation`: matriz de classe sobrescrita. */
+    relationId?: {
+      /** `[classe do atacante][classe do alvo]` — muda o dano causado. */
+      atkSide?: Record<string, Record<string, { damageRate?: number; type?: string }>>;
+      /** Muda o dano recebido; não é lido, nada aqui calcula dano recebido. */
+      defSide?: Record<string, Record<string, { damageRate?: number; type?: string }>>;
+    };
   };
 }
 

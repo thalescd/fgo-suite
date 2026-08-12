@@ -28,8 +28,46 @@ export type DamageSlot =
   | "critDamageMod" // idem, só em crítico
   | "npDamageMod" // idem, só em NP
   | "specialDefMod" // (1 - specialDefMod)
-  | "flatDamage" // + dmgPlusAdd
+  | "dmgPlusAdd" // + dmgPlusAdd — dano plano do atacante (Divinity)
+  | "selfDmgCutAdd" // + selfDmgCutAdd — corte de dano DO ALVO
   | "pierceDefence"; // ignora def up (mas não specialDefMod)
+
+/**
+ * De que lado o efeito precisa cair para alimentar o slot.
+ *
+ * Não é detalhe: a fórmula é escrita da perspectiva "dano deste card", então
+ * `defMod` e `selfDmgCutAdd` descrevem o **defensor** e todo o resto descreve o
+ * atacante. Sem esta distinção, o Def Up que a Kiara lança em si mesma entrava
+ * como defesa do inimigo e **reduzia o dano dela** — e o Def Down que ela lança
+ * no inimigo continuaria funcionando, o que faz o erro parecer coerente.
+ *
+ * Medido: 111 `upDefence` em aliados, 42 `downAtk` em inimigos, 8 `downNpdamage`
+ * em inimigos e 48 `subSelfdamage` em aliados estavam do lado errado.
+ */
+export type SlotSide = "attacker" | "enemy";
+
+export const SLOT_SIDE: Record<DamageSlot, SlotSide> = {
+  atkMod: "attacker",
+  defMod: "enemy",
+  cardMod: "attacker",
+  powerMod: "attacker",
+  critDamageMod: "attacker",
+  npDamageMod: "attacker",
+  specialDefMod: "enemy",
+  dmgPlusAdd: "attacker",
+  selfDmgCutAdd: "enemy",
+  pierceDefence: "attacker",
+};
+
+/**
+ * Lado em que um `funcTargetType` do Atlas cai.
+ *
+ * Só os alvos `enemy*` são do inimigo; `self`, `pt*` e `noTarget` são do lado de
+ * quem lançou. Prefixo em vez de lista fechada porque o Atlas acrescenta
+ * variantes (`enemyOther`, `enemyFull`) sem aviso.
+ */
+export const sideOfTarget = (target: string): SlotSide =>
+  target.startsWith("enemy") ? "enemy" : "attacker";
 
 export interface BuffSpec {
   /** Termo da fórmula, ou `null` quando o buff não afeta dano. */
@@ -74,8 +112,10 @@ const DAMAGE: Record<string, BuffSpec> = {
   upNpdamage: { slot: "npDamageMod", tag: "np_damage_up" },
   downNpdamage: { slot: "npDamageMod", tag: "np_damage_down" },
 
-  addDamage: { slot: "flatDamage", tag: "flat_damage" },
-  subSelfdamage: { slot: "flatDamage", tag: "damage_cut" },
+  addDamage: { slot: "dmgPlusAdd", tag: "flat_damage" },
+  // Corte de dano recebido. Só entra no cálculo se estiver **no alvo** — no
+  // atacante ele protege, não reduz o dano que ele causa.
+  subSelfdamage: { slot: "selfDmgCutAdd", tag: "damage_cut" },
 
   pierceDefence: { slot: "pierceDefence", tag: "pierce_defence" },
   pierceInvincible: { slot: null, tag: "pierce_invincible" },
@@ -86,6 +126,13 @@ const DAMAGE: Record<string, BuffSpec> = {
    * `Effect.boostsBuffTraits`, e a aplicação fica em `damage.ts`.
    */
   buffRate: { slot: null, tag: "buff_boost" },
+
+  /**
+   * Sobrescreve a matriz de classe. Também não tem slot: mexe no
+   * `triangleModifier`, que é multiplicador de contexto e não soma de buffs.
+   * O conteúdo está em `Effect.classRelationOverrides`.
+   */
+  overwriteClassRelation: { slot: null, tag: "class_advantage_override" },
 };
 
 /**

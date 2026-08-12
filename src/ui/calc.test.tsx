@@ -155,8 +155,10 @@ describe("o cenário chega inteiro no cálculo", () => {
     const r = run(artoria, `s=${artoria.id}&sk=2`);
     expect(artoria.np!.card).toBe("buster");
     expect(r.breakdown.cardMod).toBeGreaterThan(0);
-    // O buff não pode aparecer entre os recusados: era isso que acontecia.
-    expect(r.assumptions.skippedBuffs.filter((b) => /cardBuster/.test(b.reason))).toEqual([]);
+    // O buff da skill 2 não pode aparecer entre os recusados: era isso que
+    // acontecia. Filtrar por `source`, não pela mensagem — a passiva Riding da
+    // Artoria é Quick e é recusada aqui com toda a razão.
+    expect(r.assumptions.skippedBuffs.filter((b) => /skill 2/.test(b.source))).toEqual([]);
     // Mesma skill num card Arts tem de ser recusada — senão o teste acima
     // passaria igual com a restrição de card deixando de ser lida.
     const arts = run(artoria, `s=${artoria.id}&act=arts&sk=2`);
