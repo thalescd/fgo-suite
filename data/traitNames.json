@@ -1,0 +1,28 @@
+{
+  "_comment": [
+    "Nomes curados de traits que o dump do Atlas NÃO nomeia.",
+    "",
+    "Alguns traits existem só como referência: aparecem no `TargetList` do NP que os",
+    "conta e em lugar nenhum mais — nem servants, nem equips, nem mystic_codes trazem",
+    "um par {id, name} para eles. `collectTraitNames` varre o dump inteiro e mesmo",
+    "assim devolve `unknown`, porque o nome vive em dado de evento/quest que não",
+    "ingerimos. Sem esta tabela a interface diz 'unknown(2828) stacks' justamente nos",
+    "servos mais exóticos, que são os que mais precisam de explicação.",
+    "",
+    "Mesma ideia de `aliases.json`: curadoria à mão, pequena, verificada.",
+    "",
+    "Formato: id do trait -> nome. Entrada com nome vazio é IGNORADA (segue `unknown`),",
+    "então dá para deixar pendente sem inventar tradução.",
+    "",
+    "Procedência de cada um está em `docs/CAPABILITIES.md` §5. Ao preencher, prefira",
+    "o nome oficial de NA quando o servo já tiver saído lá; senão, o termo que a",
+    "comunidade usa. Nunca traduzir do japonês por conta própria: o nome precisa ser",
+    "o que a pessoa vai reconhecer, não o mais literal."
+  ],
+
+  "2828": "",
+  "2827": "",
+  "2759": "",
+  "2880": "",
+  "10039": ""
+}

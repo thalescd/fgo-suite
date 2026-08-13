@@ -94,6 +94,55 @@ async function loadAliases(servants: Servant[]): Promise<string[]> {
 }
 
 /**
+ * Nomes curados para traits que o dump não nomeia (R27).
+ *
+ * Aplicado **depois** de `collectTraitNames`, e só por cima de `unknown`: se o
+ * Atlas passar a nomear o trait, o nome dele vence e a entrada curada vira
+ * ruído — que é avisado, para a tabela não envelhecer calada.
+ *
+ * Nome vazio é pendência declarada, não erro: fica `unknown` sem reclamar.
+ */
+async function loadTraitNames(dict: Map<number, string>): Promise<string[]> {
+  const warnings: string[] = [];
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(await readFile(join("data", "traitNames.json"), "utf8")) as Record<string, unknown>;
+  } catch {
+    return ["data/traitNames.json não encontrado — traits sem nome ficam `unknown`"];
+  }
+
+  let named = 0;
+  let pending = 0;
+  for (const [key, value] of Object.entries(raw)) {
+    if (key.startsWith("_")) continue;
+    const id = Number(key);
+    if (!Number.isFinite(id)) {
+      warnings.push(`traitNames.json: chave "${key}" não é um id — ignorada`);
+      continue;
+    }
+    if (typeof value !== "string") {
+      warnings.push(`traitNames.json: valor de ${key} não é string — ignorado`);
+      continue;
+    }
+    if (value === "") {
+      pending++;
+      continue;
+    }
+    const atual = dict.get(id);
+    if (atual !== undefined && atual !== "unknown") {
+      warnings.push(`traitNames.json: ${id} já se chama "${atual}" no dump — entrada curada desnecessária`);
+      continue;
+    }
+    dict.set(id, value);
+    named++;
+  }
+  if (named > 0 || pending > 0) {
+    warnings.push(`traitNames.json: ${named} trait(s) nomeado(s) à mão, ${pending} pendente(s)`);
+  }
+  return warnings;
+}
+
+/**
  * Traits de identidade que algum efeito realmente checa, ordenados por frequência.
  * Gerado a partir dos dados (D16) para que servo novo traga o trait dele sem
  * edição manual. Exclui os namespaces que não são identidade do inimigo:
@@ -175,7 +224,10 @@ export async function build(): Promise<BuildStats> {
   ]);
 
   // O super-efetivo referencia traits só por id; o dicionário resolve os nomes.
-  setTraitNames(collectTraitNames(rawServants));
+  // A curadoria entra por cima, para os traits que o dump não nomeia (R27).
+  const traitDict = collectTraitNames(rawServants);
+  const traitWarnings = await loadTraitNames(traitDict);
+  setTraitNames(traitDict);
 
   // ---- servos
   const servants: Servant[] = rawServants
@@ -198,6 +250,7 @@ export async function build(): Promise<BuildStats> {
   }
 
   const { collisions } = disambiguate(servants);
+  warnings.push(...traitWarnings);
   warnings.push(...(await loadAliases(servants)));
 
   const noNp = servants.filter((s) => s.np === null);

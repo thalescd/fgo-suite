@@ -127,3 +127,38 @@ está filtrado.
 
 Nada precisa ser editado na UI: a faceta e os rótulos são gerados a partir das
 tags que existirem.
+
+---
+
+## 7. Traits que o dump não nomeia
+
+Cinco traits existem **só como referência**: aparecem no `TargetList` do NP que
+os conta e em lugar nenhum mais. Varrer `servants`, `equips` e `mystic_codes`
+inteiros por cada id devolve apenas esse uso — nenhum par `{id, name}`, e nenhum
+efeito que os conceda. Quem os aplica vive em dado de evento ou quest, que não
+ingerimos.
+
+O resultado é a interface dizer `unknown(2828) stacks` justamente nos servos mais
+exóticos, que são os que mais precisam de explicação. Daí
+[`data/traitNames.json`](../data/traitNames.json): curadoria à mão, mesma ideia
+de `aliases.json`.
+
+| id | Servo | Lado | Máx | +%/un | Termo em 〔〕 |
+|---|---|---|---:|---:|---|
+| 2828 | Charlemagne (343, saber 5★) | nele mesmo | 12 | 10 | 王勇 |
+| 2827 | Super Bunyan (339, alterEgo 5★) | nele mesmo | 10 | 5 | いいね！ |
+| 2759 | Taira-no-Kagekiyo (303, avenger 5★) | nele mesmo | 4 | 25 | 復讐の怨念 |
+| 2880 | Wandjina (393, foreigner 5★) | nele mesmo | 10 | 10 | 精霊の怒り |
+| 10039 | Urðr (470, archer 5★) | no alvo | 10 | 10 | 過去改竄 |
+
+⚠️ O NP da **Wandjina** cita dois termos: 〔人類の脅威〕 é o super-efetivo que ela
+concede a si, e 〔精霊の怒り〕 é o que a contagem lê. Só o segundo é o 2880.
+
+A **Urðr** é a única que concede o próprio trait, pelo mesmo NP que o conta.
+
+**Ao preencher:** nome oficial de NA quando o servo já tiver saído lá; senão, o
+termo que a comunidade usa. Nunca traduzir do japonês por conta própria — o nome
+serve para a pessoa reconhecer, não para ser literal.
+
+O build avisa quantos estão nomeados e quantos pendentes, e reclama se o Atlas
+passar a nomear um deles — assim a tabela não envelhece calada.
