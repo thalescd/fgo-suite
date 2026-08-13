@@ -59,7 +59,7 @@ as tags de busca (ver [`CAPABILITIES.md`](CAPABILITIES.md) §1).
 | `npDamageMod` | atacante | `upNpdamage` |
 | `specialDefMod` | **alvo** | resistência especial do alvo |
 | `dmgPlusAdd` | atacante | `addDamage` |
-| `selfDmgCutAdd` | **alvo** | `subSelfdamage` |
+| `selfDmgCutAdd` | **alvo** | `subSelfdamage`, `addSelfdamage` |
 | `pierceDefence` | atacante | `pierceDefence`, `funcType: damageNpPierce` |
 | *nenhum — age sobre o slot alheio* | — | `buffRate` (§3.5) |
 | *nenhum — age no `triangleModifier`* | — | `overwriteClassRelation` (§3.6) |
@@ -69,6 +69,13 @@ duplicar linhas.
 
 A coluna **"cai em"** decide se o buff conta. Ver §3.7 — ignorá-la fazia o Def Up
 do próprio atacante reduzir o dano dele.
+
+Os **dois últimos slots são somados fora do produto** e não são percentuais.
+`damage_formula.txt` avisa em letras: *"Note the lack of %"*. Divinity B vale
+**+175 de dano**, não +17,5%, e o `/10` que vale para todo buff os deixava dez
+vezes menores (R26). Consequência prática para quem escrever teste: uma razão
+entre dois danos **não** isola um termo multiplicativo enquanto `flatDamage` não
+for subtraído dos dois lados.
 
 ---
 
@@ -481,6 +488,7 @@ que os casos:
 | Uma lista mistura escolha com histórico | `npAlternatives` com variante e rank up (R24) |
 | O que sempre está ligado não é declarado | passiva de classe fora do `buffStack` (R22) |
 | Um campo não lido faz o valor parecer completo | `RatioHPLow` faltando deixa `upAtk 0` (R25) |
+| Uma regra geral engole a exceção sem avisar | `hasBuff → /10` sobre valores planos (R26) |
 | A fórmula é de 2018 e o jogo andou | `buffRate` do Oberon (R21) |
 
 **R25 saiu desta própria lista.** "`svals` não lidos" estava anotado aqui como

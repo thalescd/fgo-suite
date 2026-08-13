@@ -99,8 +99,41 @@ const BUFF_FUNCS = new Set(["addState", "addStateShort", "addFieldChangeToField"
  */
 const ID_CARRYING_BUFFS = /Function$|Function(MainOnly)?$|^addIndividuality$|^fieldIndividuality$/;
 
+/**
+ * Segunda exceção: buffs cujo valor é um **número plano**, não um percentual.
+ *
+ * `damage_formula.txt` é explícito nos dois que entram na fórmula:
+ *
+ *     dmgPlusAdd    = {X Damage Plus/Minus}  // Note the lack of %. Divinity...
+ *     selfDmgCutAdd = {X Damage Up/Cut}      // Also a straight number.
+ *
+ * Divinity B é **+175 de dano**, não +17,5%. Como o `/10` cai sobre qualquer
+ * buff, os dois slots aditivos da fórmula saíam dez vezes menores — e 17,5 é
+ * plausível o bastante para ninguém desconfiar.
+ *
+ * Conferências (valor bruto = valor do jogo):
+ *   addDamage      Divinity D/B/A = 125 / 175 / 200
+ *   subSelfdamage  Fifth Force A+ da Musashi = 1000 de corte
+ *   regainStar     valores ímpares (3, 9, 15) — /10 daria fração de estrela,
+ *                  e estrela fracionária não existe no jogo
+ *   addMaxhp       2000 a 10000 de HP máximo
+ *
+ * Só entram tipos observados no dump: `subDamage` é plausível pelo nome e
+ * **não existe** no dado, então fica de fora até aparecer.
+ */
+const FLAT_BUFFS = new Set([
+  "addDamage",
+  "addSelfdamage",
+  "subSelfdamage",
+  "regainHp",
+  "regainStar",
+  "addMaxhp",
+  "subMaxhp",
+]);
+
 export function valueRuleFor(funcType: string, hasBuff: boolean, buffType?: string | null): ValueRule {
   if (buffType && ID_CARRYING_BUFFS.test(buffType)) return UNKNOWN;
+  if (buffType && FLAT_BUFFS.has(buffType)) return FLAT;
   if (hasBuff || BUFF_FUNCS.has(funcType)) return PERCENT_10;
   return FUNC_VALUE_RULE[funcType] ?? UNKNOWN;
 }
@@ -139,6 +172,13 @@ export const DAMAGE_BUFF_TYPES = new Set([
   "pierceDefence",
   "upGrantstate",
   "selfturnendHpReduce",
+  // Os dois slots aditivos da fórmula. Estavam de fora: `addDamage` em lista
+  // nenhuma e `subSelfdamage` entre os utilitários, então a Divinity aparecia
+  // marcada "NOT MODELLED" na tela e no `get_servant` enquanto o cálculo a
+  // somava. Um efeito não pode ser modelado e não modelado ao mesmo tempo.
+  "addDamage",
+  "addSelfdamage",
+  "subSelfdamage",
 ]);
 
 /**
@@ -156,7 +196,6 @@ export const KNOWN_UTILITY_BUFF_TYPES = new Set([
   "guts", "gutsRatio",
   "upTolerance", "downTolerance",
   "upToleranceSubstate", "downToleranceSubstate",
-  "subSelfdamage", "addSelfdamage",
   "donotAct", "donotSkill", "donotNoble", "donotNobleCondMismatch",
   "delayFunction", "addIndividuality", "subIndividuality",
   "fieldIndividuality",

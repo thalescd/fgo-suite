@@ -92,11 +92,11 @@ mais.
 
 | | |
 |---|---:|
-| Tags distintas | 169 |
+| Tags distintas | 170 |
 | Servos sem nenhuma tag | 0 |
 | Tags úteis (5–40% do roster) | 78 |
 | Tags amplas (>40%) | 10 |
-| Tags raras (<5%) | 81 |
+| Tags raras (<5%) | 82 |
 
 As amplas não atrapalham: convivem com as estreitas e a UI mostra a contagem, de
 modo que dá para ver quais discriminam. As raras são efeitos de nicho, que é
@@ -112,7 +112,7 @@ devolve quem faz as três coisas — 13 servos, entre eles Merlin e Quetzalcoatl
 Na URL: `?cap=buster_up_party,np_charge_50_party`.
 
 A faceta mostra as 45 tags mais frequentes **dentro do resultado atual**, mais as
-já marcadas. Listar as 169 seria inútil, e uma lista fixa não se adaptaria ao que
+já marcadas. Listar as 170 seria inútil, e uma lista fixa não se adaptaria ao que
 está filtrado.
 
 ---

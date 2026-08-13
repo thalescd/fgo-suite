@@ -99,6 +99,21 @@ async function main(): Promise<void> {
   check("Kaleidoscope base = 80% de NP", kaleid.effectsBase[0]?.values[0], 80);
   check("Kaleidoscope MLB = 100% de NP", kaleid.effectsMlb[0]?.values[0], 100);
 
+  // Os dois slots aditivos da fórmula não são percentuais: `damage_formula.txt`
+  // diz "Note the lack of %". O `/10` que vale para todo buff os deixava dez
+  // vezes menores, e 17,5 de Divinity é plausível demais para levantar suspeita.
+  console.log("\nValores planos — buffs sem %");
+  const gilDiv = (await read<Servant>(`servant/${byCn(12).id}.json`)).classPassive
+    .flatMap((s) => s.effects)
+    .find((e) => e.buffType === "addDamage");
+  check("Divinity B do Gilgamesh = 175 de dano plano", gilDiv?.values[0], 175);
+  check("e a unidade diz que é plano, não percentual", gilDiv?.valueUnit, "flat");
+  check("Divinity é modelada, não 'NOT MODELLED'", gilDiv?.supported, true);
+  const musashiCut = (await read<Servant>(`servant/${byCn(153).id}.json`)).skills
+    .flatMap((s) => s.effects)
+    .find((e) => e.buffType === "subSelfdamage");
+  check("Fifth Force da Musashi = 1000 de corte de dano", musashiCut?.values[9], 1000);
+
   console.log("\nOvercharge — svals2..svals5");
   const nero = await servant(byCn(5).id);
   const defDown = nero.np?.effects.find((e) => e.buffType === "downDefence");

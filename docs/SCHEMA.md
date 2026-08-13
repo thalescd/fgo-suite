@@ -44,7 +44,7 @@ Servido em `public/data/meta.json` e exibido no rodapé do site.
 
 ## 2. Glossário de unidades
 
-**A parte mais fácil de errar do projeto.** O Atlas usa três divisores diferentes conforme o campo, sem nenhuma marcação.
+**A parte mais fácil de errar do projeto.** O Atlas usa três divisores diferentes conforme o campo, sem nenhuma marcação — e o divisor certo depende às vezes do `funcType`, às vezes do `buffType`.
 
 | Família | Divisor | Campos | Exemplo |
 |---|---:|---|---|
@@ -52,6 +52,7 @@ Servido em `public/data/meta.json` e exibido no rodapé do site.
 | **Multiplicadores constantes** | `/1000` | `NiceClassAttackRate`, `NiceClassRelation`, `NiceAttributeRelation`, `NiceCard.adjustAtk/addAtk`, `NiceConstant.*_RATE` | `ATTACK_RATE: 230` → `0.23` · `adjustAtk: 1500` → `1.5×` · `saber→lancer: 2000` → `2.0×` |
 | **Ganho de NP** | `/100` | `npGain.*` | `86` → `0.86%` por hit — ⚠️ **validar na fase 3**, não usado na fórmula de dano |
 | **Referência a id** | nenhum (`unknown`) | buffs da família `*Function`, `addIndividuality`, `fieldIndividuality` | `970928` é o **id de outra função**, não `97092.8%`. Vão crus e marcados `unknown` |
+| **Números planos** | nenhum (`flat`) | buffs `addDamage`, `addSelfdamage`, `subSelfdamage`, `regainHp`, `regainStar`, `addMaxhp`, `subMaxhp` | Divinity B = **175 de dano**, não `17,5%`. Ver R26 |
 
 Outros campos com semântica não óbvia:
 
@@ -63,6 +64,11 @@ Outros campos com semântica não óbvia:
 | `condLimitCount` | limit break exigido; `0` = CE base, `4` = MLB |
 | `priority` | versão do efeito; maior vence (R8) |
 | `condQuestId` | quest que desbloqueia a versão; `0` = disponível desde sempre |
+
+> ⚠️ **O `/10` dos percentuais valia para *qualquer* buff.** É o caminho `hasBuff → PERCENT_10`, e ele
+> atropela os dois slots aditivos da fórmula, que `damage_formula.txt` marca como "note the lack of %".
+> A prova de que são planos está no próprio dado: `regainStar` tem valores ímpares (3, 9, 15), e um décimo
+> de estrela não existe no jogo.
 
 **Após a ingestão, todos os valores já estão convertidos.** A exceção é deliberada: quando a unidade é desconhecida, o valor fica cru e `valueUnit` vira `unknown`, para a ignorância ficar visível em vez de virar um percentual falso.
 

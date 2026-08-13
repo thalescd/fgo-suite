@@ -54,7 +54,7 @@ Pelo mesmo motivo, tudo ali é em inglês, como `assumptions` (DAMAGE.md §5).
 | `search_servants` | os mesmos filtros de `?class=&rarity=&np=&cap=` |
 | `get_servant` | detalhe curado de um servo |
 | `calculate_damage` | os mesmos parâmetros de `/calc?…`, com a auditoria |
-| `list_capabilities` | as 169 tags, para não chutar nome de filtro |
+| `list_capabilities` | as 170 tags, para não chutar nome de filtro |
 
 ### O que cada uma faz de propósito
 

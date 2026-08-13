@@ -116,6 +116,11 @@ const DAMAGE: Record<string, BuffSpec> = {
   // Corte de dano recebido. Só entra no cálculo se estiver **no alvo** — no
   // atacante ele protege, não reduz o dano que ele causa.
   subSelfdamage: { slot: "selfDmgCutAdd", tag: "damage_cut" },
+  // A outra metade do mesmo termo: `damage_formula.txt` escreve
+  // `selfDmgCutAdd = {X Damage Up/Cut}`. O "Cut" tira e o "Up" põe, e `signOf`
+  // já resolve o sinal pelo prefixo. Estava sem slot, então caía em
+  // `unmodeled` — os dois lados do mesmo campo lidos de formas diferentes.
+  addSelfdamage: { slot: "selfDmgCutAdd", tag: "damage_taken_up" },
 
   pierceDefence: { slot: "pierceDefence", tag: "pierce_defence" },
   pierceInvincible: { slot: null, tag: "pierce_invincible" },

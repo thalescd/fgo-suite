@@ -49,7 +49,7 @@ no modelo canônico (10,4 MB).
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
-| `npm run data:validate` | Confere a saída contra 72 valores conhecidos do jogo. |
+| `npm run data:validate` | Confere a saída contra 76 valores conhecidos do jogo. |
 | `npm run data:all` | Os três de dados em sequência. |
 | `npm run mcp` | Sobe o servidor MCP solto, para depurar sem cliente. |
 | `npm run damage:cases` | Casos de conferência da calculadora e o nosso número em cada um (R4). |
@@ -74,7 +74,7 @@ Busca textual cobre nome, apelido curado e `collectionNo`, ignorando acentos —
 As contagens de cada faceta são calculadas **ignorando a própria dimensão**: com
 "saber" marcado, você continua vendo quantos archers existem para trocar o filtro.
 
-E há busca por **o que o servo faz** — 169 tags derivadas dos efeitos, com
+E há busca por **o que o servo faz** — 170 tags derivadas dos efeitos, com
 filtro AND:
 
 ```
@@ -132,7 +132,7 @@ o assistente **executar** a busca e a calculadora em vez de responder de memóri
 | `search_servants` | os mesmos filtros de `?class=&rarity=&np=&cap=` |
 | `get_servant` | detalhe curado: NPs, skills, passivas, traits |
 | `calculate_damage` | os mesmos parâmetros de `/calc?…`, com a auditoria junto |
-| `list_capabilities` | as 169 tags, para não chutar nome de filtro |
+| `list_capabilities` | as 170 tags, para não chutar nome de filtro |
 
 [`.mcp.json`](.mcp.json) está versionado: quem clonar e abrir no Claude Code já
 tem o servidor registrado. Só precisa de `npm install` e `npm run data:build`.

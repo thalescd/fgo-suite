@@ -164,7 +164,7 @@ describe("calculate_damage", () => {
 describe("list_capabilities", () => {
   it("devolve as tags com contagem e o formato explicado", () => {
     const r = listCapabilities(store);
-    expect(r.total).toBe(169);
+    expect(r.total).toBe(170);
     expect(r.format).toMatch(/cumulative/);
     expect(r.capabilities[0]!.servants).toBeGreaterThanOrEqual(r.capabilities[r.capabilities.length - 1]!.servants);
   });

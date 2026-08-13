@@ -205,8 +205,14 @@ describe("super-efetivo", () => {
   });
 
   it("o multiplicador entra no dano final", () => {
-    const sem = calculateDamage(gilInput(), data).avg;
-    const com = calculateDamage(gilInput({}, { traits: [{ id: 2008, name: "weakToEnumaElish" }] }), data).avg;
+    // A Divinity do Gilgamesh soma 175 planos FORA do produto, então a razão
+    // dos danos finais não é 1,5 exata — sobra o mesmo termo nos dois lados.
+    // Tirar `flatDamage` é o que isola o multiplicador, que é o que este teste
+    // diz medir. Enquanto a Divinity valia 17,5 por engano, o desvio cabia na
+    // tolerância e a distinção não aparecia.
+    const produto = (r: ReturnType<typeof calculateDamage>) => r.avg - r.breakdown.flatDamage;
+    const sem = produto(calculateDamage(gilInput(), data));
+    const com = produto(calculateDamage(gilInput({}, { traits: [{ id: 2008, name: "weakToEnumaElish" }] }), data));
     expect(ratio(com, sem)).toBeCloseTo(1.5, 2);
   });
 });
@@ -428,12 +434,14 @@ describe("passiva de classe e lado do efeito (R22)", () => {
     );
 
   it("passiva de classe entra sem ser declarada", () => {
-    // Mad Enhancement B = +8% Buster; Divinity A = +20 de dano plano.
+    // Mad Enhancement B = +8% Buster; Divinity A = +200 de dano plano.
+    // O 200 é o valor do jogo: `addDamage` é número puro, não percentual, e
+    // por isso escapa do `/10` que vale para os outros buffs.
     const r = attack(HERC);
     const passives = r.assumptions.appliedBuffs.filter((b) => /passive/.test(b.source));
     expect(passives.map((b) => b.buffType).sort()).toEqual(["addDamage", "upCommandall"]);
     expect(r.breakdown.cardMod).toBeCloseTo(0.08, 5);
-    expect(r.breakdown.flatDamage).toBe(20);
+    expect(r.breakdown.flatDamage).toBe(200);
   });
 
   it("passiva de classe respeita restrição de card como qualquer buff", () => {
