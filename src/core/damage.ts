@@ -773,10 +773,22 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
 
   // ---- super-efetivo
   const dmgEffect = isNP && np && np.damageEffectIndex !== null ? np.effects[np.damageEffectIndex] : undefined;
-  const se = dmgEffect?.superEffective;
-  const seApplies = se !== undefined && se !== null && se.traits.some((t) => enemyTraits.has(t.name));
+  const se = dmgEffect?.superEffective ?? null;
+  /**
+   * R27: em 17 NPs o bônus não vem de "o alvo tem o trait", e sim de **quantas
+   * unidades** do trait existem — 〔王勇〕 no Charlemagne, queimadura no alvo do
+   * Jacques de Molay. A contagem é estado e ainda não é entrada do cenário.
+   *
+   * Assumir **zero** é seguro e não inventa nada: nos 17 a base é 100%, isto é,
+   * neutra. Mas some da conta um bônus que pode chegar a 220%, então a premissa
+   * é declarada em `assumptions`, nunca silenciada.
+   */
+  const seStacks = 0;
+  const seCounts = se !== null && se.maxCount > 0;
+  const seApplies =
+    se !== null && (seCounts ? seStacks > 0 : se.traits.some((t) => enemyTraits.has(t.name)));
   const superEffectiveModifier = seApplies
-    ? ocValue(se, input.attacker.overcharge, input.attacker.npLevel) ?? 100
+    ? (ocValue(se!, input.attacker.overcharge, input.attacker.npLevel) ?? 100) + se!.perCount * seStacks
     : 100;
 
   // ---- termos fixos
@@ -866,6 +878,14 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
         input.action.kind === "np" ? "NP" : `card ${card} pos${position}`,
         ...(isCrit ? ["critical"] : []),
         ...(seApplies ? [`super effective ${superEffectiveModifier}%`] : []),
+        // Sem esta linha, um NP que soma até 220% por stack devolveria o número
+        // de zero stacks sem dizer que assumiu zero (R27).
+        ...(seCounts
+          ? [
+              `NP damage scales with up to ${se!.maxCount} ${se!.countsOn === "self" ? "own" : "target"} ` +
+                `${se!.traits.map((t) => t.name).join("/")} stacks — 0 assumed, stack counts are not modelled`,
+            ]
+          : []),
         ...(relationNote ? [relationNote] : []),
       ],
       appliedBuffs: applied,

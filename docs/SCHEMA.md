@@ -243,7 +243,11 @@ O bônus contra traits vive em campos que **não** são o `Value`:
 | `svals[].TargetList` | idem | vários traits (`damageNpIndividualSum`) |
 | `svals[].Correction` | `superEffective.values` | multiplicador. `1500` → `150` (%) → 1,5× |
 
-Afeta **139 NPs no índice**, e o `Correction` **varia com overcharge em 69 deles (52%)** — proporção bem maior que a dos efeitos comuns. Gilgamesh: 150% no OC1 subindo a 200% no OC5 contra `weakToEnumaElish`.
+Afeta **138 NPs no índice**, e o multiplicador **varia com overcharge em 72 deles (52%)** — proporção bem maior que a dos efeitos comuns. Gilgamesh: 150% no OC1 subindo a 200% no OC5 contra `weakToEnumaElish`.
+
+> ⚠️ **Em `damageNpIndividualSum` o multiplicador não está em `Correction`, e sim em `Value2`** (R27). Ali `Correction` é o acréscimo **por unidade contada** e vale `0` em quatro NPs — lido como multiplicador, dava 0%, e um multiplicador zero **zera o produto inteiro**. `Target` também muda de sentido: é o lado da contagem (`0` = si mesmo, `1` = alvo), não um trait.
+
+> `damageNpBattlePointPhase` (só a Ereshkigal) **não tem super-efetivo nenhum**: `Correction` é escala de fase e `Target` é o id do medidor.
 
 O `Target` traz só o id. O nome vem de um dicionário montado varrendo todos os pares `{id, name}` do dump (1070 ids), em vez de uma lista à mão. `Target: 0` é placeholder de "sem trait" e é descartado.
 

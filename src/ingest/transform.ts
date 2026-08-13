@@ -140,12 +140,30 @@ function ocColumn(f: AtlasFunction, pick: (s: AtlasSval) => number): SuperEffect
 }
 
 function toSuperEffective(f: AtlasFunction): SuperEffective | null {
-  const first = f.svals?.[0];
-  if (!first || first.Correction === undefined) return null;
+  // Ereshkigal: aqui `Correction` é escala de fase de um medidor e `Target` é
+  // o **id do medidor**, não um trait. Não há super-efetivo nenhum (R27).
+  if (f.funcType === "damageNpBattlePointPhase") return null;
 
-  // `Target: 0` é placeholder de "sem trait único" — não vira entrada.
-  const ids = [...(first.Target ? [first.Target] : []), ...(first.TargetList ?? [])].filter((id) => id !== 0);
-  return { traits: ids.map(traitById), ...ocColumn(f, (s) => (s.Correction ?? 0) / 10) };
+  const first = f.svals?.[0];
+  if (!first) return null;
+
+  const isSum = f.funcType === "damageNpIndividualSum";
+  const pick = (s: AtlasSval) => (isSum ? s.Value2 : s.Correction);
+  if (pick(first) === undefined) return null;
+
+  // `Target: 0` é placeholder de "sem trait único" — não vira entrada. E na
+  // família soma `Target` **não é trait**: é o lado em que se conta (0 = si
+  // mesmo, 1 = alvo), então incluí-lo criava um trait id 1 inexistente.
+  const ids = [...(!isSum && first.Target ? [first.Target] : []), ...(first.TargetList ?? [])].filter((id) => id !== 0);
+  return {
+    traits: ids.map(traitById),
+    ...ocColumn(f, (s) => (pick(s) ?? 0) / 10),
+    // `Correction` não varia com overcharge nem com nível nesta família —
+    // conferido nos 21 NPs —, então escalar basta.
+    perCount: isSum ? (first.Correction ?? 0) / 10 : 0,
+    maxCount: isSum ? first.ParamAddMaxCount ?? 0 : 0,
+    countsOn: isSum && first.Target === 0 ? "self" : "target",
+  };
 }
 
 /**

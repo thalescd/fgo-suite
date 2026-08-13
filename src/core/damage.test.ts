@@ -44,8 +44,14 @@ const LIP = loadServant(164); // única faixa (`RatioHPRange*`): só ativa em 50
 const HIJIKATA = loadServant(161); // os dois mecanismos no mesmo servo: NP e crit damage
 const ANNE = loadServant(66); // `damageNpHpratioLow` cujo bônus escala com overcharge
 
+// R27 — `damageNpIndividualSum`, as duas formas:
+const MUSASHI = loadServant(153); // super-efetivo fixo em `Value2`, sem contagem
+const CHARLEMAGNE = loadServant(343); // base neutra + 10% por stack em si mesmo, até 12
+
 const data: DamageData = {
-  servants: new Map([ARTORIA, GIL, OBERON, CU, LEONIDAS, LIP, HIJIKATA, ANNE].map((s) => [s.id, s])),
+  servants: new Map(
+    [ARTORIA, GIL, OBERON, CU, LEONIDAS, LIP, HIJIKATA, ANNE, MUSASHI, CHARLEMAGNE].map((s) => [s.id, s]),
+  ),
   equips: new Map([[KALEID.id, KALEID]]),
   mysticCodes: new Map(mysticCodes.map((m) => [m.id, m])),
   constants,
@@ -752,5 +758,78 @@ describe("escala por HP (R25)", () => {
   it("HP fora de 0..100 é preso na borda, venha de onde vier", () => {
     expect(atHp(CU, 500).avg).toBe(atHp(CU, 100).avg);
     expect(atHp(CU, -20).avg).toBe(atHp(CU, 0).avg);
+  });
+});
+
+/**
+ * R27 — `damageNpIndividualSum`: o multiplicador está em `Value2`.
+ *
+ * Nas outras famílias de dano o super-efetivo vem de `Correction`. Aqui não:
+ * `Correction` é o acréscimo **por unidade contada**, e vale 0 em quatro NPs.
+ * Lê-lo como multiplicador dava 0%, e multiplicador zero **zera o produto
+ * inteiro** — a Musashi causava 1 de dano contra AlterEgo.
+ *
+ * Este é o único dos defeitos achados até aqui que não produz número plausível:
+ * produz absurdo. Por isso sobreviveu tanto tempo — só dispara contra o alvo
+ * certo, e ninguém testa o alvo certo por acaso.
+ */
+describe("super-efetivo por soma (R27)", () => {
+  const npVs = (s: Servant, className: string) =>
+    calculateDamage(
+      input({
+        attacker: { servantId: s.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1 },
+        enemy: enemy({ className }),
+      }),
+      data,
+    );
+  const seOf = (s: Servant) => s.np!.effects[s.np!.damageEffectIndex!]!.superEffective!;
+
+  it("o multiplicador sai de Value2, não de Correction", () => {
+    const se = seOf(MUSASHI);
+    expect(se.values[0]).toBe(150);
+    // `Correction` é 0 neste NP: era ele que zerava tudo.
+    expect(se.perCount).toBe(0);
+  });
+
+  it("e o dano deixa de ser aniquilado contra o alvo certo", () => {
+    const neutro = npVs(MUSASHI, "shielder");
+    const alvo = npVs(MUSASHI, "alterEgo");
+    expect(alvo.breakdown.superEffectiveModifier).toBe(150);
+    expect(ratio(alvo.avg, neutro.avg)).toBeCloseTo(1.5, 2);
+    // O sintoma antigo, para não voltar: `Math.max(1, ...)` era o resultado.
+    expect(alvo.avg).toBeGreaterThan(1000);
+  });
+
+  it("o lado da contagem sai do Target, que aqui não é trait", () => {
+    // Antes, `Target: 1` virava um trait id 1 inexistente na lista.
+    expect(seOf(MUSASHI).traits.map((t) => t.name)).toEqual(["classAlterEgo", "classMoonCancer"]);
+    expect(seOf(MUSASHI).countsOn).toBe("target");
+    expect(seOf(CHARLEMAGNE).countsOn).toBe("self");
+  });
+
+  it("quem conta stacks tem base neutra, então zero stacks não inventa bônus", () => {
+    const se = seOf(CHARLEMAGNE);
+    expect([se.values[0], se.perCount, se.maxCount]).toEqual([100, 10, 12]);
+    expect(npVs(CHARLEMAGNE, "shielder").breakdown.superEffectiveModifier).toBe(100);
+  });
+
+  it("mas a contagem assumida é declarada, não silenciada", () => {
+    const linhas = npVs(CHARLEMAGNE, "shielder").assumptions.resolved;
+    const nota = linhas.find((l) => /stacks/.test(l));
+    expect(nota).toMatch(/up to 12 own/);
+    expect(nota).toMatch(/0 assumed/);
+  });
+
+  it("as outras famílias continuam lendo Correction", () => {
+    // Gilgamesh é `damageNpIndividual`: ali `Value2` não existe e `Correction`
+    // é o multiplicador. A correção não pode ter mexido nele.
+    const r = calculateDamage(
+      input({
+        attacker: { servantId: GIL.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1 },
+        enemy: enemy({ traits: [{ id: 2008, name: "weakToEnumaElish" }] }),
+      }),
+      data,
+    );
+    expect(r.breakdown.superEffectiveModifier).toBe(150);
   });
 });

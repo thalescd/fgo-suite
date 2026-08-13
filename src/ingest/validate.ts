@@ -114,6 +114,27 @@ async function main(): Promise<void> {
     .find((e) => e.buffType === "subSelfdamage");
   check("Fifth Force da Musashi = 1000 de corte de dano", musashiCut?.values[9], 1000);
 
+  // R27 — o multiplicador super-efetivo muda de campo conforme a família.
+  // Um multiplicador zero não erra por pouco: zera o produto inteiro.
+  console.log("\nSuper-efetivo por soma (R27)");
+  const seOf = async (cn: number) => {
+    const s = await read<Servant>(`servant/${byCn(cn).id}.json`);
+    return s.np?.effects[s.np.damageEffectIndex ?? -1]?.superEffective;
+  };
+  const musashiSe = await seOf(153);
+  check("Musashi: multiplicador vem de Value2 = 150%", musashiSe?.values[0], 150);
+  check("e Correction, que é 0, não virou multiplicador", musashiSe?.perCount, 0);
+  check("Target não entra como trait: só os dois da TargetList", musashiSe?.traits.map((t) => t.name), [
+    "classAlterEgo",
+    "classMoonCancer",
+  ]);
+  const charlemagneSe = await seOf(343);
+  check("Charlemagne: base neutra de 100%", charlemagneSe?.values[0], 100);
+  check("mais 10% por stack, até 12", [charlemagneSe?.perCount, charlemagneSe?.maxCount], [10, 12]);
+  check("contados nele mesmo, não no alvo", charlemagneSe?.countsOn, "self");
+  const gilSe = await seOf(12);
+  check("Gilgamesh (outra família) continua vindo de Correction = 150%", gilSe?.values[0], 150);
+
   console.log("\nOvercharge — svals2..svals5");
   const nero = await servant(byCn(5).id);
   const defDown = nero.np?.effects.find((e) => e.buffType === "downDefence");
@@ -182,8 +203,13 @@ async function main(): Promise<void> {
       if (e.superEffective.traits.some((t) => t.id === 0)) seZero++;
     }
   }
-  // 139/69 nos 462 do índice; as formas de combate somam mais alguns.
-  check("139 NPs com super-efetivo no índice, 69 escalando com OC", [seCount, seOc], [139, 69]);
+  // 138/72 nos 462 do índice; as formas de combate somam mais alguns.
+  //
+  // Era 139/69 antes de R27, e os dois deltas se explicam: a Ereshkigal saiu
+  // (o `damageNpBattlePointPhase` dela não é super-efetivo, era leitura errada
+  // de `Correction`), e três NPs da família soma entraram no grupo que escala
+  // com overcharge — `Value2` varia com OC em 3 dos 21, `Correction` em nenhum.
+  check("138 NPs com super-efetivo no índice, 72 escalando com OC", [seCount, seOc], [138, 72]);
   check("nenhum trait placeholder id 0 sobrou", seZero, 0);
 
   console.log("\n§3.4.2 — buff que multiplica buff (R21)");

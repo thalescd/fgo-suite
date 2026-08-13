@@ -318,6 +318,41 @@ silêncio.
 E "humano" são cinco traits distintos — `human`, `attributeHuman`, `livingHuman`,
 `humanoid`, `hominidaeServant`. Nunca normalizar por semelhança de nome.
 
+### 3.13 O super-efetivo não mora sempre no mesmo campo (R27)
+
+Em quase todo NP o multiplicador super-efetivo vem de `svals[].Correction`. Em
+**`damageNpIndividualSum` não**: ali ele está em `Value2`, e `Correction` passa a
+ser o **acréscimo por unidade contada**.
+
+| | Value2 | Correction | ParamAddMaxCount | Comportamento |
+|---|---|---|---|---|
+| 4 NPs | 150–200% | **0** | 0 | super-efetivo fixo, como qualquer outro |
+| 17 NPs | **100%** | 10% | 4 a 12 | base neutra + 10% por stack |
+
+Lendo `Correction` como multiplicador, o primeiro grupo dava **0%**. E um
+multiplicador zero não erra por pouco — ele **zera o produto inteiro**, porque o
+termo entra como `(1 + (se/100 - 1))`. A Musashi causava **1** de dano contra
+AlterEgo, o piso do `Math.max(1, …)`. O segundo grupo virava 10%: dano dividido
+por dez.
+
+Este é o único defeito da série R21–R27 que **não** produz número plausível, e é
+exatamente por isso que durou tanto: ele só dispara contra o alvo certo, e
+ninguém acerta o alvo certo por acaso. Os outros eram invisíveis por serem
+críveis; este era invisível por ser raro.
+
+**`Target` também troca de sentido aqui.** Na família soma ele é o *lado* da
+contagem — `0` conta em si mesmo (Charlemagne, 〔王勇〕), `1` conta no alvo
+(Jacques de Molay, queimadura). Incluí-lo na lista de traits criava um id 1
+inexistente.
+
+E `damageNpBattlePointPhase` — só a Ereshkigal — **não tem super-efetivo nenhum**:
+`Correction` é escala de fase de um medidor e `Target` é o id do medidor.
+
+**A contagem de stacks ainda não é entrada do cenário.** Zero é assumido, e é
+seguro: nos 17 a base é 100%, neutra, então nada é inventado. Mas some da conta
+um bônus que chega a 220%, e por isso a premissa aparece em `assumptions` —
+`"NP damage scales with up to 12 own … stacks — 0 assumed"`.
+
 ### 3.13 Sete servos batem mais forte machucados (R25)
 
 Dois mecanismos **independentes**, com nomes e formatos diferentes, que fazem a
@@ -488,6 +523,7 @@ que os casos:
 | Uma lista mistura escolha com histórico | `npAlternatives` com variante e rank up (R24) |
 | O que sempre está ligado não é declarado | passiva de classe fora do `buffStack` (R22) |
 | Um campo não lido faz o valor parecer completo | `RatioHPLow` faltando deixa `upAtk 0` (R25) |
+| O mesmo papel muda de campo conforme a família | multiplicador em `Correction` ou em `Value2` (R27) |
 | Uma regra geral engole a exceção sem avisar | `hasBuff → /10` sobre valores planos (R26) |
 | A fórmula é de 2018 e o jogo andou | `buffRate` do Oberon (R21) |
 

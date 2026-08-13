@@ -53,6 +53,18 @@ export interface AtlasSval {
   Correction?: number;
 
   /**
+   * Em `damageNpIndividualSum`, o multiplicador super-efetivo — o papel que
+   * `Correction` tem nas outras famílias de dano (R27). Ali `Correction` passa
+   * a ser o acréscimo **por unidade contada**.
+   *
+   * Ler o campo errado dava multiplicador 0% em quatro NPs, e multiplicador
+   * zero zera o produto inteiro: 1 de dano.
+   */
+  Value2?: number;
+  /** Teto da contagem em `damageNpIndividualSum`. `0` = não conta nada. */
+  ParamAddMaxCount?: number;
+
+  /**
    * Escala por HP (R25). Quanto o valor cresce conforme o HP do portador CAI:
    * o Cú Chulainn tem `Value: 200, RatioHPLow: 300`, ou seja 20% de ATK com HP
    * cheio e 50% com HP zero.

@@ -188,6 +188,22 @@ export interface ClassRelationOverride {
 export interface SuperEffective extends SuperEffectiveValues {
   /** Traits do alvo que ativam o bônus. */
   traits: Trait[];
+
+  /**
+   * `damageNpIndividualSum`: o multiplicador **cresce por unidade contada**
+   * (R27), e `values` é só a base. `0` nas outras famílias, em que `values` já
+   * é o multiplicador inteiro.
+   *
+   * Charlemagne: base 100% mais 10% por 〔王勇〕, até 12.
+   */
+  perCount: number;
+  /** Teto da contagem (`ParamAddMaxCount`). `0` = não conta nada. */
+  maxCount: number;
+  /**
+   * De que lado se conta. O Charlemagne conta buff **nele mesmo**; o Jacques de
+   * Molay conta queimadura **no alvo**. 8 NPs contam em si, 13 no alvo.
+   */
+  countsOn: "self" | "target";
 }
 
 /**
