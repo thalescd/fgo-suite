@@ -176,7 +176,13 @@ function buildTraitCatalog(
     for (const e of effects) {
       for (const t of e.condTarget) bump(t);
       for (const t of e.condFunc) bump(t);
-      for (const t of e.superEffective?.traits ?? []) bump(t);
+      // Na família soma o trait pode descrever o **atacante** (R27): 〔Heroic
+      // King〕 é stack do Charlemagne, não algo que um inimigo carregue. Este
+      // catálogo é a lista de traits do inimigo (D16), então `countsOn: "self"`
+      // fica de fora — senão a tela ofereceria um checkbox que não faz nada.
+      if (e.superEffective && e.superEffective.countsOn !== "self") {
+        for (const t of e.superEffective.traits) bump(t);
+      }
     }
   };
 

@@ -49,7 +49,7 @@ no modelo canônico (10,4 MB).
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
-| `npm run data:validate` | Confere a saída contra 83 valores conhecidos do jogo. |
+| `npm run data:validate` | Confere a saída contra 85 valores conhecidos do jogo. |
 | `npm run data:all` | Os três de dados em sequência. |
 | `npm run mcp` | Sobe o servidor MCP solto, para depurar sem cliente. |
 | `npm run damage:cases` | Casos de conferência da calculadora e o nosso número em cada um (R4). |

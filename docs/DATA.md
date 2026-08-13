@@ -98,7 +98,7 @@ artefatos foram gerados — sem ele, um clone não sabe se está atualizado.
 |---|---:|---|
 | `index.json` | 769 KB | **inteiro no browser** — todos os servos e CEs, campos filtráveis |
 | `constants.json` | 82 KB | inteiro (dominado pela matriz de classe) |
-| `traits.json` | 5 KB | inteiro — 102 traits de identidade por frequência |
+| `traits.json` | 5 KB | inteiro — 101 traits de identidade por frequência |
 | `mysticCodes.json` | 56 KB | inteiro |
 | `meta.json` | <1 KB | inteiro |
 | `servant/{id}.json` | 12 KB mediana | sob demanda |

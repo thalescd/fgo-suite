@@ -14,15 +14,15 @@
     "Formato: id do trait -> nome. Entrada com nome vazio é IGNORADA (segue `unknown`),",
     "então dá para deixar pendente sem inventar tradução.",
     "",
-    "Procedência de cada um está em `docs/CAPABILITIES.md` §5. Ao preencher, prefira",
+    "Procedência de cada um está em `docs/CAPABILITIES.md` §7. Ao preencher, prefira",
     "o nome oficial de NA quando o servo já tiver saído lá; senão, o termo que a",
     "comunidade usa. Nunca traduzir do japonês por conta própria: o nome precisa ser",
     "o que a pessoa vai reconhecer, não o mais literal."
   ],
 
-  "2828": "",
-  "2827": "",
-  "2759": "",
-  "2880": "",
-  "10039": ""
+  "2828": "Heroic King",
+  "2827": "Like!",
+  "2759": "Thirst for Vengeance",
+  "2880": "Wrath of the Elemental",
+  "10039": "Past Alteration"
 }

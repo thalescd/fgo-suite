@@ -624,7 +624,7 @@ Classificar pelo `funcType` das skills: **combat** (1.310) e **farm** (839) são
 | `equip/{id}.json` | `CraftEssence` completo |
 | `mysticCodes.json` | Os 28, arquivo único |
 | `constants.json` | Constantes da fórmula, já convertidas |
-| `traits.json` | Os 102 traits de identidade que algum efeito checa, por frequência (D16). Três origens: `condTarget`, `condFunc` e `superEffective.traits` — a última entrou na fase 3, sem ela não havia `weakToEnumaElish` para declarar no inimigo |
+| `traits.json` | Os 101 traits de identidade que algum efeito checa **e que um inimigo pode carregar**, por frequência (D16). Três origens: `condTarget`, `condFunc` e `superEffective.traits` — a última entrou na fase 3, sem ela não havia `weakToEnumaElish` para declarar no inimigo. Da terceira, os `countsOn: "self"` ficam de fora: são stacks do atacante (R27) |
 
 Ainda não gerados:
 
