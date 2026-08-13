@@ -19,7 +19,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node -e \"require('fs').copyFileSync('dist/index.html','dist/404.html')\"",
     "preview": "vite preview",
-    "damage:cases": "tsx src/ingest/cases.ts"
+    "damage:cases": "tsx src/ingest/cases.ts",
+    "mcp": "tsx src/mcp/server.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -32,8 +33,10 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.2"
+    "react-router-dom": "^7.18.2",
+    "zod": "^4.4.3"
   }
 }

@@ -40,6 +40,7 @@ Insight que organiza tudo: **(2) e (3) são a mesma entrega** — um MCP server 
 | D18 | **`rollMode` selecionável (`min`/`avg`/`max`/`range`)** | Controla **só** o `randomModifier`. Buffs com RNG de ativação não são filtrados — quem compõe o `BuffStack` decide. Chance é informativa. Ver §5.6. |
 | D21 | **Tabela do NP sem controles: uma régua 1–5 para os dois eixos** | Medido: **0 de 1878** efeitos de NP variam em nível de NP *e* overcharge ao mesmo tempo. Logo cada linha pertence a um eixo só, e dois blocos com a mesma régua mostram tudo sem clique. |
 | D20 | **`effects` do NP está em ordem de execução, e isso é contratual** | O que vem antes da função de dano entra no próprio dano; o que vem depois, não. `damageEffectIndex` marca o corte. Ver R20. |
+| D22 | **A descrição de uma tool do MCP é interface, não comentário** | O assistente não lê o código, nem o `PLANO.md`, nem os docs — só nome, descrição e JSON Schema, que o cliente pega em `tools/list`. Por isso cada `description` diz o que a tool devolve, o que assume por padrão e o que **não** modela; e por isso está em inglês, como `assumptions` (§4.5). Descrição preguiçosa não é falta de capricho: é o modelo chutando argumento. |
 | D19 | **Formas de combate ficam fora do índice, não fora do modelo** | Hyde, a 2ª Aoko, Flora e Prelati continuam como artefato e ligadas ao base; só não aparecem na busca. Ver R15. |
 
 ### Volume real (medido)
@@ -500,10 +501,10 @@ Cada fase entrega algo usável sozinho.
 |---|---|---|
 | **0** | Ingestão + manifest + modelo canônico + `DATA.md`/`SCHEMA.md` | tudo |
 | **1** | Busca com filtros diretos (raridade, classe, NP ST/AoE/support, card do NP) | site já útil; valida o modelo |
-| ~~**2**~~ | ~~Capabilities + busca por skill~~ | ✅ 166 tags, faceta na busca |
+| ~~**2**~~ | ~~Capabilities + busca por skill~~ | ✅ 169 tags, faceta na busca |
 | ~~**3**~~ | ~~`damage.ts` + testes + tela `/calc`~~ | ✅ núcleo puro, testado e utilizável; **R4 aberto** |
-| **4** | MCP server sobre 1–3 | itens 2 e 3 fechados |
-| **5** | Buffs condicionais, CEs/MCs no cálculo, comparação lado a lado | refinamento |
+| ~~**4**~~ | ~~MCP server sobre 1–3~~ | ✅ 4 tools sobre `core/`, `.mcp.json` versionado; itens 2 e 3 do §1 entregues |
+| **5** | Buffs condicionais, **CEs/MCs no cálculo _e_ nas tools do MCP**, suportes, comparação lado a lado | refinamento |
 
 ---
 

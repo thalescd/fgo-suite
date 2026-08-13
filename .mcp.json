@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "fgo": {
+      "command": "npx",
+      "args": ["tsx", "src/mcp/server.ts"]
+    }
+  }
+}
