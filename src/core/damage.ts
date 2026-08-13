@@ -52,6 +52,16 @@ export interface Enemy {
   defMod: number;
   /** % — resistência especial de alguns bosses. Pierce NÃO ignora isto. */
   specialDefMod: number;
+  /**
+   * Quantas unidades o **alvo** carrega do trait que o NP conta (R27). Omitido
+   * = 0. Só olhado quando o NP tem `countsOn: "target"` — o Romulus conta
+   * 〔roman〕, o Jacques de Molay conta queimadura.
+   *
+   * Não sai da lista `traits`: aquela responde "é romano?", e aqui a pergunta é
+   * "quantos 〔roman〕 ele carrega?", que vai até 10 porque o próprio NP aplica
+   * o trait a cada uso. Conjunto não guarda multiplicidade.
+   */
+  stacks?: number;
 }
 
 export type BuffSource =
@@ -83,6 +93,15 @@ export interface DamageInput {
      * uma CE, irrelevante para o dano.
      */
     hpPercent?: number;
+    /**
+     * Quantas unidades o **atacante** carrega do trait que o NP dele conta
+     * (R27). Omitido = 0. Só olhado quando o NP tem `countsOn: "self"` —
+     * Charlemagne e mais sete.
+     *
+     * Separado de `enemy.stacks` de propósito: são contagens de entidades
+     * diferentes, e um campo só mudaria de sentido conforme o servo.
+     */
+    stacks?: number;
   };
   buffStack: BuffSource[];
   enemy: Enemy;
@@ -157,6 +176,11 @@ export interface DamageResult {
     npHpBonus: number;
     /** HP do atacante em % do máximo. 100 = ileso, o padrão. */
     hpPercent: number;
+    /**
+     * R27: quantas unidades foram contadas para o super-efetivo, já presas ao
+     * teto. `0` quando o NP não conta nada, que é o caso de 396 dos 413.
+     */
+    superEffectiveStacks: number;
     /** Termo `cardMod` da fórmula, isolado. */
     cardMod: number;
     /** `firstCardBonus + cardDamageValue * (1 + cardMod)` já resolvido. */
@@ -776,15 +800,23 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
   const se = dmgEffect?.superEffective ?? null;
   /**
    * R27: em 17 NPs o bônus não vem de "o alvo tem o trait", e sim de **quantas
-   * unidades** do trait existem — 〔王勇〕 no Charlemagne, queimadura no alvo do
-   * Jacques de Molay. A contagem é estado e ainda não é entrada do cenário.
+   * unidades** do trait existem — 〔Heroic King〕 no próprio Charlemagne,
+   * queimadura no alvo do Jacques de Molay.
    *
-   * Assumir **zero** é seguro e não inventa nada: nos 17 a base é 100%, isto é,
-   * neutra. Mas some da conta um bônus que pode chegar a 220%, então a premissa
-   * é declarada em `assumptions`, nunca silenciada.
+   * A contagem vem de dois campos separados, e não de um só, porque são coisas
+   * de **entidades diferentes**. Um campo único mudaria de significado conforme
+   * o servo escolhido, que é exatamente o formato de defeito que este projeto
+   * já pagou quatro vezes (R23, R25, R27).
+   *
+   * Qual dos dois vale é o **dado** que decide, por `countsOn` — nunca a tela.
    */
-  const seStacks = 0;
   const seCounts = se !== null && se.maxCount > 0;
+  const seStacks = !seCounts
+    ? 0
+    : Math.min(
+        Math.max(0, (se!.countsOn === "self" ? input.attacker.stacks : input.enemy.stacks) ?? 0),
+        se!.maxCount,
+      );
   const seApplies =
     se !== null && (seCounts ? seStacks > 0 : se.traits.some((t) => enemyTraits.has(t.name)));
   const superEffectiveModifier = seApplies
@@ -845,6 +877,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
       npDamageMultiplier,
       npHpBonus,
       hpPercent,
+      superEffectiveStacks: seStacks,
       cardMod,
       cardTerm,
       classAtkBonus,
@@ -878,12 +911,13 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
         input.action.kind === "np" ? "NP" : `card ${card} pos${position}`,
         ...(isCrit ? ["critical"] : []),
         ...(seApplies ? [`super effective ${superEffectiveModifier}%`] : []),
-        // Sem esta linha, um NP que soma até 220% por stack devolveria o número
-        // de zero stacks sem dizer que assumiu zero (R27).
+        // Um NP que soma até 220% por stack não pode devolver o número de zero
+        // stacks calado (R27). Com zero a linha vira o convite para informar.
         ...(seCounts
           ? [
-              `NP damage scales with up to ${se!.maxCount} ${se!.countsOn === "self" ? "own" : "target"} ` +
-                `${se!.traits.map((t) => t.name).join("/")} stacks — 0 assumed, stack counts are not modelled`,
+              `${seStacks} of up to ${se!.maxCount} ${se!.countsOn === "self" ? "own" : "target"} ` +
+                `${se!.traits.map((t) => t.name).join("/")} stacks` +
+                (seStacks > 0 ? ` (+${se!.perCount * seStacks}% super effective)` : " — none counted"),
             ]
           : []),
         ...(relationNote ? [relationNote] : []),

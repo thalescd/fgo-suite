@@ -97,7 +97,13 @@ function termsOf(r: DamageResult, k: Constants): Term[] {
   }
 
   if (b.superEffectiveModifier !== 100) {
-    t.push({ label: "Super effective", value: mult(b.superEffectiveModifier / 100) });
+    t.push({
+      label: "Super effective",
+      value: mult(b.superEffectiveModifier / 100),
+      // R27: sem a nota, o multiplicador do Charlemagne sobe de 1.00 a 2.20 e a
+      // tela não diz que foram os stacks que fizeram isso.
+      note: b.superEffectiveStacks > 0 ? `${b.superEffectiveStacks} stacks counted` : undefined,
+    });
   }
   if (b.flatDamage !== 0) t.push({ label: "Flat damage", value: `+${num(b.flatDamage)}`, note: "added outside the product" });
   if (b.busterChainBonus !== 0) {

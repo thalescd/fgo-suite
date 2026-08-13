@@ -45,7 +45,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 165 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 174 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -104,6 +104,11 @@ A fórmula da comunidade é de 2018 e o jogo andou: mecânicas mais novas entram
 como exceção documentada. Duas até agora: a skill 3 do **Oberon**, que dobra os
 buffs de dano de NP (R21), e a passiva da **Kiara**, que sobrescreve a matriz de
 classe (R22).
+
+Dezessete NPs somam dano por unidade de um trait acumulado — 〔Heroic King〕 no
+próprio **Charlemagne**, 〔roman〕 no alvo do **Romulus**. São dois campos, porque
+são contagens de entidades diferentes, e a tela só mostra o que o NP escolhido
+usa (R27).
 
 Sete servos batem mais forte machucados — Cú Chulainn, Leonidas, Passionlip,
 Hijikata, Aśvatthāman e as duas Anne Bonny & Mary Read. O campo **Current HP**

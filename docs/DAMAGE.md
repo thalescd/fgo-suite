@@ -348,10 +348,37 @@ inexistente.
 E `damageNpBattlePointPhase` — só a Ereshkigal — **não tem super-efetivo nenhum**:
 `Correction` é escala de fase de um medidor e `Target` é o id do medidor.
 
-**A contagem de stacks ainda não é entrada do cenário.** Zero é assumido, e é
-seguro: nos 17 a base é 100%, neutra, então nada é inventado. Mas some da conta
-um bônus que chega a 220%, e por isso a premissa aparece em `assumptions` —
-`"NP damage scales with up to 12 own … stacks — 0 assumed"`.
+#### A contagem entra por **dois** campos
+
+`ss=` (no atacante) e `st=` (no alvo). Dois, e não um, porque são contagens de
+**entidades diferentes**: 〔Heroic King〕 é do Charlemagne, 〔roman〕 é do inimigo
+do Romulus. Um campo só mudaria de significado conforme o servo escolhido, que é
+literalmente o formato de defeito que R23, R25 e o próprio R27 já cobraram.
+
+Só um dos dois vale por NP, e **quem decide é o dado** — `countsOn`. O contador
+do outro lado é ignorado em silêncio, o que é o comportamento certo: informar
+stacks de alvo para o Charlemagne não é erro do usuário, é uma pergunta que
+aquele NP não faz.
+
+O teto também vem do dado (`maxCount`), e é por NP: 12 no Charlemagne, 10 no
+Romulus, 4 no Taira-no-Kagekiyo. Pedir mais é preso ao teto, não recusado.
+
+A tela mostra o campo **só quando o NP conta**, com o nome do trait, o lado e o
+teto lidos do dado. Ela não sabe quem é o Charlemagne — servo novo com a mesma
+mecânica aparece sem uma linha de código.
+
+E o campo do lado do alvo é distinto do seletor de traits logo abaixo dele: lá se
+diz *se* o inimigo é 〔roman〕; aqui, **quantos** 〔roman〕 ele acumulou. O NP do
+Romulus aplica um por uso, até 10 — e um conjunto não guarda multiplicidade.
+
+Com zero stacks o multiplicador é a base, 100%, neutra. A linha em `assumptions`
+aparece de todo jeito, porque um NP que soma até 220% não pode devolver o número
+do piso calado:
+
+```
+0 of up to 12 own Heroic King stacks — none counted
+8 of up to 12 own Heroic King stacks (+80% super effective)
+```
 
 ### 3.13 Sete servos batem mais forte machucados (R25)
 

@@ -774,11 +774,15 @@ describe("escala por HP (R25)", () => {
  * certo, e ninguém testa o alvo certo por acaso.
  */
 describe("super-efetivo por soma (R27)", () => {
-  const npVs = (s: Servant, className: string) =>
+  const npVs = (
+    s: Servant,
+    className: string,
+    st: { stacksSelf?: number; stacksTarget?: number } = {},
+  ) =>
     calculateDamage(
       input({
-        attacker: { servantId: s.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1 },
-        enemy: enemy({ className }),
+        attacker: { servantId: s.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1, stacks: st.stacksSelf },
+        enemy: enemy({ className, stacks: st.stacksTarget }),
       }),
       data,
     );
@@ -813,11 +817,13 @@ describe("super-efetivo por soma (R27)", () => {
     expect(npVs(CHARLEMAGNE, "shielder").breakdown.superEffectiveModifier).toBe(100);
   });
 
-  it("mas a contagem assumida é declarada, não silenciada", () => {
-    const linhas = npVs(CHARLEMAGNE, "shielder").assumptions.resolved;
-    const nota = linhas.find((l) => /stacks/.test(l));
-    expect(nota).toMatch(/up to 12 own/);
-    expect(nota).toMatch(/0 assumed/);
+  it("a contagem é declarada, com ou sem stacks", () => {
+    const nota = (r: ReturnType<typeof calculateDamage>) =>
+      r.assumptions.resolved.find((l) => /stacks/.test(l));
+    expect(nota(npVs(CHARLEMAGNE, "shielder"))).toBe("0 of up to 12 own Heroic King stacks — none counted");
+    expect(nota(npVs(CHARLEMAGNE, "shielder", { stacksSelf: 8 }))).toBe(
+      "8 of up to 12 own Heroic King stacks (+80% super effective)",
+    );
   });
 
   it("as outras famílias continuam lendo Correction", () => {
@@ -831,5 +837,62 @@ describe("super-efetivo por soma (R27)", () => {
       data,
     );
     expect(r.breakdown.superEffectiveModifier).toBe(150);
+  });
+});
+
+/**
+ * R27, segunda parte — os dois contadores.
+ *
+ * Dois campos e não um: `Heroic King` no Charlemagne e `roman` no alvo do
+ * Romulus são contagens de **entidades diferentes**. Um campo só mudaria de
+ * significado conforme o servo escolhido, que é o formato de defeito que este
+ * projeto já pagou em R23, R25 e no próprio R27.
+ */
+describe("contagem de stacks (R27)", () => {
+  const ROMULUS = loadServant(280);
+  const dataR: DamageData = { ...data, servants: new Map([...data.servants, [ROMULUS.id, ROMULUS]]) };
+  const np = (s: Servant, st: { self?: number; target?: number } = {}) =>
+    calculateDamage(
+      input({
+        attacker: { servantId: s.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1, stacks: st.self },
+        enemy: enemy({ stacks: st.target }),
+      }),
+      dataR,
+    );
+
+  it("cada lado lê o seu campo, e só o seu", () => {
+    // Charlemagne conta em si: `stacksTarget` não pode fazer nada por ele.
+    expect(np(CHARLEMAGNE, { target: 12 }).breakdown.superEffectiveStacks).toBe(0);
+    expect(np(CHARLEMAGNE, { self: 12 }).breakdown.superEffectiveStacks).toBe(12);
+    // Romulus conta no alvo: o espelho exato.
+    expect(np(ROMULUS, { self: 10 }).breakdown.superEffectiveStacks).toBe(0);
+    expect(np(ROMULUS, { target: 10 }).breakdown.superEffectiveStacks).toBe(10);
+  });
+
+  it("o bônus é linear no número de stacks", () => {
+    // Charlemagne: base 100% + 10% por stack.
+    const se = (n: number) => np(CHARLEMAGNE, { self: n }).breakdown.superEffectiveModifier;
+    expect([se(0), se(1), se(6), se(12)]).toEqual([100, 110, 160, 220]);
+  });
+
+  it("o teto do dado prende, mesmo se pedirem mais", () => {
+    expect(np(CHARLEMAGNE, { self: 999 }).breakdown.superEffectiveStacks).toBe(12);
+    expect(np(CHARLEMAGNE, { self: 999 }).breakdown.superEffectiveModifier).toBe(220);
+    // Romulus tem teto 10, não 12: o limite é por NP, não global.
+    expect(np(ROMULUS, { target: 999 }).breakdown.superEffectiveStacks).toBe(10);
+  });
+
+  it("negativo não vira bônus reverso", () => {
+    expect(np(CHARLEMAGNE, { self: -5 }).breakdown.superEffectiveStacks).toBe(0);
+    expect(np(CHARLEMAGNE, { self: -5 }).avg).toBe(np(CHARLEMAGNE).avg);
+  });
+
+  it("stack no máximo mais que dobra o dano do Charlemagne", () => {
+    expect(ratio(np(CHARLEMAGNE, { self: 12 }).avg, np(CHARLEMAGNE).avg)).toBeCloseTo(2.2, 2);
+  });
+
+  it("quem não conta stacks ignora os dois campos", () => {
+    const semStack = np(MUSASHI).avg;
+    expect(np(MUSASHI, { self: 10, target: 10 }).avg).toBe(semStack);
   });
 });

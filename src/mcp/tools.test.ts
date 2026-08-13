@@ -211,3 +211,40 @@ describe("calculate_damage: escala por HP (R25)", () => {
     expect(linha).toMatch(/0 at full HP/);
   });
 });
+
+describe("calculate_damage: contagem de stacks (R27)", () => {
+  it("cada lado lê o seu parâmetro, e o link carrega o número", () => {
+    const at = (a: Record<string, unknown>) =>
+      calculateDamageTool(store, { servant: "charlemagne", ...a }) as {
+        damage: { average: number };
+        viewInBrowser: string;
+        formulaTerms: { superEffectiveStacksCounted?: number; superEffective?: string };
+      };
+    const zero = at({});
+    const cheio = at({ stacksOnSelf: 12 });
+
+    expect(cheio.damage.average).toBeGreaterThan(zero.damage.average);
+    expect(cheio.formulaTerms.superEffectiveStacksCounted).toBe(12);
+    expect(cheio.formulaTerms.superEffective).toBe("220%");
+    expect(parseCalc(new URLSearchParams(cheio.viewInBrowser.split("?")[1])).stacksSelf).toBe(12);
+
+    // Charlemagne conta em si: o parâmetro do alvo não pode fazer nada por ele.
+    expect(at({ stacksOnTarget: 12 }).damage.average).toBe(zero.damage.average);
+  });
+
+  it("o espelho: Romulus conta no alvo", () => {
+    const at = (a: Record<string, unknown>) =>
+      (calculateDamageTool(store, { servant: "Romulus=Quirinus", ...a }) as { damage: { average: number } })
+        .damage.average;
+    expect(at({ stacksOnSelf: 10 })).toBe(at({}));
+    expect(at({ stacksOnTarget: 10 })).toBeGreaterThan(at({}));
+  });
+
+  it("get_servant diz qual trait, que lado e o teto", () => {
+    const r = getServant(store, "charlemagne") as { noblePhantasms: { effectsInExecutionOrder: string[] }[] };
+    const linha = r.noblePhantasms.flatMap((n) => n.effectsInExecutionOrder).find((l) => /stacks/.test(l));
+    expect(linha).toMatch(/own Heroic King stacks/);
+    expect(linha).toMatch(/up to 12/);
+    expect(linha).toMatch(/stacksOnSelf/);
+  });
+});

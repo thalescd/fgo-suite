@@ -221,6 +221,14 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
   const canBusterChain = state.action === "buster";
   /** 50 servos têm NP de suporte. Calcular "dano" ali daria um número sem sentido. */
   const npDealsNoDamage = isNP && (np == null || np.damageEffectIndex === null);
+  /**
+   * R27: 17 NPs somam bônus por unidade de um trait. O campo aparece só quando
+   * o NP escolhido conta, e **tudo nele vem do dado** — nome do trait, teto e de
+   * que lado se conta. A tela não sabe quem é o Charlemagne.
+   */
+  const seCount = isNP && np?.damageEffectIndex != null ? np.effects[np.damageEffectIndex]?.superEffective : null;
+  const stackSpec = seCount && seCount.maxCount > 0 ? seCount : null;
+  const stackLabel = stackSpec ? stackSpec.traits.map((t) => t.name).join("/") : "";
 
   const classRow = boot.constants.classRelation[servant.className] ?? {};
   const attrRow = boot.constants.attributeRelation[servant.attribute] ?? {};
@@ -292,6 +300,17 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 <input type="number" min={0} max={100} step={5} value={state.hpPercent}
                   onChange={(e) => patch({ hpPercent: Number(e.target.value) })} />
               </Field>
+              {/*
+                Ao contrário do HP, este campo é condicional: fora dos 17 NPs
+                que contam, um contador de stacks não teria o que contar. E o
+                rótulo sai do dado, então servo novo aparece sem editar a tela.
+              */}
+              {stackSpec?.countsOn === "self" && (
+                <Field label={`${stackLabel} stacks`} hint={`on self — up to ${stackSpec.maxCount}, +${stackSpec.perCount}% each`}>
+                  <input type="number" min={0} max={stackSpec.maxCount} value={state.stacksSelf}
+                    onChange={(e) => patch({ stacksSelf: Number(e.target.value) })} />
+                </Field>
+              )}
             </div>
           </Block>
 
@@ -472,6 +491,21 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 <input type="number" step={10} value={state.enemySpecialDefMod}
                   onChange={(e) => patch({ enemySpecialDefMod: Number(e.target.value) })} />
               </Field>
+              {/*
+                O contador do lado do alvo mora aqui, e não junto do atacante,
+                porque descreve o inimigo. É a mesma regra que R22 impôs aos
+                slots: o valor fica com a entidade de quem ele fala.
+
+                E é distinto do TraitPicker abaixo: lá se diz *se* o alvo é
+                〔roman〕; aqui, **quantos** 〔roman〕 ele acumulou — o NP do
+                Romulus aplica um por uso, até 10.
+              */}
+              {stackSpec?.countsOn === "target" && (
+                <Field label={`${stackLabel} stacks`} hint={`on the target — up to ${stackSpec.maxCount}, +${stackSpec.perCount}% each`}>
+                  <input type="number" min={0} max={stackSpec.maxCount} value={state.stacksTarget}
+                    onChange={(e) => patch({ stacksTarget: Number(e.target.value) })} />
+                </Field>
+              )}
             </div>
 
             <TraitPicker

@@ -61,11 +61,20 @@ function describeEffect(e: Effect, levelIndex: number): string {
     parts.push(`OC1-5: ${row.join("/")}${unit}`);
   }
   if (e.superEffective) {
-    const names = e.superEffective.traits.map((t) => t.name).join("/");
-    const vals = e.superEffective.valuesByOvercharge
-      ? e.superEffective.valuesByOvercharge.map((r) => r[levelIndex] ?? r[0]).join("/")
-      : String(e.superEffective.values[levelIndex] ?? e.superEffective.values[0]);
-    parts.push(`extra damage vs ${names}: ${vals}%`);
+    const se = e.superEffective;
+    const names = se.traits.map((t) => t.name).join("/");
+    const vals = se.valuesByOvercharge
+      ? se.valuesByOvercharge.map((r) => r[levelIndex] ?? r[0]).join("/")
+      : String(se.values[levelIndex] ?? se.values[0]);
+    // R27: com contagem, o número acima é a BASE — e nos 17 casos ela é 100%,
+    // ou seja, neutra. Anunciá-la como "extra damage" sem dizer que o bônus vem
+    // dos stacks faria o assistente ler um NP forte como um NP comum.
+    parts.push(
+      se.maxCount > 0
+        ? `damage scales with ${se.countsOn === "self" ? "own" : "target"} ${names} stacks: ` +
+            `${vals}% base, +${se.perCount}% each, up to ${se.maxCount} (pass stacksOn${se.countsOn === "self" ? "Self" : "Target"})`
+        : `extra damage vs ${names}: ${vals}%`,
+    );
   }
   if (!e.supported) parts.push("NOT MODELLED by the calculator");
 
@@ -226,6 +235,8 @@ export interface DamageArgs {
   npLevel?: number;
   overcharge?: number;
   hpPercent?: number;
+  stacksOnSelf?: number;
+  stacksOnTarget?: number;
   npId?: number;
   skills?: number[];
   skillLevel?: number;
@@ -268,6 +279,8 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
   put("np", a.npLevel);
   put("oc", a.overcharge);
   put("hp", a.hpPercent);
+  put("ss", a.stacksOnSelf);
+  put("st", a.stacksOnTarget);
   put("npid", a.npId);
   put("sk", (a.skills ?? []).join(","));
   put("sklv", a.skillLevel);
@@ -309,6 +322,9 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
       // R25: sem isto, o multiplicador dobra e a resposta não diz por quê.
       ...(b.npHpBonus > 0 ? { npMultiplierFromMissingHp: `+${b.npHpBonus}%` } : {}),
       ...(b.hpPercent !== 100 ? { attackerHp: `${b.hpPercent}%` } : {}),
+      // R27: o multiplicador pode ir de 100% a 220% só por stacks. Sem dizer
+      // quantos entraram, a resposta não é conferível.
+      ...(b.superEffectiveStacks > 0 ? { superEffectiveStacksCounted: b.superEffectiveStacks } : {}),
       cardTerm: Number(b.cardTerm.toFixed(4)),
       classAttackRate: b.classAtkBonus,
       classAdvantage: b.triangleModifier,
@@ -356,7 +372,7 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
     ...(unknownTraits.length > 0 ? { unknownEnemyTraits: unknownTraits } : {}),
 
     notModelledAtAll:
-      "Craft Essences, Mystic Codes, support servants, and state conditions other than HP (buff counts, turn number) are not part of this calculation.",
+      "Craft Essences, Mystic Codes, support servants, and state conditions other than HP and stack counts (turn number) are not part of this calculation.",
     validation: validationState(),
   };
 }

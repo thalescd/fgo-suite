@@ -115,8 +115,12 @@ server.registerTool(
       "Some servants deal more damage the more HP they have LOST: Cú Chulainn, Leonidas, Passionlip, Hijikata, " +
       "Aśvatthāman, and both versions of Anne Bonny & Mary Read. Pass `hpPercent` for them — the default of 100 " +
       "gives their weakest case, and for Hijikata and Anne overcharge does nothing at all until HP is missing.\n\n" +
-      "NOT modelled: Craft Essences, Mystic Codes, support servants, and state conditions other than HP (buff " +
-      "counts, turn number). Buffs depending on those are reported in `notCounted` rather than guessed.\n\n" +
+      "17 NPs scale with how many copies of a trait are stacked — get_servant spells out which trait, which side " +
+      "and the cap. Charlemagne counts Heroic King on HIMSELF and more than doubles at 12; Romulus=Quirinus counts " +
+      "roman ON THE TARGET. Pass `stacksOnSelf` or `stacksOnTarget` accordingly; the wrong one is ignored, and at 0 " +
+      "you get the servant's floor rather than their real output.\n\n" +
+      "NOT modelled: Craft Essences, Mystic Codes, support servants, and state conditions other than HP and stack " +
+      "counts (turn number). Buffs depending on those are reported in `notCounted` rather than guessed.\n\n" +
       `Accuracy: the implementation matches the community formula term by term, but ${validationState()} — ` +
       "say so when the exact figure matters.",
     inputSchema: {
@@ -132,6 +136,18 @@ server.registerTool(
         .max(100)
         .optional()
         .describe("Attacker's current HP as a % of its maximum. Default 100. Only matters for the seven HP-scaling servants."),
+      stacksOnSelf: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe("How many stacks of the counted trait the ATTACKER carries. Only read by NPs that count on self. Clamped to the NP's cap."),
+      stacksOnTarget: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe("Same, stacked on the ENEMY — burn for Jacques de Molay, roman for Romulus. Clamped to the NP's cap."),
       npId: z.number().int().optional().describe("Which NP, for servants that have more than one. See get_servant."),
       skills: z.array(z.number().int().min(1).max(3)).optional().describe("Which of the servant's own skills are active, by number."),
       skillLevel: z.number().int().min(1).max(10).optional().describe("Applies to all of them. Default 10."),

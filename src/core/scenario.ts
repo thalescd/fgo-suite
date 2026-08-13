@@ -52,6 +52,16 @@ export interface CalcState {
    */
   hpPercent: number;
 
+  /**
+   * Quantas unidades do trait que o NP conta existem de cada lado (R27).
+   *
+   * Dois campos porque são contagens de entidades diferentes — 〔Heroic King〕
+   * no Charlemagne, 〔roman〕 no alvo do Romulus. Só um dos dois vale por NP, e
+   * **quem decide qual é o dado** (`superEffective.countsOn`), nunca a tela.
+   */
+  stacksSelf: number;
+  stacksTarget: number;
+
   action: ActionKind;
   position: number;
   isCrit: boolean;
@@ -79,6 +89,8 @@ export const DEFAULT_CALC: CalcState = {
   appends: [],
   appendLevel: 10,
   hpPercent: 100,
+  stacksSelf: 0,
+  stacksTarget: 0,
   action: "np",
   position: 1,
   isCrit: false,
@@ -115,6 +127,8 @@ const KEYS = {
   appends: "ap",
   appendLevel: "aplv",
   hpPercent: "hp",
+  stacksSelf: "ss",
+  stacksTarget: "st",
   action: "act",
   position: "pos",
   isCrit: "crit",
@@ -165,6 +179,10 @@ export function parseCalc(p: URLSearchParams): CalcState {
     appends: nums(p, KEYS.appends),
     appendLevel: clamp(int(p, KEYS.appendLevel, 10), 1, 10),
     hpPercent: clamp(int(p, KEYS.hpPercent, DEFAULT_CALC.hpPercent), 0, 100),
+    // O teto real é o do NP escolhido e vive no dado; aqui só se impede
+    // negativo. `damage.ts` prende ao `maxCount` — a regra mora com a fórmula.
+    stacksSelf: Math.max(0, int(p, KEYS.stacksSelf, 0)),
+    stacksTarget: Math.max(0, int(p, KEYS.stacksTarget, 0)),
     action,
     position: clamp(int(p, KEYS.position, 1), 1, 3),
     isCrit: p.get(KEYS.isCrit) === "1",
@@ -195,6 +213,8 @@ export function serializeCalc(s: CalcState): URLSearchParams {
   put(KEYS.appends, s.appends.join(","));
   putNum(KEYS.appendLevel, s.appendLevel, 10);
   putNum(KEYS.hpPercent, s.hpPercent, DEFAULT_CALC.hpPercent);
+  putNum(KEYS.stacksSelf, s.stacksSelf, 0);
+  putNum(KEYS.stacksTarget, s.stacksTarget, 0);
   if (s.action !== DEFAULT_CALC.action) p.set(KEYS.action, s.action);
   putNum(KEYS.position, s.position, 1);
   if (s.isCrit) p.set(KEYS.isCrit, "1");
@@ -250,6 +270,7 @@ export function toDamageInput(
       npLevel,
       overcharge: clamp(state.overcharge, 1, 5) as 1 | 2 | 3 | 4 | 5,
       hpPercent: clamp(state.hpPercent, 0, 100),
+      stacks: state.stacksSelf,
       ...(state.npId !== null ? { npId: state.npId } : {}),
     },
     buffStack,
@@ -259,6 +280,7 @@ export function toDamageInput(
       traits,
       defMod: state.enemyDefMod,
       specialDefMod: state.enemySpecialDefMod,
+      stacks: state.stacksTarget,
     },
     action: {
       kind: isNP ? "np" : state.action === "extra" ? "extra" : "card",
