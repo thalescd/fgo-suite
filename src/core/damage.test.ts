@@ -896,3 +896,42 @@ describe("contagem de stacks (R27)", () => {
     expect(np(MUSASHI, { self: 10, target: 10 }).avg).toBe(semStack);
   });
 });
+
+/**
+ * R28 — funcType de dano fora da tabela de divisores.
+ *
+ * `valueRuleFor` devolve `unknown` para funcType desconhecido, e o valor fica
+ * **cru**. Para quase todo campo isso é a proteção certa: o número sai
+ * obviamente não convertido. Para o multiplicador de NP é o contrário — ele vai
+ * direto para a fórmula e ninguém consulta `valueUnit` no caminho.
+ *
+ * Resultado: dano 10x, sem sintoma. A Ereshkigal batia 128.759 onde deveria
+ * bater 12.876.
+ */
+describe("unidade do multiplicador de NP (R28)", () => {
+  const ERESH = loadServant(417);
+  const dataE: DamageData = { ...data, servants: new Map([...data.servants, [ERESH.id, ERESH]]) };
+
+  it("o multiplicador está em % e na escala dos outros NPs", () => {
+    expect(ERESH.np!.damageMultiplier).toEqual([450, 600, 675, 712.5, 750]);
+    const r = calculateDamage(
+      input({ attacker: { servantId: ERESH.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1 } }),
+      dataE,
+    );
+    expect(r.breakdown.npDamageMultiplier).toBe(4.5);
+  });
+
+  it("nenhum NP de dano do roster escapa da tabela de unidades", () => {
+    // A trava que impede o próximo funcType novo do Atlas de virar dano 10x.
+    const escapou: string[] = [];
+    for (const s of servantIndex) {
+      const f = loadServant(s.collectionNo);
+      for (const np of [f.np, ...f.npAlternatives]) {
+        if (!np || np.damageEffectIndex === null) continue;
+        const e = np.effects[np.damageEffectIndex];
+        if (e && e.valueUnit !== "percent") escapou.push(`${f.name}/${e.funcType}`);
+      }
+    }
+    expect(escapou).toEqual([]);
+  });
+});

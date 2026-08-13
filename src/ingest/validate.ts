@@ -135,6 +135,25 @@ async function main(): Promise<void> {
   const gilSe = await seOf(12);
   check("Gilgamesh (outra família) continua vindo de Correction = 150%", gilSe?.values[0], 150);
 
+  // R28 — o multiplicador de NP vai direto para a fórmula, e ninguém consulta
+  // `valueUnit` no caminho. `funcType` fora da tabela de divisores deixava o
+  // valor cru: 4500% em vez de 450%, dano 10x, sem sintoma nenhum.
+  console.log("\nR28 — todo multiplicador de NP tem unidade conhecida");
+  const semUnidade: string[] = [];
+  for (const s of servants) {
+    const f = await servant(s.id);
+    for (const np of [f.np, ...f.npAlternatives].filter((n) => n != null)) {
+      if (np!.damageEffectIndex === null) continue;
+      const e = np!.effects[np!.damageEffectIndex!];
+      if (e && e.valueUnit !== "percent") semUnidade.push(`${f.name}/${e.funcType}`);
+    }
+  }
+  check("nenhum NP de dano com unidade desconhecida", semUnidade, []);
+  const eresh = await read<Servant>(`servant/${byCn(417).id}.json`);
+  check("Ereshkigal NP1..NP5 = 450..750%, não 4500..7500", eresh.np?.damageMultiplier, [450, 600, 675, 712.5, 750]);
+  const xx = await read<Servant>(`servant/${byCn(423).id}.json`);
+  check("Heroine XX (Alter), o outro caso, = 600..1000%", xx.np?.damageMultiplier, [600, 800, 900, 950, 1000]);
+
   console.log("\nOvercharge — svals2..svals5");
   const nero = await servant(byCn(5).id);
   const defDown = nero.np?.effects.find((e) => e.buffType === "downDefence");

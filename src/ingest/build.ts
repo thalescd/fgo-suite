@@ -17,6 +17,7 @@ import {
   type IndexEntry,
   type Meta,
   type MysticCode,
+  type NoblePhantasm,
   type Servant,
   type Trait,
 } from "../core/model.js";
@@ -258,6 +259,36 @@ export async function build(): Promise<BuildStats> {
   const { collisions } = disambiguate(servants);
   warnings.push(...traitWarnings);
   warnings.push(...(await loadAliases(servants)));
+
+  /**
+   * Multiplicador de NP com unidade desconhecida é sempre defeito (R28).
+   *
+   * `valueRuleFor` deixa o valor cru quando o `funcType` não está na tabela, e
+   * para quase todo campo isso é a proteção certa: o número sai obviamente não
+   * convertido. Só que `damageMultiplier` vai **direto para a fórmula**, e
+   * ninguém consulta `valueUnit` no caminho — então um funcType novo do Atlas
+   * viraria dano 10x sem sintoma, que foi o que aconteceu com a Ereshkigal.
+   *
+   * Aviso aqui e check duro em `data:validate`: o dia em que o Atlas inventar
+   * outro `damageNp*`, isso aparece antes de virar número.
+   */
+  const semUnidade = new Map<string, string[]>();
+  for (const s of servants) {
+    for (const np of [s.np, ...s.npAlternatives].filter((n): n is NoblePhantasm => n != null)) {
+      if (np.damageEffectIndex === null) continue;
+      const e = np.effects[np.damageEffectIndex];
+      if (!e || e.valueUnit === "percent") continue;
+      const bucket = semUnidade.get(e.funcType) ?? [];
+      bucket.push(s.name);
+      semUnidade.set(e.funcType, bucket);
+    }
+  }
+  for (const [funcType, quem] of semUnidade) {
+    warnings.push(
+      `funcType de dano SEM unidade conhecida: ${funcType} (${quem.length} NP(s), ex. ${quem[0]}) — ` +
+        `o multiplicador vai cru para a fórmula. Acrescente em FUNC_VALUE_RULE (R28).`,
+    );
+  }
 
   const noNp = servants.filter((s) => s.np === null);
   if (noNp.length) warnings.push(`${noNp.length} servo(s) sem NP: ${noNp.map((s) => s.name).join(", ")}`);

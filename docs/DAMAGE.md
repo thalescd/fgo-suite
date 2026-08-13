@@ -552,6 +552,7 @@ que os casos:
 | Um campo não lido faz o valor parecer completo | `RatioHPLow` faltando deixa `upAtk 0` (R25) |
 | O mesmo papel muda de campo conforme a família | multiplicador em `Correction` ou em `Value2` (R27) |
 | Uma regra geral engole a exceção sem avisar | `hasBuff → /10` sobre valores planos (R26) |
+| A salvaguarda existe mas ninguém a lê | `valueUnit: "unknown"` ignorado pelo multiplicador de NP (R28) |
 | A fórmula é de 2018 e o jogo andou | `buffRate` do Oberon (R21) |
 
 **R25 saiu desta própria lista.** "`svals` não lidos" estava anotado aqui como

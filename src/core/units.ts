@@ -47,6 +47,17 @@ const FUNC_VALUE_RULE: Record<string, ValueRule> = {
   damageNpHpratioLow: PERCENT_10,
   damageNpHpratioHigh: PERCENT_10,
   damageNpCounter: PERCENT_10,
+  // R28 — faltavam, e a falta não era visível: `valueRuleFor` devolve `unknown`
+  // para funcType fora da tabela, o que deixa o valor CRU. Para quase todo campo
+  // isso é a proteção certa (o número sai obviamente não convertido); para um
+  // multiplicador de NP é o contrário, porque ele vai direto para a fórmula sem
+  // ninguém olhar `valueUnit`. Dava dano 10x.
+  //   damageNpBattlePointPhase        Ereshkigal 450/600/675/712,5/750%
+  //   damageNpAndOrCheckIndividuality Heroine XX (Alter) 600/800/900/950/1000%
+  // As duas progressões são a curva padrão de nível de NP; 4500% não é
+  // multiplicador de NP nenhum.
+  damageNpBattlePointPhase: PERCENT_10,
+  damageNpAndOrCheckIndividuality: PERCENT_10,
   damageValue: FLAT,
   damageValueSafe: FLAT,
 
