@@ -506,6 +506,81 @@ Cada fase entrega algo usável sozinho.
 | ~~**4**~~ | ~~MCP server sobre 1–3~~ | ✅ 4 tools sobre `core/`, `.mcp.json` versionado; itens 2 e 3 do §1 entregues |
 | **5** | Buffs condicionais, **CEs/MCs no cálculo _e_ nas tools do MCP**, suportes, comparação lado a lado | refinamento |
 
+Quebrada em **8.1**. Letras, não `5.1` — `§5.1`–`§5.7` já são as seções da
+calculadora neste documento, e "5.2" apontando para duas coisas diferentes é
+erro de leitura esperando acontecer.
+
+### 8.1 A fase 5, item a item
+
+**O núcleo está mais pronto do que a fase sugere.** `damage.ts` já resolve `ce`,
+`mysticCode` e `support` como `BuffSource` (`:552-580`), já soma a ATK da CE em
+`servantAtk` (`:656`), já escolhe `effectsBase`/`effectsMlb` por D17, e já aplica
+o filtro de alcance de suporte por `REACHES_ALLY` (`:268`, §5.1). Há teste com
+Oberon e Tamamo como suporte.
+
+O que falta em 5a e 5b é **só a superfície**: `scenario.ts:225` monta o stack
+apenas com `ownSkill`, `append` e `npSelfBuff`. Não existe `ce=` na query
+string, então não existe na tela nem na tool. O núcleo sabe; ninguém consegue
+pedir.
+
+| | Entrega | Núcleo | Superfície |
+|---|---|---|---|
+| **5a** | CE e Mystic Code | ✅ pronto | query string, tela, tools |
+| **5b** | Suportes e templates | ✅ pronto | query string, tela, tools, `templates.json` |
+| **5c** | Condições de estado | ❌ a fazer | inputs de estado no cenário |
+| **5d** | Comparação lado a lado | n/a | tela |
+
+#### 5a — CE e Mystic Code
+
+Fecha o maior buraco do número, e é o que a própria tool anuncia como faltando
+em toda resposta.
+
+- `ce=<id>&mlb=1&cel=<nível>` e `mc=<id>&mcs=<skill>&mcl=<nível>` na query string.
+- Seletor na tela; MLB é caixa do usuário (**D17**) — `condLimitCount` `0`/`4`
+  separa os dois conjuntos de efeito e não dá para adivinhar qual você tem.
+- Parâmetros equivalentes em `calculate_damage`, e busca de CE nas tools.
+- **Corrigir `notModelledAtAll`**, que hoje diz que CE e MC não são parte do
+  cálculo. Passa a citar só o que sobrou.
+
+*Pronto quando:* Kaleidoscope e Black Grail mudam o número, aparecem em
+`buffsCounted` com a origem, e o link `/calc?…` reproduz.
+
+#### 5b — Suportes e templates
+
+O terceiro slot que falta para o número bater com uma party real.
+
+- `sup=` na query string, com o alvo do buff (`targetsAttacker`) explícito.
+- `templates.json`: composições clássicas como **listas de referência**, nunca
+  valores literais (**D13**) — assim sobrevivem a rebalanceamento.
+- Templates ad hoc montados na tela vivem na query string e viram link (§3.1).
+
+*Pronto quando:* um template de duas Castorias muda o número, e cada buff de
+suporte aparece com a origem — inclusive os que **não** chegaram, com o motivo
+`target … does not reach the attacker`, que o núcleo já produz.
+
+#### 5c — Condições de estado
+
+O único item que exige núcleo novo. HP abaixo de X, contagem de buffs, número do
+turno — a família que **D14** adiou explicitamente quando trouxe as condições de
+trait para a v1.
+
+Suspeito já registrado em `DAMAGE.md`: `condFunc` é carregado no modelo
+(`model.ts:77`) e **nunca consultado**.
+
+*Pronto quando:* um buff com limiar de HP conta quando o estado é informado, e o
+que continuar não avaliável segue em `notCounted` **com o motivo** — nunca
+chutado.
+
+#### 5d — Comparação lado a lado
+
+Transforma "quanto dá" em "qual vale mais", que é a pergunta real de quem
+escolhe suporte ou CE. Especificado em §5.7; o requisito não óbvio é que o
+`rollMode` seja **global à comparação**, não por servo, senão a diferença
+exibida é ruído do dado.
+
+Por último de propósito: comparar antes de 5a e 5b seria comparar números que
+ainda ignoram CE.
+
 ---
 
 ## 9. Riscos e pendências
@@ -535,4 +610,5 @@ Cada fase entrega algo usável sozinho.
 | **R22** | **O slot de um buff depende de em quem ele cai, e nem todo buff está no `buffStack`** | Reportado pelo Thales: a passiva Nega-Saver da Kiara (1,5× contra Ruler) não pegava. Três defeitos no mesmo relato. **(a)** Passivas de classe nunca entravam no cálculo — **407 dos 462 servos** têm alguma que afeta dano (349 só de Mad Enhancement), todos subestimados sem sintoma. **(b)** `overwriteClassRelation` sobrescreve o `triangleModifier` e não era lido: 8 buffs em 6 servos, 5 com linhas de `atkSide`. **(c)** O slot era escolhido sem olhar o alvo do efeito, então o Def Up que o atacante lança em si mesmo entrava como defesa do inimigo e **reduzia o dano dele** — 111 `upDefence`, 42 `downAtk`, 48 `subSelfdamage` e 8 `downNpdamage` do lado errado; de quebra, o def down de um suporte era recusado por "não alcança o atacante". **Mitigação: passiva de classe sempre incluída em `calculateDamage`; `Effect.classRelationOverrides` no modelo; `SLOT_SIDE` em `buffs.ts` exigindo o lado certo, com recusa registrada.** |
 | **R23** | **`condTarget` guarda três tipos de condição, não um** | Reportado pelo Thales: a Arts resistance down da Kiara não somava nem no card Arts nem no NP dela, que é Arts. O campo é lido como "identidade do alvo", mas carrega três famílias: **card** (`downDefencecommandall` + `condTarget: [cardArts]` — o card que vai *acertar* o alvo), **estado de buff** (`condTarget: [buffEvade]`) e **identidade** (`alignmentGood`). Tratar card como identidade recusava o efeito em 100% dos casos, porque nenhum inimigo "é" um card Arts: **85 efeitos, 62 servos**. **Mitigação: restrição de card é a mesma pergunta dos dois lados e passa pela mesma função; `faceCard` entra nela como "command card"; estado de buff é recusado com o motivo verdadeiro (`enemy buff state is not modelled`, D14) em vez de fingir identidade ausente.** |
 | **R24** | **Um servo pode ter mais de um NP, e o multiplicador muda junto com o card** | Reportado pelo Thales: Emiya e Space Ishtar trocam o tipo do NP, e não é só o tipo. Medido: **8 servos** com mais de uma variante. Cinco trocam o card (Space Ishtar: buster 300% / arts 450% / quick 600%); **três trocam só o alvo com a mesma carta** — UDK-Barghest, Jade Rabbit e BB Dubai —, e a versão ST vale o dobro do multiplicador. Usar sempre o `np` de maior prioridade erra **2,18×** na Mélusine e **2×** na UDK-Barghest. O problema difícil é que `npAlternatives` mistura variante (escolha) com rank up (histórico) — a Mash tem 8 versões Arts. **Mitigação: `selectableNps()` agrupa pelo par card+alvo e pega a de maior `priority` dentro de cada grupo (R8 por par), desempatando por `condQuestId` porque o Emiya tem os dois eixos cruzados; `DamageInput.attacker.npId` escolhe, e a tela só mostra o seletor para os oito.** A primeira versão agrupava só por card e escondia as três variantes de alvo — o relato do Thales sobre a UDK-Barghest veio antes do commit seguinte. Como o servo chega àquele estado (mecânica própria, `transformServant`, forma) continua fora de escopo por D14. |
+| **R25** | **O valor de um buff, e o multiplicador de um NP, podem depender do HP de quem ataca** | Reportado pelo Thales (Anne Bonny & Mary Read, e a skill 1 do Cú Chulainn). **Dois mecanismos independentes, os dois truncados no valor de HP cheio — que é um número plausível, então nenhum dava sintoma.** **(a)** O `funcType` `damageNpHpratioLow`, em 4 servos: o multiplicador do NP tem uma segunda parcela, no campo `Target`, proporcional ao HP que falta. Como `Target` só era lido como trait do super-efetivo, a parcela sumia — e ela é a única que escala com **overcharge**, então OC1 e OC5 davam o mesmo número no Hijikata e na Anne & Mary. **(b)** O campo `RatioHPLow` do `sval`, em 4 buffs de dano: Cú Chulainn (ATK 20%→50%), Hijikata (crit damage 20%→100%), Leonidas e Passionlip. **Nos dois últimos o valor de HP cheio é zero**, então a auditoria mostrava `upAtk 0` — um buff contado valendo nada, que não parece bug, parece skill fraca. A Passionlip usa ainda `RatioHPRange*`, uma faixa que é **gatilho e não limite**: acima de 50% de HP a escala inteira não vale. **Mitigação: `Effect.hpScaling` e `NoblePhantasm.damageHpBonus` no modelo; `hpPercent` no cenário, na query string (`hp=`) e na tool; `ResolvedBuff.atFullHp` na auditoria, presente mesmo com HP cheio, porque saber que o buff é sensível a HP é informação. O aviso dos dois sentidos do campo `Target` está em `AtlasSval`.** É **razão de HP, não HP absoluto** — o que dispensa modelar `hpMax` e torna o HP de uma CE irrelevante para o dano. Este risco saiu do suspeito que já estava anotado em `DAMAGE.md`: campos de `svals` que a ingestão não lê. |
 | R14 | Divisores de unidade inconsistentes | O Atlas usa `/10` para percentuais de efeito, `/1000` para multiplicadores constantes e `/100` para ganho de NP — sem marcação no dado. **Mitigação: tabela em `docs/SCHEMA.md` §2; conversão acontece só na ingestão, o modelo canônico nunca carrega inteiro cru.** |

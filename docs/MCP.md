@@ -107,8 +107,9 @@ duas superfícies divergirem, ele falha.
 
 | | |
 |---|---|
-| Craft Essence e Mystic Code no cálculo | fase 5 |
-| Suporte e comparação lado a lado | fase 5 |
+| Craft Essence e Mystic Code no cálculo | fase 5a — `core/` já resolve, falta o parâmetro |
+| Suporte | fase 5b — idem |
+| Comparação lado a lado | fase 5d |
 | Busca de CEs | a tool cobre servos; a tela cobre os dois |
 | Resources e prompts do MCP | só tools por enquanto |
 

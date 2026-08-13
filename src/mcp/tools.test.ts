@@ -176,3 +176,38 @@ describe("list_capabilities", () => {
     expect(r.capabilities.every((c) => c.tag.includes("np_charge"))).toBe(true);
   });
 });
+
+describe("calculate_damage: escala por HP (R25)", () => {
+  it("hpPercent muda o número e o link reproduz o cenário", () => {
+    const cheio = calculateDamageTool(store, { servant: "hijikata" }) as { damage: { average: number } };
+    const ferido = calculateDamageTool(store, { servant: "hijikata", hpPercent: 20 }) as {
+      damage: { average: number };
+      viewInBrowser: string;
+      formulaTerms: { npMultiplierFromMissingHp?: string; attackerHp?: string };
+    };
+
+    expect(ferido.damage.average).toBeGreaterThan(cheio.damage.average);
+    expect(ferido.formulaTerms.attackerHp).toBe("20%");
+    expect(ferido.formulaTerms.npMultiplierFromMissingHp).toBeDefined();
+    expect(parseCalc(new URLSearchParams(ferido.viewInBrowser.split("?")[1])).hpPercent).toBe(20);
+  });
+
+  it("o overcharge deixa de ser inerte quando falta HP", () => {
+    const at = (oc: number, hpPercent: number) =>
+      (calculateDamageTool(store, { servant: "hijikata", overcharge: oc, hpPercent }) as { damage: { average: number } })
+        .damage.average;
+    // Antes de R25 estes dois eram iguais em qualquer HP.
+    expect(at(1, 100)).toBe(at(5, 100));
+    expect(at(5, 0)).toBeGreaterThan(at(1, 0));
+  });
+
+  it("um buff que escala com HP diz isso mesmo com HP cheio", () => {
+    // Passionlip skill 2 valia `upAtk 0` e não avisava nada.
+    const r = calculateDamageTool(store, { servant: "passionlip", action: "buster", skills: [2], hpPercent: 30 }) as {
+      buffsCounted: string[];
+    };
+    const linha = r.buffsCounted.find((x) => /upAtk/.test(x));
+    expect(linha).toMatch(/scales with HP/);
+    expect(linha).toMatch(/0 at full HP/);
+  });
+});

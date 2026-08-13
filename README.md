@@ -20,7 +20,12 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **2** | Capabilities + busca por skill | ✅ pronta |
 | **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **valores nunca conferidos contra o jogo (R4)** |
 | **4** | MCP server — busca e calculadora como tools | ✅ pronta |
-| 5 | CE e Mystic Code no cálculo e nas tools, suportes, comparação, condicionais de estado | pendente |
+| **5a** | CE e Mystic Code na query string, na tela e nas tools | pendente — núcleo pronto, falta a superfície |
+| **5b** | Suportes e templates de composição | pendente — núcleo pronto, falta a superfície |
+| **5c** | Condições de estado (HP, contagem de buffs, turno) | pendente |
+| **5d** | Comparação lado a lado | pendente |
+
+Detalhe de cada uma em [`PLANO.md`](PLANO.md) §8.1.
 
 ## Começando
 
@@ -40,7 +45,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 147 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 159 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -100,8 +105,14 @@ como exceção documentada. Duas até agora: a skill 3 do **Oberon**, que dobra 
 buffs de dano de NP (R21), e a passiva da **Kiara**, que sobrescreve a matriz de
 classe (R22).
 
-Fora por enquanto: CE e Mystic Code no cálculo, suportes e comparação lado a
-lado — tudo fase 5.
+Sete servos batem mais forte machucados — Cú Chulainn, Leonidas, Passionlip,
+Hijikata, Aśvatthāman e as duas Anne Bonny & Mary Read. O campo **Current HP**
+controla isso (R25). No Leonidas e na Passionlip o buff vale *zero* com HP
+cheio, e era assim que ele aparecia antes de ser lido.
+
+Fora por enquanto: CE, Mystic Code, suportes e comparação lado a lado. O núcleo
+já resolve os três primeiros como fonte de buff — falta poder **pedi-los**, que
+é a fase 5a/5b.
 
 E os números **nunca foram conferidos contra o jogo** (R4). Existe um
 procedimento pronto para isso: `npm run damage:cases` imprime 16 cenários, cada

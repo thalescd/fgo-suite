@@ -148,6 +148,7 @@ interface NoblePhantasm {
   target: "st" | "aoe" | "support";   // DERIVADO de effectFlags (§5.5)
   hits: number[];                // npDistribution
   damageMultiplier: number[] | null;  // 5 entradas (NP1..NP5), em % — null se support
+  damageHpBonus: SuperEffectiveValues | null;  // parcela que depende do HP faltante (§3.4.4)
   effects: Effect[];             // EM ORDEM DE EXECUÇÃO — ver nota abaixo
   damageEffectIndex: number | null;  // índice do dano dentro de `effects`
   priority: number;
@@ -195,6 +196,7 @@ interface Effect {
   condFunc: Trait[];             // functvals: condições adicionais da função
 
   superEffective: SuperEffective | null;  // dano extra por trait do alvo (§3.4.1)
+  hpScaling: HpScaling | null;   // o valor cresce conforme o HP do portador cai (§3.4.4)
 
   // BUFF SOBRE BUFF — R21. Traits do PRÓPRIO buff, não do portador.
   buffTraits: Trait[];           // buff.vals: "buffNpDamageUp", "buffPositiveEffect"...
@@ -204,10 +206,22 @@ interface Effect {
   supported: boolean;            // false => entra em `assumptions` como não modelado (R12)
 }
 
-interface SuperEffective {
+interface SuperEffective extends SuperEffectiveValues {
   traits: Trait[];               // traits do alvo que ativam o bônus
-  values: number[];              // multiplicador em %, por nível de NP. 150 = 1,5x
+}
+
+// Compartilhado com `NoblePhantasm.damageHpBonus` (§3.4.4): mesma forma,
+// mesma origem — uma coluna de `svals` por linha de overcharge.
+interface SuperEffectiveValues {
+  values: number[];              // em %, por nível de NP. 150 = 1,5x
   valuesByOvercharge: number[][] | null;  // 5 linhas OC1..OC5; null se não escala
+}
+
+interface HpScaling {
+  atLow: number[];               // extra na ponta baixa da faixa, por nível
+  atHigh: number[];              // extra na ponta alta; só a Passionlip usa
+  rangeLow: number;              // faixa em %, escalar: não varia com nível
+  rangeHigh: number;
 }
 ```
 
@@ -227,7 +241,7 @@ Afeta **139 NPs no índice**, e o `Correction` **varia com overcharge em 69 dele
 
 O `Target` traz só o id. O nome vem de um dicionário montado varrendo todos os pares `{id, name}` do dump (1070 ids), em vez de uma lista à mão. `Target: 0` é placeholder de "sem trait" e é descartado.
 
-> **`svals` tem 114 campos distintos; lemos 6.** Os demais são engine e apresentação (`ShowState`, `HideMiss`, `PriorityBgm`). Ficaram de fora, e são candidatos a revisão se algo mais faltar: `Value2` (314 casos, em `addState`), `ParamAdd`/`ParamMax` (bônus acumulativo por trait), `RatioHPLow`/`RatioHPHigh` (condição de HP, adiada por D14).
+> **`svals` tem 114 campos distintos; lemos 10.** Os demais são engine e apresentação (`ShowState`, `HideMiss`, `PriorityBgm`). Ficaram de fora, e são candidatos a revisão se algo mais faltar: `Value2` (3.181 casos), `ParamAdd`/`ParamAddMaxCount` (115, bônus acumulativo por unidade de algo) e `DependFuncId` (110). Os quatro `RatioHP*` estavam nesta lista e saíram dela: viraram R25, e enquanto não eram lidos dois buffs de ATK valiam zero (§3.4.4).
 
 #### 3.4.2 Buff que multiplica buff (R21)
 
@@ -268,6 +282,34 @@ interface ClassRelationOverride {
 
 `defSide` existe no dado e **não** é carregado: muda o dano recebido, e nada aqui
 calcula dano recebido. 8 buffs em 6 servos, 5 com `atkSide`.
+
+#### 3.4.4 Escala por HP (R25)
+
+Dois campos diferentes, dois lugares diferentes do modelo, a mesma ideia: o
+valor cresce conforme o HP de **quem ataca** cai.
+
+| Campo do Atlas | Vira | Onde |
+|---|---|---|
+| `svals[].RatioHPLow` / `RatioHPHigh` | `Effect.hpScaling.atLow` / `atHigh` | 4 buffs de dano |
+| `svals[].RatioHPRangeLow` / `RangeHigh` | `hpScaling.rangeLow` / `rangeHigh` | só a Passionlip |
+| `svals[].Target` em `damageNpHpratio*` | `NoblePhantasm.damageHpBonus` | 4 servos |
+
+Todos `/10`, como o resto dos percentuais de efeito (§2).
+
+> ⚠️ **`Target` tem dois sentidos, decididos pelo `funcType`.** Em
+> `damageNpHpratio*` é este bônus, um percentual (`12000` = 1200%); em qualquer
+> outra função é o **trait** do super-efetivo (§3.4.1). Lido pelo sentido errado,
+> vira um trait id 12000 que não existe. O que separa os dois na prática é
+> `Correction`: as funções de HP não têm esse campo, e `toSuperEffective` exige.
+
+A faixa é **gatilho, não limite**: acima de `rangeHigh` a escala inteira vale
+zero, em vez de parar no valor da ponta. A descrição da skill 2 da Passionlip diz
+isso literalmente — *HP50%以下で発動*, ativa em 50% de HP ou menos. Um `clamp`
+daria 30% de ATK com HP cheio, plausível e errado.
+
+`atLow`/`atHigh` são arrays por nível porque escalam com o nível da skill
+(Passionlip: 30% na 1 e 50% na 10); a faixa é escalar porque não varia em nenhum
+caso do dump.
 
 ### 3.5 `CraftEssence`
 

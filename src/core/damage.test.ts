@@ -37,8 +37,15 @@ const GIL = loadServant(12); // archer, super-efetivo vs weakToEnumaElish, buff 
 const OBERON = loadServant(316); // único servo com `buffRate`: dobra buffs de dano de NP (R21)
 const KALEID = loadEquip(34);
 
+// R25 — os dois mecanismos de escala por HP, um servo por forma:
+const CU = loadServant(17); // skill 1 `RatioHPLow` sobre um Value != 0: 20% -> 50% de ATK
+const LEONIDAS = loadServant(21); // skill 1 `RatioHPLow` sobre Value 0: o buff inteiro é a escala
+const LIP = loadServant(164); // única faixa (`RatioHPRange*`): só ativa em 50% de HP ou menos
+const HIJIKATA = loadServant(161); // os dois mecanismos no mesmo servo: NP e crit damage
+const ANNE = loadServant(66); // `damageNpHpratioLow` cujo bônus escala com overcharge
+
 const data: DamageData = {
-  servants: new Map([ARTORIA, GIL, OBERON].map((s) => [s.id, s])),
+  servants: new Map([ARTORIA, GIL, OBERON, CU, LEONIDAS, LIP, HIJIKATA, ANNE].map((s) => [s.id, s])),
   equips: new Map([[KALEID.id, KALEID]]),
   mysticCodes: new Map(mysticCodes.map((m) => [m.id, m])),
   constants,
@@ -642,5 +649,100 @@ describe("mais de um NP por servo (R24)", () => {
       "BB Dubai", "Emiya", "Jade Rabbit", "Mash Kyrielight",
       "Mélusine", "Ptolemaîos", "Space Ishtar", "UDK-Barghest",
     ]);
+  });
+});
+
+/**
+ * R25 — escala por HP.
+ *
+ * Dois mecanismos independentes, os dois truncados no valor de HP cheio até
+ * aqui: o `funcType` `damageNpHpratioLow`, que engorda o multiplicador do NP, e
+ * o campo `RatioHPLow` do `sval`, que engorda o valor de um buff.
+ *
+ * Nenhum dos dois dava sintoma. Sobrava um número plausível — e em dois casos
+ * (Leonidas, Passionlip) sobrava um buff contado valendo zero.
+ */
+describe("escala por HP (R25)", () => {
+  const atHp = (s: Servant, hp: number, over: Partial<DamageInput> = {}) =>
+    calculateDamage(
+      input({
+        attacker: { servantId: s.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1, hpPercent: hp },
+        ...over,
+      }),
+      data,
+    );
+  const skillBuff = (s: Servant, num: number, hp: number, buffType: string) =>
+    atHp(s, hp, { buffStack: [{ kind: "ownSkill", skillNum: num, level: 10 }] })
+      .assumptions.appliedBuffs.filter((b) => b.buffType === buffType)
+      .find((b) => b.atFullHp !== undefined);
+
+  it("interpola linearmente entre as pontas da faixa", () => {
+    // Cú Chulainn skill 1: `Value 200` + `RatioHPLow 300` = 20% a 50% de ATK.
+    const at = (hp: number) => skillBuff(CU, 1, hp, "upAtk")?.value;
+    expect([at(100), at(50), at(0)]).toEqual([20, 35, 50]);
+  });
+
+  it("com HP cheio devolve o que a ingestão já guardava — nada certo mudou", () => {
+    const b = skillBuff(CU, 1, 100, "upAtk");
+    expect(b?.value).toBe(20);
+    // `atFullHp` é o mesmo em qualquer HP: é a referência, não o valor atual.
+    expect([skillBuff(CU, 1, 0, "upAtk")?.atFullHp, b?.atFullHp]).toEqual([20, 20]);
+  });
+
+  it("quando o Value é 0, o buff inteiro é a escala", () => {
+    // Leonidas tem dois `upAtk` na mesma skill: um fixo de 20% e um que só
+    // existe conforme o HP cai. Antes, o segundo era contado valendo zero.
+    const at = (hp: number) => skillBuff(LEONIDAS, 1, hp, "upAtk")?.value;
+    expect([at(100), at(50), at(0)]).toEqual([0, 15, 30]);
+    // O fixo não se move, então o slot inteiro vai de 20% a 50%.
+    const total = (hp: number) =>
+      atHp(LEONIDAS, hp, { buffStack: [{ kind: "ownSkill", skillNum: 1, level: 10 }] }).breakdown.atkMod;
+    expect([total(100), total(0)]).toEqual([0.2, 0.5]);
+  });
+
+  it("a faixa é um gatilho, não um limite — o valor cai a zero acima dela", () => {
+    // Passionlip é a única com `RatioHPRange*`: "HP50%以下で発動".
+    const at = (hp: number) => skillBuff(LIP, 2, hp, "upAtk")?.value;
+    expect([at(100), at(51)]).toEqual([0, 0]);
+    expect([at(50), at(25), at(0)]).toEqual([30, 40, 50]);
+  });
+
+  it("escala também fora do atkMod: crit damage do Hijikata vai a 100%", () => {
+    const at = (hp: number) => skillBuff(HIJIKATA, 3, hp, "upCriticaldamage")?.value;
+    expect([at(100), at(50), at(0)]).toEqual([20, 60, 100]);
+  });
+
+  it("o bônus do NP escala com overcharge, que era inerte nesses servos", () => {
+    const mult = (oc: 1 | 5, hp: number) =>
+      atHp(HIJIKATA, hp, {
+        attacker: { servantId: HIJIKATA.id, level: 90, fou: 1000, npLevel: 1, overcharge: oc, hpPercent: hp },
+      }).breakdown.npDamageMultiplier;
+    // Com HP cheio o overcharge não muda nada: o bônus é multiplicado por zero.
+    expect(mult(1, 100)).toBe(mult(5, 100));
+    // Com HP zerado ele é a diferença inteira — antes os dois davam 8.
+    expect([mult(1, 0), mult(5, 0)]).toEqual([16, 20]);
+  });
+
+  it("Anne & Mary: o overcharge só aparece quando há HP faltando", () => {
+    const dano = (oc: 1 | 3 | 5, hp: number) =>
+      atHp(ANNE, hp, {
+        attacker: { servantId: ANNE.id, level: 90, fou: 1000, npLevel: 1, overcharge: oc, hpPercent: hp },
+      }).avg;
+    expect(dano(1, 100)).toBe(dano(5, 100));
+    expect(dano(1, 0)).toBeLessThan(dano(3, 0));
+    expect(dano(3, 0)).toBeLessThan(dano(5, 0));
+  });
+
+  it("servo sem escala é indiferente ao HP, e não ganha o campo de auditoria", () => {
+    expect(atHp(ARTORIA, 0).avg).toBe(atHp(ARTORIA, 100).avg);
+    const buffs = atHp(ARTORIA, 1, { buffStack: [{ kind: "ownSkill", skillNum: 2, level: 10 }] })
+      .assumptions.appliedBuffs;
+    expect(buffs.length).toBeGreaterThan(0);
+    expect(buffs.every((b) => b.atFullHp === undefined)).toBe(true);
+  });
+
+  it("HP fora de 0..100 é preso na borda, venha de onde vier", () => {
+    expect(atHp(CU, 500).avg).toBe(atHp(CU, 100).avg);
+    expect(atHp(CU, -20).avg).toBe(atHp(CU, 0).avg);
   });
 });

@@ -44,6 +44,14 @@ export interface CalcState {
   appends: number[];
   appendLevel: number;
 
+  /**
+   * HP do atacante em % do máximo. 100 = ileso, e é o padrão.
+   *
+   * Sete servos mudam de dano com isto (R25). É razão, não valor absoluto —
+   * é só disso que as duas escalas precisam, e é o que dispensa modelar `hpMax`.
+   */
+  hpPercent: number;
+
   action: ActionKind;
   position: number;
   isCrit: boolean;
@@ -70,6 +78,7 @@ export const DEFAULT_CALC: CalcState = {
   skillLevel: 10,
   appends: [],
   appendLevel: 10,
+  hpPercent: 100,
   action: "np",
   position: 1,
   isCrit: false,
@@ -105,6 +114,7 @@ const KEYS = {
   skillLevel: "sklv",
   appends: "ap",
   appendLevel: "aplv",
+  hpPercent: "hp",
   action: "act",
   position: "pos",
   isCrit: "crit",
@@ -154,6 +164,7 @@ export function parseCalc(p: URLSearchParams): CalcState {
     skillLevel: clamp(int(p, KEYS.skillLevel, 10), 1, 10),
     appends: nums(p, KEYS.appends),
     appendLevel: clamp(int(p, KEYS.appendLevel, 10), 1, 10),
+    hpPercent: clamp(int(p, KEYS.hpPercent, DEFAULT_CALC.hpPercent), 0, 100),
     action,
     position: clamp(int(p, KEYS.position, 1), 1, 3),
     isCrit: p.get(KEYS.isCrit) === "1",
@@ -183,6 +194,7 @@ export function serializeCalc(s: CalcState): URLSearchParams {
   putNum(KEYS.skillLevel, s.skillLevel, 10);
   put(KEYS.appends, s.appends.join(","));
   putNum(KEYS.appendLevel, s.appendLevel, 10);
+  putNum(KEYS.hpPercent, s.hpPercent, DEFAULT_CALC.hpPercent);
   if (s.action !== DEFAULT_CALC.action) p.set(KEYS.action, s.action);
   putNum(KEYS.position, s.position, 1);
   if (s.isCrit) p.set(KEYS.isCrit, "1");
@@ -237,6 +249,7 @@ export function toDamageInput(
       fou: state.fou,
       npLevel,
       overcharge: clamp(state.overcharge, 1, 5) as 1 | 2 | 3 | 4 | 5,
+      hpPercent: clamp(state.hpPercent, 0, 100),
       ...(state.npId !== null ? { npId: state.npId } : {}),
     },
     buffStack,

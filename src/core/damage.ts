@@ -28,11 +28,16 @@ import type {
   Constants,
   CraftEssence,
   Effect,
+  HpScaling,
   MysticCode,
   NoblePhantasm,
   Servant,
+  SuperEffectiveValues,
   Trait,
 } from "./model.js";
+
+/** HP em % nunca sai de 0..100, venha de query string, de tool ou de teste. */
+const clampPercent = (n: number): number => Math.min(100, Math.max(0, n));
 
 // ------------------------------------------------------------------- entrada
 
@@ -70,6 +75,14 @@ export interface DamageInput {
      */
     npId?: number;
     ce?: { id: number; level: number; mlb: boolean };
+    /**
+     * HP atual do atacante, em % do máximo. Omitido = 100 (ileso).
+     *
+     * É uma **razão**, não um valor absoluto, porque é só disso que as duas
+     * escalas de HP precisam (R25) — o que torna `hpMax`, e portanto o HP de
+     * uma CE, irrelevante para o dano.
+     */
+    hpPercent?: number;
   };
   buffStack: BuffSource[];
   enemy: Enemy;
@@ -115,6 +128,11 @@ export interface ResolvedBuff {
   /** Valor antes do boost, e de onde ele veio. Ausentes quando não houve boost. */
   boostedFrom?: number;
   boostedBy?: string;
+  /**
+   * Quanto este buff valeria com HP cheio (R25). Só nos efeitos que escalam
+   * com HP; presente mesmo quando o HP está cheio e os dois são iguais.
+   */
+  atFullHp?: number;
 }
 
 export interface SkippedBuff {
@@ -130,7 +148,15 @@ export interface DamageResult {
   perHit: number[];
   breakdown: {
     servantAtk: number;
+    /** Já com `npHpBonus` somado, quando houver. */
     npDamageMultiplier: number;
+    /**
+     * R25: a parcela de `npDamageMultiplier` que veio do HP faltante, em %.
+     * `0` nos 409 NPs sem a mecânica, e também com HP cheio.
+     */
+    npHpBonus: number;
+    /** HP do atacante em % do máximo. 100 = ileso, o padrão. */
+    hpPercent: number;
     /** Termo `cardMod` da fórmula, isolado. */
     cardMod: number;
     /** `firstCardBonus + cardDamageValue * (1 + cardMod)` já resolvido. */
@@ -281,6 +307,32 @@ function valueOf(effect: Effect, levelIndex: number, overcharge: number): number
   return row?.[Math.min(levelIndex, (row.length || 1) - 1)] ?? 0;
 }
 
+/** Uma linha de `SuperEffectiveValues`, escolhida por overcharge e nível de NP. */
+function ocValue(v: SuperEffectiveValues, overcharge: number, npLevel: number): number | undefined {
+  return v.valuesByOvercharge ? v.valuesByOvercharge[overcharge - 1]?.[npLevel - 1] : v.values[npLevel - 1];
+}
+
+/**
+ * Valor de um buff que cresce conforme o HP do portador cai (R25).
+ *
+ * Interpola linearmente entre as duas pontas da faixa. **Acima da faixa a
+ * escala inteira não vale** — é o gatilho "só abaixo de 50% de HP" da
+ * Passionlip, e é o que separa esta função de um simples `lerp`.
+ *
+ * Com HP cheio o resultado é o valor que a ingestão já guardava sozinha, então
+ * este caminho não muda nenhum número que já estivesse certo.
+ */
+function hpScaledValue(base: number, s: HpScaling, levelIndex: number, hpPercent: number): number {
+  if (hpPercent > s.rangeHigh) return base;
+
+  const at = (a: number[]) => a[Math.min(levelIndex, (a.length || 1) - 1)] ?? 0;
+  const lo = at(s.atLow);
+  const hi = at(s.atHigh);
+  const span = s.rangeHigh - s.rangeLow;
+  const t = span > 0 ? (Math.max(hpPercent, s.rangeLow) - s.rangeLow) / span : 0;
+  return base + lo + t * (hi - lo);
+}
+
 /**
  * Filtra e classifica os candidatos em slots da fórmula.
  *
@@ -413,7 +465,11 @@ function resolveBuffs(
       continue;
     }
 
-    const raw = valueOf(e, c.levelIndex, input.attacker.overcharge);
+    const flat = valueOf(e, c.levelIndex, input.attacker.overcharge);
+    // R25: quatro buffs de dano crescem conforme o HP cai. Sem isto sobra o
+    // valor de HP cheio, que na Passionlip e no Leonidas é zero.
+    const hpPercent = clampPercent(input.attacker.hpPercent ?? 100);
+    const raw = e.hpScaling ? hpScaledValue(flat, e.hpScaling, c.levelIndex, hpPercent) : flat;
 
     if (boostTargets.length > 0) {
       boosts.push({
@@ -433,6 +489,11 @@ function resolveBuffs(
       slot: spec.slot!,
       value: raw * signOf(e.buffType),
       chance: e.chance,
+      // Presente mesmo com HP cheio: saber que o buff é sensível a HP é
+      // informação, e com HP cheio é justamente quando ele vale menos.
+      ...(e.hpScaling
+        ? { atFullHp: hpScaledValue(flat, e.hpScaling, c.levelIndex, 100) * signOf(e.buffType) }
+        : {}),
       // Os dois slots condicionais da fórmula: `critDamageMod * isCrit` e
       // `npDamageMod * isNP`.
       counted:
@@ -656,8 +717,23 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
   const servantAtk = base + input.attacker.fou + ceAtk;
 
   // ---- NP e card
+  const hpPercent = clampPercent(input.attacker.hpPercent ?? 100);
+  /**
+   * R25: em `damageNpHpratioLow` o multiplicador tem duas parcelas — a base,
+   * que escala com o nível de NP, e este bônus, que escala com **overcharge** e
+   * é multiplicado pelo HP que falta. Ignorá-lo deixava o overcharge inerte nos
+   * quatro servos que usam a mecânica.
+   */
+  const npHpBonus =
+    isNP && np?.damageHpBonus
+      ? ((ocValue(np.damageHpBonus, input.attacker.overcharge, input.attacker.npLevel) ?? 0) *
+          (100 - hpPercent)) /
+        100
+      : 0;
   const npDamageMultiplier =
-    isNP && np?.damageMultiplier ? (np.damageMultiplier[input.attacker.npLevel - 1] ?? 0) / 100 : 1;
+    isNP && np?.damageMultiplier
+      ? ((np.damageMultiplier[input.attacker.npLevel - 1] ?? 0) + npHpBonus) / 100
+      : 1;
   // "NP cards act as a First card of the appropriate type."
   const position = isNP ? 1 : input.action.position ?? 1;
   const cardEntry = k.cardMultiplier[card]?.[position] ?? { adjustAtk: 1, addAtk: 0 };
@@ -700,9 +776,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
   const se = dmgEffect?.superEffective;
   const seApplies = se !== undefined && se !== null && se.traits.some((t) => enemyTraits.has(t.name));
   const superEffectiveModifier = seApplies
-    ? (se.valuesByOvercharge
-        ? se.valuesByOvercharge[input.attacker.overcharge - 1]?.[input.attacker.npLevel - 1]
-        : se.values[input.attacker.npLevel - 1]) ?? 100
+    ? ocValue(se, input.attacker.overcharge, input.attacker.npLevel) ?? 100
     : 100;
 
   // ---- termos fixos
@@ -757,6 +831,8 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
     breakdown: {
       servantAtk,
       npDamageMultiplier,
+      npHpBonus,
+      hpPercent,
       cardMod,
       cardTerm,
       classAtkBonus,
@@ -785,6 +861,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
         `${input.attacker.fou} fou`,
         `NP${input.attacker.npLevel}`,
         `OC${input.attacker.overcharge}`,
+        ...(hpPercent < 100 ? [`at ${hpPercent}% HP`] : []),
         `vs ${input.enemy.className}/${input.enemy.attribute}`,
         input.action.kind === "np" ? "NP" : `card ${card} pos${position}`,
         ...(isCrit ? ["critical"] : []),

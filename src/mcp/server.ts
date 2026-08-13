@@ -109,10 +109,13 @@ server.registerTool(
       "every buff that did NOT count with the reason. Read `notCounted` before trusting a number that looks low: " +
       "it is where a card-type restriction or an unmet condition shows up.\n\n" +
       "Defaults, applied when you omit them: natural max level, 1000 ATK fou, NP5 for 1–3★ and welfare servants / " +
-      "NP1 for 4–5★, overcharge 1, no skills active, enemy Saber/human.\n\n" +
+      "NP1 for 4–5★, overcharge 1, no skills active, full HP, enemy Saber/human.\n\n" +
       "Automatic, not optional: class passives are always included, and an NP's own pre-damage buffs apply to that " +
       "same hit. An NP can never crit and never joins a card chain.\n\n" +
-      "NOT modelled: Craft Essences, Mystic Codes, support servants, and state conditions (HP thresholds, buff " +
+      "Some servants deal more damage the more HP they have LOST: Cú Chulainn, Leonidas, Passionlip, Hijikata, " +
+      "Aśvatthāman, and both versions of Anne Bonny & Mary Read. Pass `hpPercent` for them — the default of 100 " +
+      "gives their weakest case, and for Hijikata and Anne overcharge does nothing at all until HP is missing.\n\n" +
+      "NOT modelled: Craft Essences, Mystic Codes, support servants, and state conditions other than HP (buff " +
       "counts, turn number). Buffs depending on those are reported in `notCounted` rather than guessed.\n\n" +
       `Accuracy: the implementation matches the community formula term by term, but ${validationState()} — ` +
       "say so when the exact figure matters.",
@@ -122,6 +125,13 @@ server.registerTool(
       fou: z.number().int().min(0).max(2000).optional().describe("ATK fou. Default 1000."),
       npLevel: z.number().int().min(1).max(5).optional(),
       overcharge: z.number().int().min(1).max(5).optional().describe("Default 1."),
+      hpPercent: z
+        .number()
+        .int()
+        .min(0)
+        .max(100)
+        .optional()
+        .describe("Attacker's current HP as a % of its maximum. Default 100. Only matters for the seven HP-scaling servants."),
       npId: z.number().int().optional().describe("Which NP, for servants that have more than one. See get_servant."),
       skills: z.array(z.number().int().min(1).max(3)).optional().describe("Which of the servant's own skills are active, by number."),
       skillLevel: z.number().int().min(1).max(10).optional().describe("Applies to all of them. Default 10."),

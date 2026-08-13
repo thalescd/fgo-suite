@@ -39,7 +39,14 @@ function termsOf(r: DamageResult, k: Constants): Term[] {
   const b = r.breakdown;
   const t: Term[] = [{ label: "Servant ATK", value: num(b.servantAtk) }];
 
-  if (b.npDamageMultiplier !== 1) t.push({ label: "NP damage multiplier", value: mult(b.npDamageMultiplier) });
+  if (b.npDamageMultiplier !== 1)
+    t.push({
+      label: "NP damage multiplier",
+      value: mult(b.npDamageMultiplier),
+      // R25: sem esta nota, o multiplicador do Hijikata muda de 8 para 16 e a
+      // tela não diz por quê.
+      note: b.npHpBonus > 0 ? `includes +${b.npHpBonus}% from missing HP` : undefined,
+    });
 
   t.push({
     label: "Card term",
@@ -172,6 +179,15 @@ export function DamageReport({ result, constants }: { result: DamageResult; cons
               {b.boostedFrom !== undefined && (
                 <span className="reason">
                   boosted from {pct(b.boostedFrom / 100)} by {b.boostedBy}
+                </span>
+              )}
+              {/*
+                Mostrado mesmo quando os dois são iguais: com HP cheio o buff
+                está no seu mínimo, e isso é justamente o que vale saber (R25).
+              */}
+              {b.atFullHp !== undefined && (
+                <span className="reason">
+                  scales with HP — {pct(b.atFullHp / 100)} at full HP
                 </span>
               )}
             </li>

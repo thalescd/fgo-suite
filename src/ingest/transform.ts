@@ -13,11 +13,13 @@ import type {
   Constants,
   CraftEssence,
   Effect,
+  HpScaling,
   MysticCode,
   NoblePhantasm,
   Servant,
   Skill,
   SuperEffective,
+  SuperEffectiveValues,
   Trait,
 } from "../core/model.js";
 import { convertMultiplier, convertRate, convertValues, isSupportedBuff, valueRuleFor } from "../core/units.js";
@@ -118,23 +120,66 @@ const traitById = (id: number): Trait => ({ id, name: traitNames.get(id) ?? "unk
  * efeitos comuns —, então a matriz de OC aqui é a regra, não a exceção.
  * Gilgamesh: 150% no OC1 subindo até 200% no OC5 contra `weakToEnumaElish`.
  */
+/**
+ * Uma coluna de `svals` lida em todas as cinco linhas de overcharge.
+ *
+ * `svals` é o OC1 e `svals2..5` os demais; a matriz extra só é guardada quando
+ * o valor realmente muda. Compartilhado pelo super-efetivo e pelo bônus de HP
+ * (R25) porque a forma é a mesma — o que difere é de qual campo se lê.
+ */
+function ocColumn(f: AtlasFunction, pick: (s: AtlasSval) => number): SuperEffectiveValues {
+  const read = (rows: AtlasSval[] | undefined) => (rows ?? []).map(pick);
+  const ocRows = [f.svals, f.svals2, f.svals3, f.svals4, f.svals5];
+
+  let valuesByOvercharge: number[][] | null = null;
+  if (ocRows.every(Boolean)) {
+    const rows = ocRows.map(read);
+    if (rows.some((r) => JSON.stringify(r) !== JSON.stringify(rows[0]))) valuesByOvercharge = rows;
+  }
+  return { values: read(f.svals), valuesByOvercharge };
+}
+
 function toSuperEffective(f: AtlasFunction): SuperEffective | null {
   const first = f.svals?.[0];
   if (!first || first.Correction === undefined) return null;
 
   // `Target: 0` é placeholder de "sem trait único" — não vira entrada.
   const ids = [...(first.Target ? [first.Target] : []), ...(first.TargetList ?? [])].filter((id) => id !== 0);
-  const corrections = (rows: AtlasSval[] | undefined) => (rows ?? []).map((s) => (s.Correction ?? 0) / 10);
+  return { traits: ids.map(traitById), ...ocColumn(f, (s) => (s.Correction ?? 0) / 10) };
+}
 
-  const values = corrections(f.svals);
-  const ocRows = [f.svals, f.svals2, f.svals3, f.svals4, f.svals5];
-  let valuesByOvercharge: number[][] | null = null;
-  if (ocRows.every(Boolean)) {
-    const rows = ocRows.map(corrections);
-    if (rows.some((r) => JSON.stringify(r) !== JSON.stringify(rows[0]))) valuesByOvercharge = rows;
-  }
+/**
+ * `damageNpHpratio*`: o bônus que o multiplicador ganha conforme o HP cai (R25).
+ *
+ * Sai do campo `Target`, que **nestas funções não é um trait** — ver o aviso em
+ * `AtlasSval`. Só se lê aqui, onde o `funcType` garante o sentido; em qualquer
+ * outra função o mesmo campo é o trait do super-efetivo.
+ */
+const HP_RATIO_DAMAGE = new Set(["damageNpHpratioLow", "damageNpHpratioHigh"]);
 
-  return { traits: ids.map(traitById), values, valuesByOvercharge };
+function npDamageHpBonus(np: AtlasNoblePhantasm): SuperEffectiveValues | null {
+  const dmg = (np.functions ?? []).find((f) => HP_RATIO_DAMAGE.has(f.funcType));
+  return dmg ? ocColumn(dmg, (s) => (s.Target ?? 0) / 10) : null;
+}
+
+/**
+ * Escala do valor de um buff com o HP do portador (R25).
+ *
+ * A faixa é escalar porque não varia com o nível em nenhum caso do dump; o
+ * valor é array porque varia (Passionlip, 30% → 50% da skill 1 à 10).
+ */
+function toHpScaling(svals: AtlasSval[]): HpScaling | null {
+  const has = svals.some((s) => s.RatioHPLow !== undefined || s.RatioHPHigh !== undefined);
+  if (!has) return null;
+
+  const first = svals[0];
+  return {
+    atLow: svals.map((s) => (s.RatioHPLow ?? 0) / 10),
+    atHigh: svals.map((s) => (s.RatioHPHigh ?? 0) / 10),
+    rangeLow: (first?.RatioHPRangeLow ?? 0) / 10,
+    // Ausente = a faixa inteira: 1000 por mil vira 100%.
+    rangeHigh: (first?.RatioHPRangeHigh ?? 1000) / 10,
+  };
 }
 
 /**
@@ -209,6 +254,7 @@ function toEffect(f: AtlasFunction): Effect {
     // `null`, não `[]`: o efeito ou é um boost ou não é, e a diferença importa.
     boostsBuffTraits: buff?.script?.UpBuffRateBuffIndiv ? toTraits(buff.script.UpBuffRateBuffIndiv) : null,
     classRelationOverrides: toClassRelationOverrides(buff?.script?.relationId?.atkSide),
+    hpScaling: toHpScaling(svals),
     supported: isSupportedBuff(buffType),
   };
 }
@@ -292,6 +338,7 @@ function toNp(np: AtlasNoblePhantasm): NoblePhantasm {
     target: npTarget(np),
     hits: np.npDistribution ?? [],
     damageMultiplier: npDamageMultiplier(np),
+    damageHpBonus: npDamageHpBonus(np),
     effects,
     damageEffectIndex: dmgIndex >= 0 ? dmgIndex : null,
     priority: np.priority ?? 0,

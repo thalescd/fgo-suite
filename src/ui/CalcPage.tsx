@@ -283,6 +283,15 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
               <Field label="Overcharge">
                 <Seg value={state.overcharge} options={numbers(1, 5)} onChange={(v) => patch({ overcharge: v })} />
               </Field>
+              {/*
+                Só sete servos mudam de dano com HP (R25), mas o campo é geral:
+                esconder atrás de uma condição por servo faria a tela guardar
+                uma regra que já vive nos dados.
+              */}
+              <Field label="Current HP" hint="% of max — some skills and NPs scale with it">
+                <input type="number" min={0} max={100} step={5} value={state.hpPercent}
+                  onChange={(e) => patch({ hpPercent: Number(e.target.value) })} />
+              </Field>
             </div>
           </Block>
 

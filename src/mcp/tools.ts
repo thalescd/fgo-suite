@@ -225,6 +225,7 @@ export interface DamageArgs {
   fou?: number;
   npLevel?: number;
   overcharge?: number;
+  hpPercent?: number;
   npId?: number;
   skills?: number[];
   skillLevel?: number;
@@ -266,6 +267,7 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
   put("fou", a.fou);
   put("np", a.npLevel);
   put("oc", a.overcharge);
+  put("hp", a.hpPercent);
   put("npid", a.npId);
   put("sk", (a.skills ?? []).join(","));
   put("sklv", a.skillLevel);
@@ -304,6 +306,9 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
     formulaTerms: {
       servantAtk: b.servantAtk,
       npDamageMultiplier: b.npDamageMultiplier,
+      // R25: sem isto, o multiplicador dobra e a resposta não diz por quê.
+      ...(b.npHpBonus > 0 ? { npMultiplierFromMissingHp: `+${b.npHpBonus}%` } : {}),
+      ...(b.hpPercent !== 100 ? { attackerHp: `${b.hpPercent}%` } : {}),
       cardTerm: Number(b.cardTerm.toFixed(4)),
       classAttackRate: b.classAtkBonus,
       classAdvantage: b.triangleModifier,
@@ -326,7 +331,14 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
 
     buffsCounted: r.assumptions.appliedBuffs
       .filter((x) => x.counted)
-      .map((x) => `${x.buffType} ${x.value} [${x.slot}] from ${x.source}${x.boostedBy ? ` (boosted by ${x.boostedBy})` : ""}`),
+      .map(
+        (x) =>
+          `${x.buffType} ${x.value} [${x.slot}] from ${x.source}` +
+          (x.boostedBy ? ` (boosted by ${x.boostedBy})` : "") +
+          // R25: dizer que o buff é sensível a HP importa mesmo com HP cheio,
+          // que é justamente quando ele vale menos.
+          (x.atFullHp !== undefined ? ` (scales with HP; ${x.atFullHp} at full HP)` : ""),
+      ),
     // O que NÃO entrou, com o motivo. É o que permite a quem lê perceber que
     // faltou marcar uma skill, em vez de aceitar um número baixo como verdade.
     notCounted: [
@@ -343,7 +355,8 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
     ...(r.assumptions.unmodeled.length > 0 ? { presentButNotModelled: r.assumptions.unmodeled } : {}),
     ...(unknownTraits.length > 0 ? { unknownEnemyTraits: unknownTraits } : {}),
 
-    notModelledAtAll: "Craft Essences, Mystic Codes, support servants, and state conditions (HP thresholds, buff counts, turn number) are not part of this calculation.",
+    notModelledAtAll:
+      "Craft Essences, Mystic Codes, support servants, and state conditions other than HP (buff counts, turn number) are not part of this calculation.",
     validation: validationState(),
   };
 }

@@ -36,11 +36,41 @@ export interface AtlasSval {
   Count?: number;
   Value?: number;
   /** Super-efetivo: trait único que ativa o bônus (ex. 2008 = weakToEnumaElish). */
+  /**
+   * ATENÇÃO: dois sentidos, decididos pelo `funcType`.
+   *
+   * Em `damageNpHpratio*` é o **bônus de dano por HP faltante**, um percentual
+   * /10 (`12000` = 1200%) — não um id. Em todo o resto é o trait do
+   * super-efetivo. Ler o sentido errado dá um trait id 12000 inexistente.
+   *
+   * Quem separa os dois é `toSuperEffective`, que exige `Correction`: as
+   * funções de HP não têm esse campo.
+   */
   Target?: number;
   /** Super-efetivo: lista de traits, usada por `damageNpIndividualSum`. */
   TargetList?: number[];
   /** Super-efetivo: multiplicador. `1500` = 1.5×. Varia com overcharge em 52% dos casos. */
   Correction?: number;
+
+  /**
+   * Escala por HP (R25). Quanto o valor cresce conforme o HP do portador CAI:
+   * o Cú Chulainn tem `Value: 200, RatioHPLow: 300`, ou seja 20% de ATK com HP
+   * cheio e 50% com HP zero.
+   *
+   * Sem estes campos, o que sobra é o valor de HP cheio — e em dois casos
+   * (Leonidas, Passionlip) o `Value` é `0`, então o buff inteiro sumia.
+   */
+  RatioHPLow?: number;
+  /** O valor na ponta ALTA da faixa. Ausente = 0. */
+  RatioHPHigh?: number;
+  /**
+   * Faixa de HP em que a interpolação acontece, por mil (`500` = 50%).
+   * Fora dela vale só `Value`. Ausentes = a faixa inteira, 0 a 100%.
+   *
+   * Só a Passionlip usa: "HP50%以下で発動" — ativa em 50% de HP ou menos.
+   */
+  RatioHPRangeLow?: number;
+  RatioHPRangeHigh?: number;
 }
 
 export interface AtlasFunction {

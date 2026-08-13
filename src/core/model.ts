@@ -121,8 +121,47 @@ export interface Effect {
    */
   classRelationOverrides: ClassRelationOverride[] | null;
 
+  /**
+   * O valor deste efeito escala com o HP de quem o carrega (R25). `null` no
+   * caso normal, que é a esmagadora maioria.
+   *
+   * Quatro buffs de dano no jogo fazem isso, e ignorá-los não dava um erro
+   * visível: sobrava o valor de HP cheio, que é um número plausível. Em dois
+   * deles (Leonidas, Passionlip) o valor de HP cheio é **zero**, então o buff
+   * aparecia contado valendo nada.
+   */
+  hpScaling: HpScaling | null;
+
   /** false => a calculadora reporta em `assumptions.unmodeled` em vez de ignorar (R12). */
   supported: boolean;
+}
+
+/**
+ * Interpolação linear do valor de um efeito conforme o HP do portador.
+ *
+ * O valor final é `values[nv] + atLow[nv] + t * (atHigh[nv] - atLow[nv])`, com
+ * `t` indo de 0 na ponta baixa da faixa a 1 na ponta alta. **Acima da faixa a
+ * escala não vale nada** e sobra só `values` — é assim que a Passionlip só
+ * ativa em 50% de HP ou menos.
+ *
+ * Todos os campos em %, já convertidos.
+ */
+export interface HpScaling {
+  /**
+   * Extra na ponta BAIXA da faixa (`RatioHPLow`), por nível — mesma forma de
+   * `values`, porque escala com o nível da skill na Passionlip (30% → 50%).
+   */
+  atLow: number[];
+  /** Extra na ponta ALTA (`RatioHPHigh`). Só a Passionlip tem; o resto é 0. */
+  atHigh: number[];
+  /**
+   * Faixa de HP em que a interpolação acontece. Padrão 0 a 100.
+   *
+   * Escalar, não array: a faixa é a mesma em todos os níveis em 100% dos casos
+   * do dump — o que escala é o valor, não o gatilho.
+   */
+  rangeLow: number;
+  rangeHigh: number;
 }
 
 /** Uma linha de `atkSide`: "quando um X ataca um Y, o multiplicador é Z". */
@@ -146,10 +185,18 @@ export interface ClassRelationOverride {
  * de NP, com a matriz de overcharge quando escala — o que acontece em 52% dos
  * casos, bem mais que nos efeitos comuns.
  */
-export interface SuperEffective {
+export interface SuperEffective extends SuperEffectiveValues {
   /** Traits do alvo que ativam o bônus. */
   traits: Trait[];
-  /** Multiplicador em %, por nível de NP. 150 = 1,5×. Linha de overcharge 1. */
+}
+
+/**
+ * Um valor de NP em %, por nível de NP, com a matriz de overcharge quando
+ * escala. Compartilhado pelo super-efetivo e pelo bônus de HP (R25), que têm
+ * a mesma forma e a mesma origem — uma coluna de `svals` por linha de OC.
+ */
+export interface SuperEffectiveValues {
+  /** Percentual por nível de NP. 150 = 1,5×. Linha de overcharge 1. */
   values: number[];
   /** 5 linhas OC1..OC5. `null` quando não varia com overcharge. */
   valuesByOvercharge: number[][] | null;
@@ -180,8 +227,26 @@ export interface NoblePhantasm {
   target: "st" | "aoe" | "support";
   /** npDistribution: distribuição percentual do dano por hit. */
   hits: number[];
-  /** 5 entradas (NP1..NP5) em %. null quando o NP não causa dano. */
+  /**
+   * 5 entradas (NP1..NP5) em %. null quando o NP não causa dano.
+   *
+   * Em `damageNpHpratioLow` isto é o multiplicador com **HP cheio**; o resto
+   * está em `damageHpBonus`.
+   */
   damageMultiplier: number[] | null;
+  /**
+   * `damageNpHpratioLow`: o bônus somado a `damageMultiplier`, proporcional ao
+   * HP que falta (R25). `null` nos 409 NPs que não fazem isso.
+   *
+   * Vem do campo `Target`, que nestes NPs **não** é um trait — ver `AtlasSval`.
+   * Mesmo formato de `SuperEffective`: `values` por nível de NP, e a matriz de
+   * overcharge quando varia. Aqui ela varia sempre, e é o único eixo em que o
+   * bônus muda: é o overcharge que engorda a escala, não o nível do NP.
+   *
+   * Anne Bonny & Mary Read NP1: 1200% com HP cheio, mais 1200% no OC1 ou
+   * 2000% no OC5 conforme o HP cai.
+   */
+  damageHpBonus: SuperEffectiveValues | null;
   /**
    * **Em ordem de execução.** Não é detalhe: o que vem antes da função de dano
    * é aplicado ao próprio dano deste NP; o que vem depois, não.

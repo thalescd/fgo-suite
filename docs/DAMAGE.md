@@ -311,6 +311,52 @@ silêncio.
 E "humano" são cinco traits distintos — `human`, `attributeHuman`, `livingHuman`,
 `humanoid`, `hominidaeServant`. Nunca normalizar por semelhança de nome.
 
+### 3.13 Sete servos batem mais forte machucados (R25)
+
+Dois mecanismos **independentes**, com nomes e formatos diferentes, que fazem a
+mesma coisa. Os dois entram por `hpPercent`, o HP atual em % do máximo.
+
+**(a) O multiplicador do NP.** `funcType: damageNpHpratioLow`, em 4 servos. O
+multiplicador tem duas parcelas:
+
+```
+multiplicador = Value  +  Target × (1 − hp/hpMax)
+                 ↑              ↑
+        escala com nível de NP  escala com OVERCHARGE
+```
+
+Anne Bonny & Mary Read NP1: 1200% com HP cheio; mais 1200% no OC1 ou 2000% no
+OC5 conforme o HP cai. Como só a segunda parcela é lida do campo `Target` — que
+em qualquer outro NP é o *trait* do super-efetivo —, ela sumia inteira, e com
+ela **o overcharge**: OC1 e OC5 davam o mesmo número.
+
+**(b) O valor de um buff.** Campo `RatioHPLow` do `sval`, em 4 buffs de dano:
+
+| Servo | Buff | HP cheio → HP zero |
+|---|---|---|
+| Cú Chulainn, skill 1 | `upAtk` | 20% → 50% |
+| Hijikata, skill 3 | `upCriticaldamage` | 20% → 100% |
+| Leonidas, skill 1 | `upAtk` | **0%** → 30% |
+| Passionlip, skill 2 | `upAtk` | **0%** → 50%, só abaixo de 50% de HP |
+
+Nos dois últimos o valor de HP cheio é zero, então a auditoria mostrava
+`upAtk 0` — um buff contado valendo nada. Não parece defeito; parece skill
+fraca. É o pior formato que um erro pode ter aqui.
+
+**A faixa é um gatilho, não um limite.** Só a Passionlip usa `RatioHPRange*`, e
+a descrição japonesa é explícita: *HP50%以下で発動*, ativa em 50% de HP ou menos.
+Acima da faixa a escala inteira não vale — o valor **cai** para zero em vez de
+parar de crescer. Um `clamp` daria 30% com HP cheio, que é plausível e errado.
+
+**É razão, não HP absoluto.** As duas fórmulas usam `hp/hpMax`, então `hpMax`
+nunca entra na conta — e, por consequência, **o HP de uma Craft Essence não
+altera dano nenhum**. O que ele muda é quanto dano você aguenta, que não é o que
+esta página calcula.
+
+Na auditoria, um buff que escala aparece com `atFullHp` **sempre**, inclusive
+com HP cheio: é justamente aí que ele vale menos, e saber que o número cresce
+se você apanhar é a informação toda.
+
 ---
 
 ## 4. A tela
@@ -424,17 +470,22 @@ Nada disso some em silêncio: buff não modelado aparece em `assumptions.unmodel
 
 ### Onde procurar o próximo erro
 
-Quatro defeitos foram achados por relato de quem joga (R21–R24), e **em três
+Cinco defeitos foram achados por relato de quem joga (R21–R25), e **em quatro
 deles a fórmula estava certa** — o erro era leitura do dado. O padrão vale mais
 que os casos:
 
 | Padrão | Exemplo |
 |---|---|
-| Um campo guarda coisas de significados diferentes | `condTarget` com card, estado e identidade (R23) |
+| Um campo guarda coisas de significados diferentes | `condTarget` com card, estado e identidade (R23); `Target` como trait *ou* como bônus de HP (R25) |
 | Um valor não diz de quem ele é | `defMod` sem lado, `selfDmgCutAdd` no atacante (R22) |
 | Uma lista mistura escolha com histórico | `npAlternatives` com variante e rank up (R24) |
 | O que sempre está ligado não é declarado | passiva de classe fora do `buffStack` (R22) |
+| Um campo não lido faz o valor parecer completo | `RatioHPLow` faltando deixa `upAtk 0` (R25) |
 | A fórmula é de 2018 e o jogo andou | `buffRate` do Oberon (R21) |
+
+**R25 saiu desta própria lista.** "`svals` não lidos" estava anotado aqui como
+suspeito, com `RatioHPLow/High` citado pelo nome, e um relato do Thales o
+transformou em defeito confirmado. A lista abaixo não é decoração.
 
 Os pontos que **ainda** leio como se fossem uniformes, e portanto são os próximos
 candidatos:
@@ -444,8 +495,13 @@ candidatos:
   continha, há efeito entrando ou saindo errado.
 - **`condSelf` fora de card** — só 4 casos hoje (`faceCard` tratado, `fieldShore…`
   não), mas a checagem é por prefixo e um namespace novo passaria batido.
-- **`svals` não lidos** — `Value2`, `ParamAdd`/`ParamMax`, `RatioHPLow/High`
-  (SCHEMA §3.4.1). São 108 dos 114 campos.
+- **`svals` não lidos** — `RatioHP*` saiu daqui e virou R25; sobram `Value2`
+  (3.181 ocorrências), `ParamAdd`/`ParamAddMaxCount` (115) e `DependFuncId`
+  (110), que são os três maiores restantes. `ParamAddMaxCount` é "o valor cresce
+  por unidade de alguma coisa" — a mesma família de R25, contada em vez de
+  interpolada.
+- **`TriggeredTargetHpRateRange`** (30 ocorrências) — efeito disparado por faixa
+  de HP **do alvo**. Vizinho de R25 e ainda não lido.
 - **Alvos `enemy*` novos** — o lado do efeito sai de um prefixo; um
   `enemyOther` inédito cairia certo, mas um alvo com outro nome, não.
 
