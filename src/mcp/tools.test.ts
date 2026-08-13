@@ -6,6 +6,7 @@
  * caminho da tela, e que as ressalvas cheguem junto com o número.
  */
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { calculateDamage, type DamageData } from "../core/damage.js";
@@ -157,7 +158,17 @@ describe("calculate_damage", () => {
 
   it("o estado da validação é lido do arquivo, não escrito à mão", () => {
     // Se fosse literal, envelheceria calado enquanto os casos são preenchidos.
-    expect(validationState()).toBe("4/16 scenarios verified against an external calculator");
+    //
+    // A contagem sai do próprio `validation.json`, e não de um número escrito
+    // aqui: a primeira versão dizia "4/16" e quebrou no dia em que três casos
+    // foram conferidos — atrito sem valor, porque o que se quer provar é que a
+    // ressalva acompanha o arquivo, não qual é o número de hoje.
+    const f = JSON.parse(readFileSync("data/validation.json", "utf8")) as {
+      cases: { expected: number | null }[];
+    };
+    const done = f.cases.filter((c) => c.expected !== null).length;
+    expect(validationState()).toBe(`${done}/${f.cases.length} scenarios verified against an external calculator`);
+    expect(done).toBeGreaterThan(0);
   });
 });
 

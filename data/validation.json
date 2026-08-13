@@ -145,27 +145,30 @@
       "why": "Prende a sobrescrita da matriz de classe: Nega-Saver da Kiara, alterEgo -> ruler = 1.5x, onde a matriz da 1.0x (R22).",
       "scenario": "Sessyoin Kiara (Alter Ego) NP1, sem skill, contra Ruler/human",
       "calc": "s=1000300&ec=ruler&ea=human",
-      "source": "game",
-      "mode": "roll",
-      "expected": null
+      "source": "calc",
+      "sourceName": "maketakunai.github.io",
+      "mode": "avg",
+      "expected": 26223
     },
     {
       "id": "card-res-down-on-target",
       "why": "Prende a restricao de card vinda de condTarget: Arts resistance down valendo no NP Arts (R23).",
       "scenario": "Sessyoin Kiara NP1, skill 1 no nivel 10, contra Ruler/human",
       "calc": "s=1000300&sk=1&ec=ruler&ea=human",
-      "source": "game",
-      "mode": "roll",
-      "expected": null
+      "source": "calc",
+      "sourceName": "maketakunai.github.io",
+      "mode": "avg",
+      "expected": 34090
     },
     {
       "id": "buff-boost",
       "why": "Prende o buffRate: skill 3 do Oberon dobrando o upNpdamage da skill 1, 30% -> 60% (R21).",
       "scenario": "Oberon NP1, skills 1 e 3 no nivel 10, contra Saber/earth (atributo neutro)",
       "calc": "s=2800100&sk=1,3&ec=saber&ea=earth",
-      "source": "game",
-      "mode": "roll",
-      "expected": null
+      "source": "calc",
+      "sourceName": "maketakunai.github.io",
+      "mode": "avg",
+      "expected": 47730
     }
   ]
 }
