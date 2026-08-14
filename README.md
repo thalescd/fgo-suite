@@ -18,7 +18,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **0** | Ingestão, manifest, modelo canônico | ✅ pronta |
 | **1** | Busca com filtros diretos (servos e CEs) | ✅ pronta |
 | **2** | Capabilities + busca por skill | ✅ pronta |
-| **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **valores nunca conferidos contra o jogo (R4)** |
+| **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **11 de 16 casos conferidos contra calculadora externa (R4)** |
 | **4** | MCP server — busca e calculadora como tools | ✅ pronta |
 | **5a** | CE e Mystic Code na query string, na tela e nas tools | pendente — núcleo pronto, falta a superfície |
 | **5b** | Suportes e templates de composição | pendente — núcleo pronto, falta a superfície |
@@ -119,9 +119,14 @@ Fora por enquanto: CE, Mystic Code, suportes e comparação lado a lado. O núcl
 já resolve os três primeiros como fonte de buff — falta poder **pedi-los**, que
 é a fase 5a/5b.
 
-E os números **nunca foram conferidos contra o jogo** (R4). Existe um
-procedimento pronto para isso: `npm run damage:cases` imprime 16 cenários, cada
-um prendendo um termo da fórmula, com o link que reproduz na tela. Ver
+**11 dos 16 casos do R4 estão conferidos** contra calculadora da comunidade —
+33 números, reproduzidos exatamente. Isso prende a espinha multiplicativa inteira
+e cinco mecânicas que nasceram de relato (R21–R24, R26).
+
+Duas ressalvas continuam valendo. Os 5 casos que faltam são todos de **card**, e
+a fonte usada só calcula NP. E conferir contra outra calculadora **não é** conferir
+contra o jogo: as duas podem compartilhar a mesma convenção e errar juntas.
+`npm run damage:cases` imprime cada cenário com o link que o reproduz. Ver
 [`docs/VALIDATION.md`](docs/VALIDATION.md).
 
 Detalhes em [`docs/DAMAGE.md`](docs/DAMAGE.md).

@@ -110,17 +110,19 @@
       "scenario": "Artoria NP1, skills 1/2/3 no nivel 10, contra Saber/earth",
       "calc": "s=100100&sk=1,2,3&ec=saber&ea=earth",
       "source": "calc",
+      "sourceName": "maketakunai.github.io",
       "mode": "avg",
-      "expected": null
+      "expected": 49330
     },
     {
       "id": "berserker-and-class-passive",
-      "why": "Prende classAtkBonus do Berserker E as passivas de classe: Mad Enhancement (+8% Buster) e Divinity (+20 de dano plano). Foi o furo do R22.",
+      "why": "Prende classAtkBonus do Berserker E as passivas de classe: Mad Enhancement (+8% Buster) e Divinity A (+200 de dano plano). Foi o furo do R22, e o 200 e a confirmacao externa do R26 — a fonte concorda com 200, nao com 20.",
       "scenario": "Heracles NP1 lv80, sem skill, contra Saber/sky (atributo neutro)",
       "calc": "s=700100&ec=saber&ea=sky",
       "source": "calc",
+      "sourceName": "maketakunai.github.io",
       "mode": "avg",
-      "expected": null
+      "expected": 43192
     },
     {
       "id": "super-effective-oc",
@@ -128,8 +130,9 @@
       "scenario": "Gilgamesh NP5 OC5, sem skill, contra Saber/sky com o trait weakToEnumaElish",
       "calc": "s=200200&np=5&oc=5&et=2008&ec=saber&ea=sky",
       "source": "calc",
+      "sourceName": "maketakunai.github.io",
       "mode": "avg",
-      "expected": null
+      "expected": 135974
     },
     {
       "id": "np-variant-st",
@@ -137,8 +140,9 @@
       "scenario": "UDK-Barghest, versao ST do NP (900%), NP1 lv80, sem skill, contra Saber/earth",
       "calc": "s=204900&npid=204998&ec=saber&ea=earth",
       "source": "calc",
+      "sourceName": "maketakunai.github.io",
       "mode": "avg",
-      "expected": null
+      "expected": 46493
     },
     {
       "id": "class-relation-override",

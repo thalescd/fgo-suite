@@ -112,56 +112,92 @@ motivos que o primeiro bug apareceu.
 
 ## 5. Diferenças já conhecidas e explicadas
 
-Contra **maketakunai.github.io**, nos dois primeiros casos:
-
-| Caso | exato antes do roll | low | average | high |
-|---|---:|---|---|---|
-| 1 base | 16.864,98 | igual | ±1 | −0,09% |
-| 2 lancer | 33.729,96 | ±1 | ±1 | −0,09% |
-| 3 human | 18.551,48 | **igual** | **igual** | −0,09% |
-| 4 NP5 | 25.297,47 | ±1 | **igual** | −0,09% |
-
-Doze números, **duas** diferenças, nenhuma terceira:
-
-**Arredondamento.** Eles arredondam, nós truncamos. Diferença de 1 ponto, e só
-quando a fração passa de `,5` — por isso o `average` do caso 3 e do 4 bate exato.
-O jogo trunca, então `Math.floor` fica.
-
-**Teto do random.** `ATTACK_RATE_RANDOM_MIN/MAX` no dump são `900` e `1100`. Eles
-usam **1,099** como máximo, nós usamos 1,100:
+Contra **maketakunai.github.io**, em **11 casos — 33 números**. Reconstruindo o
+produto sem o piso a partir da própria auditoria, os 33 são reproduzidos
+**exatamente** sob duas convenções que não são as nossas:
 
 ```
-caso   exato × 1,100 (nosso)    exato × 1,099 (deles)
-  1        18551 ≠ 18535            18534,61 → 18535  ✓
-  2        37102 ≠ 37069            37069,23 → 37069  ✓
-  3        20406 ≠ 20388            20388,06 → 20388  ✓
-  4        27827 ≠ 27802            27801,91 → 27802  ✓
+✓ base-artoria-np             15178/16865/18535
+✓ triangle-lancer             30357/33730/37069
+✓ attribute-human             16696/18551/20388
+✓ np5                         22768/25297/27802
+✓ buffs-atk-card-np           44397/49330/54214
+✓ berserker-and-class-passive 38893/43192/47448
+✓ super-effective-oc          122394/135974/149418
+✓ np-variant-st               41844/46493/51096
+✓ class-relation-override     23600/26223/28819
+✓ card-res-down-on-target     30681/34090/37464
+✓ buff-boost                  42957/47730/52455
 ```
 
-Quatro em quatro, na casa decimal. A leitura por trás do 1,099
-é que o jogo sorteia um **inteiro** em `[900, 1100)` — limite superior exclusivo,
-como é convenção em RNG —, e nesse caso 1,100 é um número que **não pode
-acontecer**.
+Trinta e três números, **duas** diferenças, nenhuma terceira.
 
-> **Em aberto, de propósito.** A constante do jogo diz 1100; a interpretação de
-> RNG exclusivo diz 1099. Quatro casos batendo confirmam que a escolha *deles* é
-> essa — não que ela esteja certa. É uma fonte só, repetida.
+**Arredondamento.** Eles arredondam, nós truncamos. Vale 1 ponto, e só quando a
+fração passa de `,5`.
+
+> ⚠️ **Não sabemos qual o jogo faz.** Uma versão anterior desta página afirmava
+> "o jogo trunca, então `Math.floor` fica" — isso nunca foi verificado, e
+> `damage_formula.txt` não diz nada sobre arredondamento. `Math.floor` fica por
+> falta de motivo para mudar, não por conhecimento.
+
+**Teto do random.** `ATTACK_RATE_RANDOM_MIN/MAX` no dump são `900` e `1100`.
+Eles usam **1,099** como máximo; nós usamos 1,100. Onze em onze, na casa decimal.
+
+A leitura por trás do 1,099 é que o jogo sorteia um **inteiro** em `[900, 1100)`
+— limite superior exclusivo, como é convenção em RNG —, e nesse caso 1,100 não
+pode acontecer. O detalhe que sustenta isso: o **mínimo bate exato** nos onze
+casos, o que só faz sentido se o limite de baixo for fechado e o de cima não.
+
+> **Em aberto, de propósito.** A interpretação é boa, mas é dedução a partir do
+> nome de uma constante — não medição. Onze casos confirmam que a escolha *deles*
+> é essa, não que ela esteja certa: é uma fonte só, repetida onze vezes.
 >
 > **O que resolveria:** um dano in-game acima de `exato × 1,099`. Um único acerto
-> desses fecha a favor do 1,100; muitos tiros parando abaixo do teto fecham a
-> favor do 1,099. Até lá, impacto de 0,09% e só no `max` — o `min`, que é o que
-> interessa para "dano garantido", **bate em todos os quatro**.
+> desses fecha a favor do 1,100; muitos tiros parando abaixo fecham a favor do
+> 1,099. Até lá, impacto de 0,09% e só no `max` — o `min`, que é o que interessa
+> para "dano garantido", bate nos onze.
 
-**O que estes quatro casos já provam:** ATK 12.221 (`atkGrowth` + fou, sem
-`atkMax` — que daria 11.221 e erraria 8%), `cardTerm` 1,5 do NP Buster sem
-`firstCardBonus`, `classAtkBonus` 1,0, `ATTACK_RATE` 0,23, `triangleModifier` 2,0,
-`attributeModifier` 1,1, e o multiplicador de NP em 400% **e** 600% — e, junto
-com todos eles, os divisores de unidade. R7 e R14, riscos declarados desde a fase
-0, saem confirmados.
+### O que os 11 casos já provam
+
+**A espinha multiplicativa inteira:** ATK por `atkGrowth` + fou (sem `atkMax`,
+que erraria 8% — R7), `cardTerm` 1,5 do NP Buster sem `firstCardBonus`,
+`classAtkBonus`, `ATTACK_RATE` 0,23, `triangleModifier` 2,0,
+`attributeModifier` 1,1, multiplicador de NP em 400% e 600%, e com eles os
+divisores de unidade (R14).
+
+**E quatro mecânicas que nasceram de relato**, o que importa mais, porque cada
+uma foi corrigida na base de leitura do dado e não tinha confirmação externa:
+
+| Caso | Confirma |
+|---|---|
+| `buff-boost` | `buffRate` do Oberon dobrando o buff de NP (R21) |
+| `class-relation-override` | Nega-Saver da Kiara, `alterEgo → ruler` = 1,5× (R22) |
+| `card-res-down-on-target` | restrição de card vinda de `condTarget` (R23) |
+| `np-variant-st` | escolha de variante de NP, multiplicador dobrado (R24) |
+| `berserker-and-class-passive` | Divinity A = **+200** de dano plano (R26) |
+| `super-effective-oc` | Divinity B = **+175**, e super-efetivo 200% no OC5 |
+
+Os dois últimos são a confirmação numérica do R26 em **dois valores diferentes**:
+a fonte externa concorda com 200 e 175, não com 20 e 17,5. Aquela correção tinha
+só `damage_formula.txt` ("note the lack of %") e os nossos próprios testes atrás
+dela.
+
+### O buraco que os 11 não cobrem
+
+Nenhum caso toca as famílias **por servo** — escala por HP (R25), super-efetivo
+por soma (R27) e unidade faltando no `funcType` (R28). Os três foram achados por
+alguém olhar um número e estranhar, não por este conjunto. É o que falta desenhar.
 
 ## 6. Estado
 
-`npm run damage:cases` termina imprimindo `R4: N de 16 casos conferidos`. Hoje: **4 de 16**, todos contra maketakunai.github.io.
+`npm run damage:cases` termina imprimindo `R4: N de 16 casos conferidos`. Hoje: **11 de 16**, todos contra
+maketakunai.github.io.
+
+Os **5 que faltam são todos de card** — `card-buster-1st`, `card-buster-3rd`,
+`card-arts-crit`, `card-extra` e `buster-chain`. A fonte usada até aqui só
+calcula dano de NP, então eles precisam de outra ferramenta. É por isso que
+`cardTerm` está preso hoje só no valor 1,5 do NP Buster: posição, crítico, extra
+e chain continuam sem conferência externa.
 
 Um teste em [`validation.test.ts`](../src/core/validation.test.ts) **falha de
 propósito quando todos estiverem preenchidos** — é o lembrete de fechar o R4 no
