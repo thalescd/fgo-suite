@@ -318,6 +318,35 @@ silêncio.
 E "humano" são cinco traits distintos — `human`, `attributeHuman`, `livingHuman`,
 `humanoid`, `hominidaeServant`. Nunca normalizar por semelhança de nome.
 
+### 3.13 Bônus de evento em Craft Essence (R29)
+
+CE de evento costuma dar *"ataque +X% neste evento"*. No dump isso chega como um
+`upDamage` **sem condição nenhuma** — e **qual** evento é vive em dado de quest
+que não ingerimos. Aplicado, vale em toda luta: a Golden Sumo no MLB dá +200% de
+`powerMod` e quase triplica o dano.
+
+A regra que separa não é adivinhação, é uma assimetria medida:
+
+| | `upDamage` sem condição de trait |
+|---|---:|
+| em **servos** | **0** |
+| em **CEs** | **148** — todas de evento |
+
+Todo `upDamage` de servo é anti-alguma-coisa (Siegfried anti-dragão 80%, Arthur
+anti-besta 100%). E das 148 de CE, **132 declaram o escopo no próprio texto**:
+`『虚数大海戦イマジナリ・スクランブル』において、攻撃の威力を30%アップ` — *"**no**
+evento X, dano +30%"*. Logo não existe CE que dê dano incondicional fora de
+evento: sem condição e vindo de CE, é do evento.
+
+Um teste por prosa foi tentado e **descartado**: a Purely Bloom escapava porque a
+descrição menciona 威力 de *outro* efeito. O que sustenta a regra é a assimetria,
+não o texto — e um teste varre o roster e falha se algum servo passar a ter
+`upDamage` incondicional, porque aí a premissa deixou de valer.
+
+**O que a CE anuncia continua valendo.** A recusa é cirúrgica: a ATK plana e o
+`upAtk` de 10%/15% da Golden Sumo entram normalmente; só o `upDamage` fantasma
+sai, e sai **com o motivo** em `notCounted`.
+
 ### 3.13 De onde vem cada buff que não é do servo (5a)
 
 | Fonte | Onde se declara | Por quê |
@@ -581,6 +610,7 @@ que os casos:
 | O mesmo papel muda de campo conforme a família | multiplicador em `Correction` ou em `Value2` (R27) |
 | Uma regra geral engole a exceção sem avisar | `hasBuff → /10` sobre valores planos (R26) |
 | A salvaguarda existe mas ninguém a lê | `valueUnit: "unknown"` ignorado pelo multiplicador de NP (R28) |
+| Um efeito existe no dado mas só vale num contexto que o dado não traz | bônus de evento em CE (R29) |
 | A fórmula é de 2018 e o jogo andou | `buffRate` do Oberon (R21) |
 
 **R25 saiu desta própria lista.** "`svals` não lidos" estava anotado aqui como

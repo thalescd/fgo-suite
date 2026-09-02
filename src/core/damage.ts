@@ -347,6 +347,34 @@ interface Candidate {
   levelIndex: number;
   /** true quando o efeito vem de um suporte e precisa alcançar o atacante. */
   fromSupport: boolean;
+  /** true quando vem da Craft Essence equipada. Ver `isEventOnlyBonus`. */
+  fromCe: boolean;
+}
+
+/**
+ * Bônus de dano que só vale dentro do evento da CE (R29).
+ *
+ * Uma CE de evento costuma dar "ataque +X% neste evento". No dump isso chega
+ * como um `upDamage` **sem condição nenhuma**, e qual evento é vive em dado de
+ * quest que não ingerimos — então aplicá-lo aqui inflava toda luta.
+ *
+ * O que autoriza a regra é a assimetria: em **servos**, `upDamage` sem condição
+ * de trait tem **zero** ocorrências — todo `upDamage` de servo é anti-alguma
+ * coisa. Nas CEs são 148, **todas** de evento, e 132 delas dizem no próprio
+ * texto `『nome do evento』において`. Ou seja, não existe CE que dê dano
+ * incondicional fora de evento: se não tem condição e veio de CE, é do evento.
+ *
+ * Recusa em vez de aplicar, e com o motivo à vista: a Golden Sumo dava +200% de
+ * `powerMod` no MLB, quase triplicando o dano em qualquer luta.
+ */
+function isEventOnlyBonus(c: Candidate): boolean {
+  return (
+    c.fromCe &&
+    c.effect.buffType === "upDamage" &&
+    c.effect.condSelf.length === 0 &&
+    c.effect.condTarget.length === 0 &&
+    c.effect.condFunc.length === 0
+  );
 }
 
 function valueOf(effect: Effect, levelIndex: number, overcharge: number): number {
@@ -471,6 +499,15 @@ function resolveBuffs(
     const side = sideOfTarget(e.target);
     if (side === "attacker" && c.fromSupport && !REACHES_ALLY.has(e.target)) {
       skipped.push({ source: c.source, buffType: label, reason: `target ${e.target} does not reach the attacker` });
+      continue;
+    }
+
+    if (isEventOnlyBonus(c)) {
+      skipped.push({
+        source: c.source,
+        buffType: e.buffType ?? e.funcType,
+        reason: "event-only bonus: this CE grants it inside its own event, and the data does not say which",
+      });
       continue;
     }
 
@@ -625,7 +662,7 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
   for (const sk of attacker.classPassive) {
     for (const e of sk.effects) {
       // Passiva de classe não tem nível: o array de valores é constante.
-      out.push({ effect: e, source: `${attacker.name} passive: ${sk.name}`, levelIndex: 0, fromSupport: false });
+      out.push({ effect: e, source: `${attacker.name} passive: ${sk.name}`, levelIndex: 0, fromSupport: false, fromCe: false });
     }
   }
 
@@ -644,7 +681,7 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
   if (equipped && input.attacker.ce) {
     const mlb = input.attacker.ce.mlb;
     for (const e of mlb ? equipped.effectsMlb : equipped.effectsBase) {
-      out.push({ effect: e, source: `CE ${equipped.name}${mlb ? " (MLB)" : ""}`, levelIndex: 0, fromSupport: false });
+      out.push({ effect: e, source: `CE ${equipped.name}${mlb ? " (MLB)" : ""}`, levelIndex: 0, fromSupport: false, fromCe: true });
     }
   }
 
@@ -654,7 +691,7 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
         const sk = attacker.skills.find((s) => s.num === src.skillNum);
         if (!sk) break;
         for (const e of sk.effects) {
-          out.push({ effect: e, source: `${attacker.name} skill ${src.skillNum}`, levelIndex: src.level - 1, fromSupport: false });
+          out.push({ effect: e, source: `${attacker.name} skill ${src.skillNum}`, levelIndex: src.level - 1, fromSupport: false, fromCe: false });
         }
         break;
       }
@@ -662,7 +699,7 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
         const sk = attacker.appendPassive[src.num - 1];
         if (!sk) break;
         for (const e of sk.effects) {
-          out.push({ effect: e, source: `${attacker.name} append ${src.num}`, levelIndex: src.level - 1, fromSupport: false });
+          out.push({ effect: e, source: `${attacker.name} append ${src.num}`, levelIndex: src.level - 1, fromSupport: false, fromCe: false });
         }
         break;
       }
@@ -672,7 +709,7 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
         const np = chosenNp(attacker, input.attacker.npId);
         if (!np || np.damageEffectIndex === null) break;
         for (const e of np.effects.slice(0, np.damageEffectIndex)) {
-          out.push({ effect: e, source: `${attacker.name} NP (before the damage)`, levelIndex: input.attacker.npLevel - 1, fromSupport: false });
+          out.push({ effect: e, source: `${attacker.name} NP (before the damage)`, levelIndex: input.attacker.npLevel - 1, fromSupport: false, fromCe: false });
         }
         break;
       }
@@ -687,7 +724,7 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
         // dentro ("カルデア\n戦闘服"), que arrebentaria a linha da auditoria.
         const label = mc.name.replace(/^Mystic Code:\s*/, "");
         for (const e of sk.effects) {
-          out.push({ effect: e, source: `${label} skill ${src.index + 1}`, levelIndex: equipped.level - 1, fromSupport: true });
+          out.push({ effect: e, source: `${label} skill ${src.index + 1}`, levelIndex: equipped.level - 1, fromSupport: true, fromCe: false });
         }
         break;
       }
@@ -698,7 +735,7 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
           const sk = sup.skills.find((s) => s.num === num);
           if (!sk) continue;
           for (const e of sk.effects) {
-            out.push({ effect: e, source: `${sup.name} skill ${num}`, levelIndex: src.skillLevel - 1, fromSupport: !src.targetsAttacker ? true : !REACHES_ALLY.has(e.target) });
+            out.push({ effect: e, source: `${sup.name} skill ${num}`, levelIndex: src.skillLevel - 1, fromSupport: !src.targetsAttacker ? true : !REACHES_ALLY.has(e.target), fromCe: false });
           }
         }
         break;

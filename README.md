@@ -45,7 +45,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 191 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 196 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -119,6 +119,10 @@ cheio, e era assim que ele aparecia antes de ser lido.
 ATK **e** os efeitos na mesma declaração — o Black Grail é +2.400 de ATK *e*
 +80% de dano de NP, nunca um ou outro. O MLB é caixa do usuário porque escolhe
 um conjunto **diferente** de efeitos, não um mais forte (D17).
+
+Um caso que o dado não resolve sozinho: CE de evento dá "ataque +X% **neste
+evento**", e o dump não diz qual evento. Esse bônus é **recusado com o motivo à
+vista** (R29) — a Golden Sumo quase triplicava o dano em qualquer luta.
 
 Fora por enquanto: suportes (5b) e comparação lado a lado (5d).
 

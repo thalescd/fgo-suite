@@ -39,6 +39,9 @@ const KALEID = loadEquip(34);
 // 5a — 2400 de ATK **e** upNpdamage 60/80: prende os dois caminhos da CE de uma
 // vez, e separa `effectsBase` de `effectsMlb`.
 const GRAIL = loadEquip(48);
+// R29 — CE de evento: dá ATK e upAtk como anuncia, mais um `upDamage` de 100%
+// (200% no MLB) que só vale dentro do evento e não aparece na descrição.
+const SUMO = loadEquip(261);
 
 // R25 — os dois mecanismos de escala por HP, um servo por forma:
 const CU = loadServant(17); // skill 1 `RatioHPLow` sobre um Value != 0: 20% -> 50% de ATK
@@ -55,7 +58,7 @@ const data: DamageData = {
   servants: new Map(
     [ARTORIA, GIL, OBERON, CU, LEONIDAS, LIP, HIJIKATA, ANNE, MUSASHI, CHARLEMAGNE].map((s) => [s.id, s]),
   ),
-  equips: new Map([[KALEID.id, KALEID], [GRAIL.id, GRAIL]]),
+  equips: new Map([[KALEID.id, KALEID], [GRAIL.id, GRAIL], [SUMO.id, SUMO]]),
   mysticCodes: new Map(mysticCodes.map((m) => [m.id, m])),
   constants,
 };
@@ -1009,5 +1012,66 @@ describe("Craft Essence e Mystic Code (5a)", () => {
     expect(r.breakdown.npDamageMod).toBeCloseTo(0.8, 5); // CE
     expect(r.breakdown.atkMod).toBeCloseTo(0.3, 5); // MC
     expect(r.breakdown.servantAtk).toBe(14621); // 12221 + 2400
+  });
+});
+
+/**
+ * R29 — bônus de dano que só vale dentro do evento da CE.
+ *
+ * Reportado pelo Thales: Gilgamesh com Golden Sumo ganhava +100% de dano ao
+ * marcar MLB (+200%). No dump o efeito chega como `upDamage` **sem condição
+ * nenhuma**, e qual evento é vive em dado de quest que não ingerimos.
+ *
+ * O que autoriza a recusa é a assimetria entre servos e CEs — ver
+ * `isEventOnlyBonus`.
+ */
+describe("bônus de evento em CE (R29)", () => {
+  const np = (ce?: { id: number; mlb: boolean }) =>
+    calculateDamage(
+      input({ attacker: { servantId: ARTORIA.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1, ...(ce ? { ce } : {}) } }),
+      data,
+    );
+
+  it("o upDamage sem condição da CE de evento não entra no dano", () => {
+    const r = np({ id: SUMO.id, mlb: true });
+    expect(r.breakdown.powerMod).toBe(0);
+    // A CE tem mesmo o efeito no dado — não é que ele não exista.
+    expect(SUMO.effectsMlb.some((e) => e.buffType === "upDamage" && e.values[0] === 200)).toBe(true);
+  });
+
+  it("e a recusa é dita, com o motivo", () => {
+    const s = np({ id: SUMO.id, mlb: true }).assumptions.skippedBuffs.find((b) => /Golden Sumo/.test(b.source));
+    expect(s?.buffType).toBe("upDamage");
+    expect(s?.reason).toMatch(/event-only/);
+  });
+
+  it("o que a CE anuncia continua valendo", () => {
+    // ATK plana e `upAtk` estão na descrição: 10% base, 15% MLB.
+    const base = np({ id: SUMO.id, mlb: false });
+    const mlb = np({ id: SUMO.id, mlb: true });
+    expect(base.breakdown.servantAtk).toBe(np().breakdown.servantAtk + 2000);
+    expect([base.breakdown.atkMod, mlb.breakdown.atkMod]).toEqual([0.1, 0.15]);
+  });
+
+  it("não pega CE legítima: o Black Grail é upNpdamage, não upDamage", () => {
+    const r = np({ id: GRAIL.id, mlb: true });
+    expect(r.breakdown.npDamageMod).toBeCloseTo(0.8, 5);
+    expect(r.assumptions.skippedBuffs.filter((b) => /Black Grail/.test(b.source))).toEqual([]);
+  });
+
+  it("nenhum servo perde buff por esta regra", () => {
+    // A regra só vale para CE porque em servo `upDamage` sem condição não
+    // existe. Se um servo ganhar um, isto falha e o caso é reexaminado.
+    const semCond: string[] = [];
+    for (const s of servantIndex) {
+      const f = loadServant(s.collectionNo);
+      for (const sk of [...f.skills, ...f.classPassive, ...f.appendPassive]) {
+        for (const e of sk.effects) {
+          if (e.buffType !== "upDamage") continue;
+          if (e.condSelf.length + e.condTarget.length + e.condFunc.length === 0) semCond.push(`${f.name}/${sk.name}`);
+        }
+      }
+    }
+    expect(semCond).toEqual([]);
   });
 });
