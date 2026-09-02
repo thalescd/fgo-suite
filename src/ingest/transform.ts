@@ -577,7 +577,11 @@ export function toCraftEssence(e: AtlasEquip, category: "combat" | "farm"): Craf
 // ---------------------------------------------------------------- mystic code
 
 export function toMysticCode(m: AtlasMysticCode): MysticCode {
-  const graphs = allAssets(m.extraAssets?.charaGraph);
+  // `charaGraph` é campo de SERVO e não existe em Mystic Code — lê-lo aqui
+  // devolvia `null` nos 28, calado, porque asset ausente não quebra nada.
+  // O equivalente é `item`, o ícone do equipamento, que é o análogo do `face`
+  // de uma CE. `masterFigure` é o corpo inteiro e não serve de ícone.
+  const icon = m.extraAssets?.item;
   return {
     id: m.id,
     name: m.name,
@@ -587,7 +591,7 @@ export function toMysticCode(m: AtlasMysticCode): MysticCode {
     // num é 0 nos três: a ordem no array É a identidade da skill.
     skills: (m.skills ?? []).map(toSkill),
     capabilities: [],
-    assets: { male: graphs[0] ?? null, female: graphs[1] ?? null },
+    assets: { male: icon?.male ?? null, female: icon?.female ?? null },
   };
 }
 

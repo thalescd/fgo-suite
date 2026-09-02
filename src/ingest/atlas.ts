@@ -155,6 +155,14 @@ export interface AtlasServant {
 export interface AtlasExtraAssets {
   faces?: Record<string, Record<string, string>>;
   charaGraph?: Record<string, Record<string, string>>;
+  /**
+   * Mystic Code usa outro conjunto: não tem `charaGraph`, tem `item` (o ícone
+   * do equipamento), `masterFace` e `masterFigure`. Cada um com `male`/`female`,
+   * porque a arte muda com o gênero do Master.
+   */
+  item?: Record<string, string>;
+  masterFace?: Record<string, string>;
+  masterFigure?: Record<string, string>;
 }
 
 export interface AtlasEquip {

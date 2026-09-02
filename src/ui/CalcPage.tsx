@@ -15,7 +15,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { specFor } from "../core/buffs.js";
 import { calculateDamage, enemyTraitNames, selectableNps, type DamageData, type RollMode } from "../core/damage.js";
-import type { CraftEssence, IndexEntryServant, Servant, Skill } from "../core/model.js";
+import type { CraftEssence, IndexEntryServant, MysticCode, Servant, Skill } from "../core/model.js";
 import { EMPTY_FILTERS, search } from "../core/search.js";
 import { Block, Stars } from "./components.js";
 import { DamageReport } from "./DamageReport.js";
@@ -32,6 +32,14 @@ import { loadEquip, loadServant, type Bootstrap } from "./data.js";
 import { useAsync } from "./useAsync.js";
 
 const num = (n: number) => n.toLocaleString("en-US");
+
+/** "Mystic Code: Chaldea Combat Uniform" -> "Chaldea Combat Uniform". */
+const mcName = (m: MysticCode) => m.name.replace(/^Mystic Code:\s*/, "");
+/**
+ * O ícone do equipamento. O dado traz a arte por gênero do Master; para um
+ * seletor tanto faz, então vale a que existir.
+ */
+const mcIcon = (m: MysticCode) => m.assets.male ?? m.assets.female;
 
 // ------------------------------------------------------------------ controles
 
@@ -526,25 +534,40 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
               as marcadas, e o rótulo diz o que cada uma faz ao dano.
             */}
             <details className="sub" open={state.mcId !== null}>
-              <summary>Mystic Code — {mysticCode ? mysticCode.name.replace(/^Mystic Code:\s*/, "") : "none"}</summary>
-              <div className="fields">
-                <Field label="Equipped">
-                  <select
-                    value={state.mcId ?? ""}
-                    onChange={(e) => patch({ mcId: e.target.value === "" ? null : Number(e.target.value), mcSkills: [] })}
-                  >
-                    <option value="">none</option>
-                    {boot.mysticCodes.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name.replace(/^Mystic Code:\s*/, "")}</option>
-                    ))}
-                  </select>
-                </Field>
-                {mysticCode && (
+              <summary>Mystic Code — {mysticCode ? mcName(mysticCode) : "none"}</summary>
+              {/*
+                Mesma forma do seletor de CE, e não um `<select>`: com 28 itens
+                o ícone cabe e é ele que identifica o Mystic Code — quase todo
+                nome começa com "Chaldea".
+              */}
+              {mysticCode ? (
+                <div className="attacker-head">
+                  {mcIcon(mysticCode) && <img src={mcIcon(mysticCode)!} alt="" width={40} height={40} />}
+                  <div>
+                    <strong>{mcName(mysticCode)}</strong>
+                    <div className="orig">lv {state.mcLevel} · {state.mcSkills.length} of {mysticCode.skills.length} skills on</div>
+                  </div>
+                  <button className="linkish" type="button" onClick={() => patch({ mcId: null, mcSkills: [] })}>
+                    remove
+                  </button>
+                </div>
+              ) : (
+                <div className="matches scroll">
+                  {boot.mysticCodes.map((m) => (
+                    <button key={m.id} type="button" onClick={() => patch({ mcId: m.id, mcSkills: [] })}>
+                      {mcIcon(m) && <img src={mcIcon(m)!} alt="" width={32} height={32} loading="lazy" />}
+                      <span className="name">{mcName(m)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {mysticCode && (
+                <div className="fields">
                   <Field label="MC level">
                     <Seg value={state.mcLevel} options={numbers(1, 10)} onChange={(v) => patch({ mcLevel: v })} />
                   </Field>
-                )}
-              </div>
+                </div>
+              )}
               {mysticCode && (
                 <div className="opts">
                   {mysticCode.skills.map((sk, i) => (

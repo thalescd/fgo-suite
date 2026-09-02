@@ -154,6 +154,20 @@ async function main(): Promise<void> {
   const xx = await read<Servant>(`servant/${byCn(423).id}.json`);
   check("Heroine XX (Alter), o outro caso, = 600..1000%", xx.np?.damageMultiplier, [600, 800, 900, 950, 1000]);
 
+  // Asset ausente não quebra nada — a tela só não mostra imagem —, então o
+  // erro sobreviveu desde a fase 0: `toMysticCode` lia `charaGraph`, que é
+  // campo de servo e não existe em Mystic Code. Os 28 vinham com `null`.
+  console.log("\nAssets de Mystic Code");
+  const mcs = await read<{ id: number; name: string; assets: { male: string | null; female: string | null } }[]>(
+    "mysticCodes.json",
+  );
+  check("os 28 têm ícone para os dois gêneros", mcs.filter((m) => m.assets.male && m.assets.female).length, 28);
+  check(
+    "e o ícone é o do equipamento, não a figura inteira",
+    /\/Items\/masterequip/.test(mcs.find((m) => m.id === 20)?.assets.male ?? ""),
+    true,
+  );
+
   console.log("\nOvercharge — svals2..svals5");
   const nero = await servant(byCn(5).id);
   const defDown = nero.np?.effects.find((e) => e.buffType === "downDefence");
