@@ -45,6 +45,32 @@ export interface CalcState {
   appendLevel: number;
 
   /**
+   * Craft Essence equipada. `null` = nenhuma, que é o padrão — uma CE é escolha
+   * do jogador, não parte do preset.
+   *
+   * `ceLevel` `null` = o máximo daquela CE, resolvido no núcleo contra o
+   * documento, porque o teto varia com a raridade (50 a 100).
+   *
+   * `ceMlb` é caixa do usuário (**D17**): `effectsBase` e `effectsMlb` são
+   * conjuntos **diferentes**, não graus do mesmo, e o dado não diz qual você tem.
+   * O padrão é `false` — o conjunto mais fraco, pela mesma razão de `hpPercent`
+   * ser 100 e os stacks serem 0: na dúvida, não inventar bônus.
+   */
+  ceId: number | null;
+  ceLevel: number | null;
+  ceMlb: boolean;
+
+  /**
+   * Mystic Code do Master, e quais das skills dele dispararam.
+   *
+   * Um só para a party inteira, ao contrário da CE. `mcSkills` é 1-based, como
+   * o jogador vê na tela; o núcleo recebe índice.
+   */
+  mcId: number | null;
+  mcSkills: number[];
+  mcLevel: number;
+
+  /**
    * HP do atacante em % do máximo. 100 = ileso, e é o padrão.
    *
    * Sete servos mudam de dano com isto (R25). É razão, não valor absoluto —
@@ -88,6 +114,12 @@ export const DEFAULT_CALC: CalcState = {
   skillLevel: 10,
   appends: [],
   appendLevel: 10,
+  ceId: null,
+  ceLevel: null,
+  ceMlb: false,
+  mcId: null,
+  mcSkills: [],
+  mcLevel: 10,
   hpPercent: 100,
   stacksSelf: 0,
   stacksTarget: 0,
@@ -126,6 +158,12 @@ const KEYS = {
   skillLevel: "sklv",
   appends: "ap",
   appendLevel: "aplv",
+  ceId: "ce",
+  ceLevel: "cel",
+  ceMlb: "mlb",
+  mcId: "mc",
+  mcSkills: "mcs",
+  mcLevel: "mclv",
   hpPercent: "hp",
   stacksSelf: "ss",
   stacksTarget: "st",
@@ -178,6 +216,12 @@ export function parseCalc(p: URLSearchParams): CalcState {
     skillLevel: clamp(int(p, KEYS.skillLevel, 10), 1, 10),
     appends: nums(p, KEYS.appends),
     appendLevel: clamp(int(p, KEYS.appendLevel, 10), 1, 10),
+    ceId: maybeInt(p, KEYS.ceId),
+    ceLevel: maybeInt(p, KEYS.ceLevel),
+    ceMlb: p.get(KEYS.ceMlb) === "1",
+    mcId: maybeInt(p, KEYS.mcId),
+    mcSkills: nums(p, KEYS.mcSkills),
+    mcLevel: clamp(int(p, KEYS.mcLevel, 10), 1, 10),
     hpPercent: clamp(int(p, KEYS.hpPercent, DEFAULT_CALC.hpPercent), 0, 100),
     // O teto real é o do NP escolhido e vive no dado; aqui só se impede
     // negativo. `damage.ts` prende ao `maxCount` — a regra mora com a fórmula.
@@ -212,6 +256,12 @@ export function serializeCalc(s: CalcState): URLSearchParams {
   putNum(KEYS.skillLevel, s.skillLevel, 10);
   put(KEYS.appends, s.appends.join(","));
   putNum(KEYS.appendLevel, s.appendLevel, 10);
+  if (s.ceId !== null) p.set(KEYS.ceId, String(s.ceId));
+  if (s.ceLevel !== null) p.set(KEYS.ceLevel, String(s.ceLevel));
+  if (s.ceMlb) p.set(KEYS.ceMlb, "1");
+  if (s.mcId !== null) p.set(KEYS.mcId, String(s.mcId));
+  put(KEYS.mcSkills, s.mcSkills.join(","));
+  putNum(KEYS.mcLevel, s.mcLevel, 10);
   putNum(KEYS.hpPercent, s.hpPercent, DEFAULT_CALC.hpPercent);
   putNum(KEYS.stacksSelf, s.stacksSelf, 0);
   putNum(KEYS.stacksTarget, s.stacksTarget, 0);
@@ -259,6 +309,11 @@ export function toDamageInput(
     ...state.appends.map((num) => ({ kind: "append" as const, num, level: state.appendLevel })),
   ];
   if (isNP) buffStack.push({ kind: "npSelfBuff" });
+  // Só as skills marcadas do MC entram, e só se houver MC equipado. O `- 1`
+  // traduz o que o jogador vê (1, 2, 3) para o índice do array.
+  if (state.mcId !== null) {
+    for (const num of state.mcSkills) buffStack.push({ kind: "mysticCodeSkill", index: num - 1 });
+  }
 
   const traits: Trait[] = state.enemyTraits.map((id) => ({ id, name: traitName(id) }));
 
@@ -272,7 +327,13 @@ export function toDamageInput(
       hpPercent: clamp(state.hpPercent, 0, 100),
       stacks: state.stacksSelf,
       ...(state.npId !== null ? { npId: state.npId } : {}),
+      // `level` omitido de propósito quando o usuário não escolheu: quem sabe o
+      // teto daquela CE é o documento dela, e ele vive no núcleo.
+      ...(state.ceId !== null
+        ? { ce: { id: state.ceId, mlb: state.ceMlb, ...(state.ceLevel !== null ? { level: state.ceLevel } : {}) } }
+        : {}),
     },
+    ...(state.mcId !== null ? { mysticCode: { id: state.mcId, level: clamp(state.mcLevel, 1, 10) } } : {}),
     buffStack,
     enemy: {
       className: state.enemyClass,

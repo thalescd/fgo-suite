@@ -15,7 +15,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { specFor } from "../core/buffs.js";
 import { calculateDamage, enemyTraitNames, selectableNps, type DamageData, type RollMode } from "../core/damage.js";
-import type { IndexEntryServant, Servant, Skill } from "../core/model.js";
+import type { CraftEssence, IndexEntryServant, Servant, Skill } from "../core/model.js";
 import { EMPTY_FILTERS, search } from "../core/search.js";
 import { Block, Stars } from "./components.js";
 import { DamageReport } from "./DamageReport.js";
@@ -28,7 +28,7 @@ import {
   type ActionKind,
   type CalcState,
 } from "../core/scenario.js";
-import { loadServant, type Bootstrap } from "./data.js";
+import { loadEquip, loadServant, type Bootstrap } from "./data.js";
 import { useAsync } from "./useAsync.js";
 
 const num = (n: number) => n.toLocaleString("en-US");
@@ -106,6 +106,41 @@ function ServantPicker({ boot, onPick }: { boot: Bootstrap; onPick: (id: number)
   );
 }
 
+/**
+ * Escolha de Craft Essence. Mesmo motor do `ServantPicker` — 2.149 CEs não
+ * cabem num `<select>`, e a busca por nome já existe.
+ */
+function EquipPicker({ boot, onPick }: { boot: Bootstrap; onPick: (id: number) => void }) {
+  const [query, setQuery] = useState("");
+  const matches = useMemo(() => {
+    const text = query.trim();
+    if (!text) return [];
+    return search(boot.index, { ...EMPTY_FILTERS, kind: "equip", text }).slice(0, 6);
+  }, [boot.index, query]);
+
+  return (
+    <div className="picker">
+      <input
+        className="search-input"
+        placeholder="craft essence by name…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {matches.length > 0 && (
+        <div className="matches">
+          {matches.map((m) => (
+            <button key={m.id} type="button" onClick={() => { onPick(m.id); setQuery(""); }}>
+              {m.face && <img src={m.face} alt="" width={32} height={32} loading="lazy" />}
+              <span className="name">{m.name}</span>
+              <Stars n={m.rarity} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------- skills
 
 /**
@@ -173,6 +208,19 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
     [state.servantId],
   );
 
+  // A CE vem sob demanda, como o servo: são 2.149 documentos e o índice já traz
+  // o que a busca precisa. Falha ao carregar não derruba a tela — o cálculo
+  // segue sem a CE, e é o `useAsync` do servo que reporta erro.
+  const { data: ce } = useAsync<CraftEssence | null>(
+    () => (state.ceId === null ? Promise.resolve(null) : loadEquip(state.ceId).catch(() => null)),
+    [state.ceId],
+  );
+
+  const mysticCode = useMemo(
+    () => boot.mysticCodes.find((m) => m.id === state.mcId) ?? null,
+    [boot.mysticCodes, state.mcId],
+  );
+
   const traitName = useCallback(
     (id: number) => boot.traits.find((t) => t.id === id)?.name ?? `trait ${id}`,
     [boot.traits],
@@ -182,8 +230,8 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
     if (!servant) return null;
     const data: DamageData = {
       servants: new Map([[servant.id, servant]]),
-      equips: new Map(),
-      mysticCodes: new Map(),
+      equips: ce ? new Map([[ce.id, ce]]) : new Map(),
+      mysticCodes: new Map(boot.mysticCodes.map((m) => [m.id, m])),
       constants: boot.constants,
     };
     try {
@@ -191,7 +239,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
     } catch (e) {
       return { result: null, failure: e instanceof Error ? e.message : String(e) };
     }
-  }, [servant, state, boot.constants, traitName]);
+  }, [servant, ce, state, boot.constants, boot.mysticCodes, traitName]);
 
   if (error) return <div className="detail"><p className="empty">{error}</p></div>;
 
@@ -271,6 +319,28 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
               </button>
             </div>
 
+            {/*
+              A CE fica junto do servo porque é equipamento DELE — o Mystic Code,
+              que é do Master e vale para a party, mora no bloco de buffs.
+            */}
+            {ce ? (
+              <div className="attacker-head">
+                {ce.assets.face && <img src={ce.assets.face} alt="" width={40} height={40} />}
+                <div>
+                  <Link to={`/equip/${ce.id}`}>{ce.name}</Link>
+                  <div className="orig">
+                    <Stars n={ce.rarity} /> · lv {state.ceLevel ?? ce.lvMax}
+                    {state.ceMlb ? " · MLB" : ""}
+                  </div>
+                </div>
+                <button className="linkish" type="button" onClick={() => patch({ ceId: null, ceLevel: null, ceMlb: false })}>
+                  remove
+                </button>
+              </div>
+            ) : (
+              <EquipPicker boot={boot} onPick={(id) => patch({ ceId: id })} />
+            )}
+
             <div className="fields">
               <Field label="Level" hint={`natural max ${servant.lvMax}`}>
                 <input
@@ -305,6 +375,25 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 que contam, um contador de stacks não teria o que contar. E o
                 rótulo sai do dado, então servo novo aparece sem editar a tela.
               */}
+              {ce && (
+                <>
+                  <Field label="CE level" hint={`max ${ce.lvMax} · +${num(ce.atkGrowth[ce.lvMax - 1] ?? 0)} ATK there`}>
+                    <input type="number" min={1} max={ce.lvMax} value={state.ceLevel ?? ce.lvMax}
+                      onChange={(e) => patch({ ceLevel: Number(e.target.value) })} />
+                  </Field>
+                  {/*
+                    MLB não é "mais forte": é o OUTRO conjunto de efeitos (D17).
+                    Por isso é caixa, e não um nível 5 do limit break — o dado
+                    tem dois conjuntos e não sabe qual você tem.
+                  */}
+                  <Field label="Max limit break" hint="picks a different effect set, not a stronger one">
+                    <label className="opt">
+                      <input type="checkbox" checked={state.ceMlb} onChange={() => patch({ ceMlb: !state.ceMlb })} />
+                      <span className="name">MLB</span>
+                    </label>
+                  </Field>
+                </>
+              )}
               {stackSpec?.countsOn === "self" && (
                 <Field label={`${stackLabel} stacks`} hint={`on self — up to ${stackSpec.maxCount}, +${stackSpec.perCount}% each`}>
                   <input type="number" min={0} max={stackSpec.maxCount} value={state.stacksSelf}
@@ -430,6 +519,52 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 included — the game gives no choice there.
               </p>
             )}
+
+            {/*
+              O Mystic Code é do Master, um só para a party — por isso fica aqui
+              e não junto do servo. As skills dele entram como as do servo: só
+              as marcadas, e o rótulo diz o que cada uma faz ao dano.
+            */}
+            <details className="sub" open={state.mcId !== null}>
+              <summary>Mystic Code — {mysticCode ? mysticCode.name.replace(/^Mystic Code:\s*/, "") : "none"}</summary>
+              <div className="fields">
+                <Field label="Equipped">
+                  <select
+                    value={state.mcId ?? ""}
+                    onChange={(e) => patch({ mcId: e.target.value === "" ? null : Number(e.target.value), mcSkills: [] })}
+                  >
+                    <option value="">none</option>
+                    {boot.mysticCodes.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name.replace(/^Mystic Code:\s*/, "")}</option>
+                    ))}
+                  </select>
+                </Field>
+                {mysticCode && (
+                  <Field label="MC level">
+                    <Seg value={state.mcLevel} options={numbers(1, 10)} onChange={(v) => patch({ mcLevel: v })} />
+                  </Field>
+                )}
+              </div>
+              {mysticCode && (
+                <div className="opts">
+                  {mysticCode.skills.map((sk, i) => (
+                    <SkillToggle
+                      key={`${mysticCode.id}-${i}`}
+                      skill={sk}
+                      level={state.mcLevel}
+                      checked={state.mcSkills.includes(i + 1)}
+                      onToggle={() =>
+                        patch({
+                          mcSkills: state.mcSkills.includes(i + 1)
+                            ? state.mcSkills.filter((n) => n !== i + 1)
+                            : [...state.mcSkills, i + 1],
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </details>
 
             <details className="sub">
               <summary>Append passives — off by default ({state.appends.length} on)</summary>

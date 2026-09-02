@@ -152,7 +152,10 @@ describe("calculate_damage", () => {
       notModelledAtAll: string;
       validation: string;
     };
-    expect(r.notModelledAtAll).toMatch(/Craft Essences/);
+    // CE e Mystic Code saíram desta lista na 5a; citá-los agora seria mentira
+    // na direção oposta — dizer que não modela o que modela.
+    expect(r.notModelledAtAll).not.toMatch(/Craft Essence/);
+    expect(r.notModelledAtAll).toMatch(/Support servants/);
     expect(r.validation).toMatch(/\d+\/\d+ scenarios verified/);
   });
 
@@ -257,5 +260,54 @@ describe("calculate_damage: contagem de stacks (R27)", () => {
     expect(linha).toMatch(/own Heroic King stacks/);
     expect(linha).toMatch(/up to 12/);
     expect(linha).toMatch(/stacksOnSelf/);
+  });
+});
+
+describe("calculate_damage: Craft Essence e Mystic Code (5a)", () => {
+  const dmg = (a: Record<string, unknown>) =>
+    calculateDamageTool(store, { servant: "artoria", ...a }) as {
+      damage: { average: number };
+      formulaTerms: { servantAtk: number; npDamageMod?: number; atkMod?: number };
+      craftEssence?: string;
+      mysticCode?: string;
+      notFound?: string[];
+      viewInBrowser: string;
+    };
+
+  it("CE por nome traz ATK e efeito no mesmo gesto", () => {
+    const sem = dmg({});
+    const com = dmg({ craftEssence: "The Black Grail" });
+    expect(com.craftEssence).toBe("The Black Grail");
+    expect(com.formulaTerms.servantAtk).toBe(sem.formulaTerms.servantAtk + 2400);
+    expect(com.formulaTerms.npDamageMod).toBeCloseTo(0.6, 5);
+  });
+
+  it("MLB troca o conjunto de efeitos e aparece no rótulo", () => {
+    const base = dmg({ craftEssence: "The Black Grail" });
+    const mlb = dmg({ craftEssence: "The Black Grail", ceMlb: true });
+    expect(mlb.formulaTerms.npDamageMod).toBeCloseTo(0.8, 5);
+    expect(mlb.craftEssence).toMatch(/MLB/);
+    expect(mlb.damage.average).toBeGreaterThan(base.damage.average);
+  });
+
+  it("Mystic Code por nome, e só as skills pedidas", () => {
+    const semSkill = dmg({ mysticCode: "Chaldea Combat Uniform" });
+    expect(semSkill.mysticCode).toMatch(/Chaldea Combat Uniform/);
+    expect(semSkill.formulaTerms.atkMod ?? 0).toBe(0);
+    const comSkill = dmg({ mysticCode: "Chaldea Combat Uniform", mysticCodeSkills: [1] });
+    expect(comSkill.formulaTerms.atkMod).toBeCloseTo(0.3, 5);
+  });
+
+  it("referência que não resolve é dita, não engolida", () => {
+    const r = dmg({ craftEssence: "Kaleidoscopio", mysticCode: "Uniforme Inexistente" });
+    expect(r.notFound).toEqual(['craft essence "Kaleidoscopio"', 'mystic code "Uniforme Inexistente"']);
+    // E o cálculo segue, sem o equipamento — o número é o de servo pelado.
+    expect(r.formulaTerms.servantAtk).toBe(dmg({}).formulaTerms.servantAtk);
+  });
+
+  it("o link reproduz CE e MC na tela", () => {
+    const r = dmg({ craftEssence: "The Black Grail", ceMlb: true, mysticCode: "20", mysticCodeSkills: [1] });
+    const st = parseCalc(new URLSearchParams(r.viewInBrowser.split("?")[1]));
+    expect([st.ceId, st.ceMlb, st.mcId, st.mcSkills]).toEqual([9400480, true, 20, [1]]);
   });
 });

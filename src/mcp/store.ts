@@ -118,4 +118,40 @@ export class Store {
     }
     return null;
   }
+
+  /** Idem para Craft Essence: id, `collectionNo` ou nome, pelo mesmo motor. */
+  findEquip(ref: string | number): IndexEntry | null {
+    const equips = this.index.filter((e) => e.kind === "equip");
+    const n = typeof ref === "number" ? ref : Number(ref);
+    if (Number.isFinite(n)) {
+      const hit = equips.find((e) => e.id === n) ?? equips.find((e) => e.collectionNo === n);
+      if (hit) return hit;
+    }
+    if (typeof ref === "string" && ref.trim()) {
+      const hits = search(this.index, { ...EMPTY_FILTERS, kind: "equip", text: ref.trim() });
+      if (hits.length > 0) return hits[0]!;
+    }
+    return null;
+  }
+
+  /**
+   * Mystic Code por id ou nome.
+   *
+   * São 28 e ficam em memória, então busca direta basta — e é por `name`, o
+   * inglês: `shortName` é japonês e tem quebra de linha dentro.
+   */
+  findMysticCode(ref: string | number): MysticCode | null {
+    const n = typeof ref === "number" ? ref : Number(ref);
+    if (Number.isFinite(n)) {
+      const byId = this.mysticCodes.find((m) => m.id === n);
+      if (byId) return byId;
+    }
+    const q = String(ref).trim().toLowerCase();
+    if (!q) return null;
+    return (
+      this.mysticCodes.find((m) => m.name.toLowerCase() === q) ??
+      this.mysticCodes.find((m) => m.name.toLowerCase().includes(q)) ??
+      null
+    );
+  }
 }

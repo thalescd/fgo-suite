@@ -5,7 +5,7 @@
  * ficam em memória (855 KB no total). Detalhe de servo e de CE vem sob demanda.
  */
 
-import type { Constants, CraftEssence, IndexEntry, Meta, Servant } from "../core/model.js";
+import type { Constants, CraftEssence, IndexEntry, Meta, MysticCode, Servant } from "../core/model.js";
 
 const BASE = "/data";
 
@@ -26,19 +26,22 @@ export interface Bootstrap {
   meta: Meta;
   traits: TraitEntry[];
   constants: Constants;
+  /** 28 no total, 12 KB. Cabe no bootstrap; CE continua sob demanda. */
+  mysticCodes: MysticCode[];
 }
 
 let bootstrapPromise: Promise<Bootstrap> | null = null;
 
 export function loadBootstrap(): Promise<Bootstrap> {
   bootstrapPromise ??= (async () => {
-    const [index, meta, traits, constants] = await Promise.all([
+    const [index, meta, traits, constants, mysticCodes] = await Promise.all([
       getJson<IndexEntry[]>("index.json"),
       getJson<Meta>("meta.json"),
       getJson<TraitEntry[]>("traits.json"),
       getJson<Constants>("constants.json"),
+      getJson<MysticCode[]>("mysticCodes.json"),
     ]);
-    return { index, meta, traits, constants };
+    return { index, meta, traits, constants, mysticCodes };
   })();
   return bootstrapPromise;
 }

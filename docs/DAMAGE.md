@@ -318,6 +318,34 @@ silêncio.
 E "humano" são cinco traits distintos — `human`, `attributeHuman`, `livingHuman`,
 `humanoid`, `hominidaeServant`. Nunca normalizar por semelhança de nome.
 
+### 3.13 De onde vem cada buff que não é do servo (5a)
+
+| Fonte | Onde se declara | Por quê |
+|---|---|---|
+| Craft Essence | `attacker.ce` | é equipamento **do servo** |
+| Mystic Code | `DamageInput.mysticCode` | é do **Master**, um só para a party |
+| skills do MC | `buffStack: mysticCodeSkill` | só as que dispararam, como as do servo |
+
+**Uma CE se declara em um lugar só, e dá as duas coisas.** Antes eram dois:
+`attacker.ce` movia a ATK e uma entrada no `buffStack` trazia os efeitos — e os
+structs nem concordavam, porque só um tinha `level`. Declarar metade produzia um
+número plausível: com o Black Grail, ou faltavam 2.400 de ATK ou faltavam os
++80% de dano de NP, e nada na saída indicava qual.
+
+**O Mystic Code fica fora de `attacker` de propósito.** Ele é do Master e vale
+para a party inteira; a CE é de quem ataca. A distinção só custa uma linha hoje,
+mas quando a 5b trouxer suportes cada um terá a sua CE e o MC continuará sendo um
+só — sem renomear nada.
+
+Os efeitos do MC entram marcados `fromSupport`, então o filtro de alcance de §3.7
+vale para eles: um `ptAll` chega ao atacante, um `self` fica no Master.
+
+**MLB não é um nível.** `effectsBase` e `effectsMlb` são conjuntos **diferentes**
+(D17), e o dado não diz qual você tem — daí ser caixa do usuário, com o padrão no
+conjunto mais fraco. Já o `level` da CE mexe só na ATK, e omiti-lo significa "o
+máximo daquela CE", resolvido no núcleo porque o teto varia de 50 a 100 conforme
+a raridade.
+
 ### 3.13 O super-efetivo não mora sempre no mesmo campo (R27)
 
 Em quase todo NP o multiplicador super-efetivo vem de `svals[].Correction`. Em

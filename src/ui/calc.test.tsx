@@ -12,7 +12,7 @@ import { StaticRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { calculateDamage, type DamageData } from "../core/damage.js";
-import type { Constants, IndexEntry, IndexEntryServant, Meta, Servant } from "../core/model.js";
+import type { Constants, IndexEntry, IndexEntryServant, Meta, MysticCode, Servant } from "../core/model.js";
 import { CalcPage } from "./CalcPage.js";
 import { DamageReport } from "./DamageReport.js";
 import { DEFAULT_CALC, defaultNpLevel, parseCalc, serializeCalc, toDamageInput } from "../core/scenario.js";
@@ -54,6 +54,7 @@ describe("a página monta", () => {
     meta: JSON.parse(readFileSync("public/data/meta.json", "utf8")) as Meta,
     traits: traits as TraitEntry[],
     constants,
+    mysticCodes: JSON.parse(readFileSync("public/data/mysticCodes.json", "utf8")) as MysticCode[],
   };
   // O SSR não roda efeitos, então o servo nunca chega a carregar aqui. O que
   // este teste cobre é a montagem da árvore — import quebrado, hook fora de
@@ -293,5 +294,38 @@ describe("relatório", () => {
     const html = render(gilgamesh, `s=${gilgamesh.id}&et=${traitId("weakToEnumaElish")}`);
     expect(html).toContain("Super effective");
     expect(text(html)).toContain("|x1.50|");
+  });
+});
+
+describe("CE e Mystic Code na query string (5a)", () => {
+  it("sobrevivem à ida e volta", () => {
+    const q = "s=100100&ce=9400480&cel=80&mlb=1&mc=20&mcs=1,3&mclv=8";
+    const state = parseCalc(new URLSearchParams(q));
+    expect([state.ceId, state.ceLevel, state.ceMlb]).toEqual([9400480, 80, true]);
+    expect([state.mcId, state.mcSkills, state.mcLevel]).toEqual([20, [1, 3], 8]);
+    expect(parseCalc(serializeCalc(state))).toEqual(state);
+  });
+
+  it("nada disso polui a URL enquanto não for escolhido", () => {
+    expect(serializeCalc(DEFAULT_CALC).toString()).toBe("");
+  });
+
+  it("as skills do MC viram entradas 0-based, e só com MC equipado", () => {
+    const com = toDamageInput(parseCalc(new URLSearchParams("mc=20&mcs=1,3")), artoria, traitName);
+    expect(com.mysticCode).toEqual({ id: 20, level: 10 });
+    expect(com.buffStack).toContainEqual({ kind: "mysticCodeSkill", index: 0 });
+    expect(com.buffStack).toContainEqual({ kind: "mysticCodeSkill", index: 2 });
+
+    // `mcs` sem `mc` é representável na URL e não pode virar buff fantasma.
+    const sem = toDamageInput(parseCalc(new URLSearchParams("mcs=1,3")), artoria, traitName);
+    expect(sem.mysticCode).toBeUndefined();
+    expect(sem.buffStack.some((b) => b.kind === "mysticCodeSkill")).toBe(false);
+  });
+
+  it("a CE vira uma declaração só, com o nível omitido quando é o padrão", () => {
+    const padrao = toDamageInput(parseCalc(new URLSearchParams("ce=9400480")), artoria, traitName);
+    expect(padrao.attacker.ce).toEqual({ id: 9400480, mlb: false });
+    const explicito = toDamageInput(parseCalc(new URLSearchParams("ce=9400480&cel=50&mlb=1")), artoria, traitName);
+    expect(explicito.attacker.ce).toEqual({ id: 9400480, mlb: true, level: 50 });
   });
 });

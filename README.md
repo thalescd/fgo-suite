@@ -20,7 +20,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **2** | Capabilities + busca por skill | ✅ pronta |
 | **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **11 de 16 casos conferidos contra calculadora externa (R4)** |
 | **4** | MCP server — busca e calculadora como tools | ✅ pronta |
-| **5a** | CE e Mystic Code na query string, na tela e nas tools | pendente — núcleo pronto, falta a superfície |
+| **5a** | CE e Mystic Code na query string, na tela e nas tools | ✅ pronta |
 | **5b** | Suportes e templates de composição | pendente — núcleo pronto, falta a superfície |
 | **5c** | Condições de estado (HP, contagem de buffs, turno) | pendente |
 | **5d** | Comparação lado a lado | pendente |
@@ -45,7 +45,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 176 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 191 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -115,9 +115,12 @@ Hijikata, Aśvatthāman e as duas Anne Bonny & Mary Read. O campo **Current HP**
 controla isso (R25). No Leonidas e na Passionlip o buff vale *zero* com HP
 cheio, e era assim que ele aparecia antes de ser lido.
 
-Fora por enquanto: CE, Mystic Code, suportes e comparação lado a lado. O núcleo
-já resolve os três primeiros como fonte de buff — falta poder **pedi-los**, que
-é a fase 5a/5b.
+**Craft Essence e Mystic Code entram no cálculo** (5a). Uma CE contribui com a
+ATK **e** os efeitos na mesma declaração — o Black Grail é +2.400 de ATK *e*
++80% de dano de NP, nunca um ou outro. O MLB é caixa do usuário porque escolhe
+um conjunto **diferente** de efeitos, não um mais forte (D17).
+
+Fora por enquanto: suportes (5b) e comparação lado a lado (5d).
 
 **11 dos 16 casos do R4 estão conferidos** contra calculadora da comunidade —
 33 números, reproduzidos exatamente. Isso prende a espinha multiplicativa inteira
@@ -141,7 +144,7 @@ o assistente **executar** a busca e a calculadora em vez de responder de memóri
 |---|---|
 | `search_servants` | os mesmos filtros de `?class=&rarity=&np=&cap=` |
 | `get_servant` | detalhe curado: NPs, skills, passivas, traits |
-| `calculate_damage` | os mesmos parâmetros de `/calc?…`, com a auditoria junto |
+| `calculate_damage` | os mesmos parâmetros de `/calc?…`, CE e Mystic Code inclusos, com a auditoria junto |
 | `list_capabilities` | as 170 tags, para não chutar nome de filtro |
 
 [`.mcp.json`](.mcp.json) está versionado: quem clonar e abrir no Claude Code já

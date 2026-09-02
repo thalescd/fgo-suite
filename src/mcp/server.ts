@@ -119,8 +119,12 @@ server.registerTool(
       "and the cap. Charlemagne counts Heroic King on HIMSELF and more than doubles at 12; Romulus=Quirinus counts " +
       "roman ON THE TARGET. Pass `stacksOnSelf` or `stacksOnTarget` accordingly; the wrong one is ignored, and at 0 " +
       "you get the servant's floor rather than their real output.\n\n" +
-      "NOT modelled: Craft Essences, Mystic Codes, support servants, and state conditions other than HP and stack " +
-      "counts (turn number). Buffs depending on those are reported in `notCounted` rather than guessed.\n\n" +
+      "Craft Essences and Mystic Codes count when you pass them, by name or id. A CE contributes BOTH its ATK and " +
+      "its effects — the Black Grail is +2400 ATK and +80% NP damage, not one or the other. `ceMlb` picks between " +
+      "two DIFFERENT effect sets, not two grades of one, and defaults to the weaker (non-MLB) set because the data " +
+      "cannot know which you own.\n\n" +
+      "NOT modelled: support servants and state conditions other than HP and stack counts (turn number). Buffs " +
+      "depending on those are reported in `notCounted` rather than guessed.\n\n" +
       `Accuracy: the implementation matches the community formula term by term, but ${validationState()} — ` +
       "say so when the exact figure matters.",
     inputSchema: {
@@ -136,6 +140,18 @@ server.registerTool(
         .max(100)
         .optional()
         .describe("Attacker's current HP as a % of its maximum. Default 100. Only matters for the seven HP-scaling servants."),
+      craftEssence: z
+        .string()
+        .optional()
+        .describe("Craft Essence to equip, by name or id. Gives both its ATK and its effects."),
+      ceMlb: z.boolean().optional().describe("Max limit break. Selects a different effect set, not a stronger one. Default false."),
+      ceLevel: z.number().int().min(1).max(100).optional().describe("CE level. Default: that CE's own maximum, which is 50-100 by rarity."),
+      mysticCode: z.string().optional().describe("Mystic Code equipped on the Master, by name or id — e.g. 'Chaldea Combat Uniform'."),
+      mysticCodeSkills: z
+        .array(z.number().int().min(1).max(3))
+        .optional()
+        .describe("Which of its skills fired, 1-based. Nothing applies unless listed."),
+      mysticCodeLevel: z.number().int().min(1).max(10).optional().describe("Default 10."),
       stacksOnSelf: z
         .number()
         .int()

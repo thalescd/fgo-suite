@@ -504,7 +504,7 @@ Cada fase entrega algo usável sozinho.
 | ~~**2**~~ | ~~Capabilities + busca por skill~~ | ✅ 170 tags, faceta na busca |
 | ~~**3**~~ | ~~`damage.ts` + testes + tela `/calc`~~ | ✅ núcleo puro, testado e utilizável; **R4 aberto** |
 | ~~**4**~~ | ~~MCP server sobre 1–3~~ | ✅ 4 tools sobre `core/`, `.mcp.json` versionado; itens 2 e 3 do §1 entregues |
-| **5** | Buffs condicionais, **CEs/MCs no cálculo _e_ nas tools do MCP**, suportes, comparação lado a lado | refinamento |
+| **5** | ~~CEs/MCs~~ (5a ✅), buffs condicionais, suportes, comparação lado a lado | refinamento |
 
 Quebrada em **8.1**. Letras, não `5.1` — `§5.1`–`§5.7` já são as seções da
 calculadora neste documento, e "5.2" apontando para duas coisas diferentes é
@@ -525,7 +525,7 @@ pedir.
 
 | | Entrega | Núcleo | Superfície |
 |---|---|---|---|
-| **5a** | CE e Mystic Code | ✅ pronto | query string, tela, tools |
+| ~~**5a**~~ | ~~CE e Mystic Code~~ | ✅ | ✅ **pronta** |
 | **5b** | Suportes e templates | ✅ pronto | query string, tela, tools, `templates.json` |
 | **5c** | Condições de estado | ❌ a fazer | inputs de estado no cenário |
 | **5d** | Comparação lado a lado | n/a | tela |

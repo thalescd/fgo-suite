@@ -15,7 +15,7 @@ import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
-import type { Constants, IndexEntry, Meta } from "../core/model.js";
+import type { Constants, IndexEntry, Meta, MysticCode } from "../core/model.js";
 import { SearchPage } from "./SearchPage.js";
 import type { Bootstrap, TraitEntry } from "./data.js";
 
@@ -26,6 +26,7 @@ const boot: Bootstrap = {
   meta: json<Meta>("meta.json"),
   traits: json<TraitEntry[]>("traits.json"),
   constants: json<Constants>("constants.json"),
+  mysticCodes: json<MysticCode[]>("mysticCodes.json"),
 };
 
 /**

@@ -39,6 +39,8 @@ import type {
 /** HP em % nunca sai de 0..100, venha de query string, de tool ou de teste. */
 const clampPercent = (n: number): number => Math.min(100, Math.max(0, n));
 
+const clampInt = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, Math.round(n)));
+
 // ------------------------------------------------------------------- entrada
 
 export type RollMode = "min" | "avg" | "max" | "range";
@@ -67,8 +69,15 @@ export interface Enemy {
 export type BuffSource =
   | { kind: "ownSkill"; skillNum: number; level: number }
   | { kind: "append"; num: number; level: number }
-  | { kind: "ce"; id: number; mlb: boolean }
-  | { kind: "mysticCode"; id: number; skillIndex: number; level: number }
+  /**
+   * Uma skill do Mystic Code equipado. Qual MC é, e em que nível, vive em
+   * `DamageInput.mysticCode` — aqui só se escolhe **quais** skills dispararam,
+   * como `ownSkill` faz com as do servo.
+   *
+   * Separar as duas coisas impede um estado sem sentido: duas entradas
+   * apontando para Mystic Codes diferentes na mesma party.
+   */
+  | { kind: "mysticCodeSkill"; index: number }
   | { kind: "support"; servantId: number; skills: number[]; skillLevel: number; targetsAttacker: boolean }
   | { kind: "npSelfBuff" };
 
@@ -84,7 +93,12 @@ export interface DamageInput {
      * `selectableNps`. Id desconhecido cai no padrão em vez de falhar.
      */
     npId?: number;
-    ce?: { id: number; level: number; mlb: boolean };
+    /**
+     * A Craft Essence equipada. **Declaração única**: daqui saem a ATK e os
+     * efeitos. `level` move a ATK; `mlb` escolhe entre `effectsBase` e
+     * `effectsMlb`, que são conjuntos diferentes e não graus do mesmo (D17).
+     */
+    ce?: { id: number; level?: number; mlb: boolean };
     /**
      * HP atual do atacante, em % do máximo. Omitido = 100 (ileso).
      *
@@ -103,6 +117,15 @@ export interface DamageInput {
      */
     stacks?: number;
   };
+  /**
+   * O Mystic Code equipado, se houver. Fica **fora** de `attacker` de propósito:
+   * ele é do Master e vale para a party inteira, ao contrário da CE, que é do
+   * servo. Quando a fase 5b trouxer suportes, cada um terá a sua CE e o MC
+   * continuará sendo um só.
+   *
+   * Quais skills dispararam vem do `buffStack`, como `mysticCodeSkill`.
+   */
+  mysticCode?: { id: number; level: number };
   buffStack: BuffSource[];
   enemy: Enemy;
   action: {
@@ -606,6 +629,25 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
     }
   }
 
+  /**
+   * A CE entra por `attacker.ce`, e **só** por ali.
+   *
+   * Antes eram dois lugares: `attacker.ce` dava a ATK e uma entrada `ce` no
+   * `buffStack` dava os efeitos — e os dois structs nem concordavam, porque só
+   * um tinha `level`. Declarar metade dava um número plausível: com o Black
+   * Grail, ou faltavam 2.400 de ATK ou faltavam os +80% de dano de NP.
+   *
+   * Uma CE é equipamento do servo, não um buff que se liga e desliga. Fica onde
+   * está o resto do que ele carrega.
+   */
+  const equipped = input.attacker.ce ? data.equips.get(input.attacker.ce.id) : undefined;
+  if (equipped && input.attacker.ce) {
+    const mlb = input.attacker.ce.mlb;
+    for (const e of mlb ? equipped.effectsMlb : equipped.effectsBase) {
+      out.push({ effect: e, source: `CE ${equipped.name}${mlb ? " (MLB)" : ""}`, levelIndex: 0, fromSupport: false });
+    }
+  }
+
   for (const src of input.buffStack) {
     switch (src.kind) {
       case "ownSkill": {
@@ -634,20 +676,18 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
         }
         break;
       }
-      case "ce": {
-        const ce = data.equips.get(src.id);
-        if (!ce) break;
-        for (const e of src.mlb ? ce.effectsMlb : ce.effectsBase) {
-          out.push({ effect: e, source: `CE ${ce.name}${src.mlb ? " (MLB)" : ""}`, levelIndex: 0, fromSupport: false });
-        }
-        break;
-      }
-      case "mysticCode": {
-        const mc = data.mysticCodes.get(src.id);
-        const sk = mc?.skills[src.skillIndex];
-        if (!mc || !sk) break;
+      case "mysticCodeSkill": {
+        const equipped = input.mysticCode;
+        const mc = equipped ? data.mysticCodes.get(equipped.id) : undefined;
+        const sk = mc?.skills[src.index];
+        if (!mc || !sk || !equipped) break;
+        // `fromSupport` porque o MC é do Master, não do servo: um efeito `self`
+        // dele fica no Master e não alcança quem ataca (§3.7).
+        // `name`, não `shortName`: o curto é japonês e traz uma quebra de linha
+        // dentro ("カルデア\n戦闘服"), que arrebentaria a linha da auditoria.
+        const label = mc.name.replace(/^Mystic Code:\s*/, "");
         for (const e of sk.effects) {
-          out.push({ effect: e, source: `${mc.shortName} skill ${src.skillIndex + 1}`, levelIndex: src.level - 1, fromSupport: true });
+          out.push({ effect: e, source: `${label} skill ${src.index + 1}`, levelIndex: equipped.level - 1, fromSupport: true });
         }
         break;
       }
@@ -737,7 +777,11 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
   // ---- ATK
   const base = attacker.atkGrowth[input.attacker.level - 1] ?? 0;
   const ce = input.attacker.ce ? data.equips.get(input.attacker.ce.id) : undefined;
-  const ceAtk = ce ? ce.atkGrowth[(input.attacker.ce?.level ?? ce.lvMax) - 1] ?? 0 : 0;
+  // Nível omitido = o máximo daquela CE, que varia com a raridade (50 a 100).
+  // Quem sabe o teto é o documento, então quem resolve é aqui — e o clamp
+  // existe porque índice fora da faixa devolveria `0` de ATK em silêncio.
+  const ceLevel = ce ? clampInt(input.attacker.ce?.level ?? ce.lvMax, 1, ce.atkGrowth.length) : 0;
+  const ceAtk = ce ? ce.atkGrowth[ceLevel - 1] ?? 0 : 0;
   const servantAtk = base + input.attacker.fou + ceAtk;
 
   // ---- NP e card

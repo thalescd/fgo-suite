@@ -235,6 +235,12 @@ export interface DamageArgs {
   npLevel?: number;
   overcharge?: number;
   hpPercent?: number;
+  craftEssence?: string;
+  ceMlb?: boolean;
+  ceLevel?: number;
+  mysticCode?: string;
+  mysticCodeSkills?: number[];
+  mysticCodeLevel?: number;
   stacksOnSelf?: number;
   stacksOnTarget?: number;
   npId?: number;
@@ -259,6 +265,15 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
   if (!entry) return { error: `No servant matches "${a.servant}". Try search_servants first.` };
   const servant = store.servant(entry.id);
 
+  // CE e Mystic Code aceitam nome ou id, como o servo. Referência que não
+  // resolve é dita em voz alta: seguir o cálculo sem o equipamento pedido
+  // devolveria um número menor sem explicação nenhuma.
+  const notFound: string[] = [];
+  const ce = a.craftEssence !== undefined ? store.findEquip(a.craftEssence) : null;
+  if (a.craftEssence !== undefined && !ce) notFound.push(`craft essence "${a.craftEssence}"`);
+  const mc = a.mysticCode !== undefined ? store.findMysticCode(a.mysticCode) : null;
+  if (a.mysticCode !== undefined && !mc) notFound.push(`mystic code "${a.mysticCode}"`);
+
   const unknownTraits: string[] = [];
   const traitIds = (a.enemyTraits ?? []).map((name) => {
     const t = store.traits.find((x) => x.name.toLowerCase() === name.toLowerCase());
@@ -279,6 +294,12 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
   put("np", a.npLevel);
   put("oc", a.overcharge);
   put("hp", a.hpPercent);
+  put("ce", ce?.id);
+  put("cel", a.ceLevel);
+  if (a.ceMlb) p.set("mlb", "1");
+  put("mc", mc?.id);
+  put("mcs", (a.mysticCodeSkills ?? []).join(","));
+  put("mclv", a.mysticCodeLevel);
   put("ss", a.stacksOnSelf);
   put("st", a.stacksOnTarget);
   put("npid", a.npId);
@@ -300,8 +321,8 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
   const state = parseCalc(p);
   const data: DamageData = {
     servants: new Map([[servant.id, servant]]),
-    equips: new Map(),
-    mysticCodes: new Map(),
+    equips: ce ? new Map([[ce.id, store.equip(ce.id)]]) : new Map(),
+    mysticCodes: mc ? new Map([[mc.id, mc]]) : new Map(),
     constants: store.constants,
   };
 
@@ -370,9 +391,12 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
       : {}),
     ...(r.assumptions.unmodeled.length > 0 ? { presentButNotModelled: r.assumptions.unmodeled } : {}),
     ...(unknownTraits.length > 0 ? { unknownEnemyTraits: unknownTraits } : {}),
+    ...(notFound.length > 0 ? { notFound } : {}),
+    ...(ce ? { craftEssence: `${ce.name}${a.ceMlb ? " (MLB)" : ""}` } : {}),
+    ...(mc ? { mysticCode: mc.name } : {}),
 
     notModelledAtAll:
-      "Craft Essences, Mystic Codes, support servants, and state conditions other than HP and stack counts (turn number) are not part of this calculation.",
+      "Support servants and state conditions other than HP and stack counts (turn number) are not part of this calculation.",
     validation: validationState(),
   };
 }

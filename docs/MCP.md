@@ -73,6 +73,10 @@ classe é automática enquanto append não é.
 **`calculate_damage` devolve o link.** `viewInBrowser` é o `/calc?…` que
 reproduz o cenário na tela, então dá para conferir sem remontar nada à mão.
 
+**CE e Mystic Code entram por nome.** `craftEssence: "The Black Grail"` resolve
+pelo mesmo motor de busca da tela. Referência que não casa vira `notFound`, e não
+um cálculo silenciosamente sem o equipamento.
+
 **E devolve o que não contou.** `notCounted` traz cada buff recusado com o
 motivo. É o campo que permite perceber que faltou marcar uma skill, em vez de
 aceitar um número baixo como verdade.
@@ -107,8 +111,7 @@ duas superfícies divergirem, ele falha.
 
 | | |
 |---|---|
-| Craft Essence e Mystic Code no cálculo | fase 5a — `core/` já resolve, falta o parâmetro |
-| Suporte | fase 5b — idem |
+| Suporte | fase 5b — `core/` já resolve, falta o parâmetro |
 | Comparação lado a lado | fase 5d |
 | Busca de CEs | a tool cobre servos; a tela cobre os dois |
 | Resources e prompts do MCP | só tools por enquanto |

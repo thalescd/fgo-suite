@@ -36,6 +36,9 @@ const ARTORIA = loadServant(2); // saber, Excalibur AoE buster 400..600%
 const GIL = loadServant(12); // archer, super-efetivo vs weakToEnumaElish, buff próprio antes do dano
 const OBERON = loadServant(316); // único servo com `buffRate`: dobra buffs de dano de NP (R21)
 const KALEID = loadEquip(34);
+// 5a — 2400 de ATK **e** upNpdamage 60/80: prende os dois caminhos da CE de uma
+// vez, e separa `effectsBase` de `effectsMlb`.
+const GRAIL = loadEquip(48);
 
 // R25 — os dois mecanismos de escala por HP, um servo por forma:
 const CU = loadServant(17); // skill 1 `RatioHPLow` sobre um Value != 0: 20% -> 50% de ATK
@@ -52,7 +55,7 @@ const data: DamageData = {
   servants: new Map(
     [ARTORIA, GIL, OBERON, CU, LEONIDAS, LIP, HIJIKATA, ANNE, MUSASHI, CHARLEMAGNE].map((s) => [s.id, s]),
   ),
-  equips: new Map([[KALEID.id, KALEID]]),
+  equips: new Map([[KALEID.id, KALEID], [GRAIL.id, GRAIL]]),
   mysticCodes: new Map(mysticCodes.map((m) => [m.id, m])),
   constants,
 };
@@ -933,5 +936,78 @@ describe("unidade do multiplicador de NP (R28)", () => {
       }
     }
     expect(escapou).toEqual([]);
+  });
+});
+
+/**
+ * 5a — Craft Essence e Mystic Code.
+ *
+ * O núcleo já resolvia os dois desde a fase 3; o que faltava era poder pedi-los.
+ * O teste que mais importa aqui é o primeiro: uma CE se declara em **um** lugar.
+ * Antes eram dois — `attacker.ce` dava a ATK e uma entrada no `buffStack` dava
+ * os efeitos —, e declarar metade produzia um número plausível.
+ */
+describe("Craft Essence e Mystic Code (5a)", () => {
+  const np = (over: Partial<DamageInput["attacker"]> = {}, rest: Partial<DamageInput> = {}) =>
+    calculateDamage(
+      input({
+        attacker: { servantId: ARTORIA.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1, ...over },
+        ...rest,
+      }),
+      data,
+    );
+
+  it("uma CE declarada dá ATK e efeito juntos — nunca só metade", () => {
+    const sem = np();
+    const com = np({ ce: { id: GRAIL.id, mlb: false } });
+    // ATK: +2400 do Black Grail no nível máximo.
+    expect(com.breakdown.servantAtk).toBe(sem.breakdown.servantAtk + 2400);
+    // E o efeito, no mesmo gesto: +60% de dano de NP.
+    expect(com.breakdown.npDamageMod).toBeCloseTo(0.6, 5);
+    expect(com.assumptions.appliedBuffs.some((b) => /Black Grail/.test(b.source))).toBe(true);
+  });
+
+  it("MLB troca o conjunto de efeitos, não o nível", () => {
+    // `effectsBase` e `effectsMlb` são conjuntos diferentes (D17): o MLB muda o
+    // valor do buff e não encosta na ATK.
+    const base = np({ ce: { id: GRAIL.id, mlb: false } });
+    const mlb = np({ ce: { id: GRAIL.id, mlb: true } });
+    expect([base.breakdown.npDamageMod, mlb.breakdown.npDamageMod]).toEqual([0.6, 0.8]);
+    expect(mlb.breakdown.servantAtk).toBe(base.breakdown.servantAtk);
+    expect(mlb.assumptions.appliedBuffs.find((b) => /Black Grail/.test(b.source))?.source).toMatch(/MLB/);
+  });
+
+  it("nível omitido = o máximo daquela CE, resolvido no núcleo", () => {
+    const cheio = np({ ce: { id: GRAIL.id, mlb: true } });
+    const lv1 = np({ ce: { id: GRAIL.id, mlb: true, level: 1 } });
+    expect(cheio.breakdown.servantAtk - lv1.breakdown.servantAtk).toBe(1800);
+    // Fora da faixa é preso, não vira ATK zero em silêncio.
+    expect(np({ ce: { id: GRAIL.id, mlb: true, level: 999 } }).breakdown.servantAtk).toBe(
+      cheio.breakdown.servantAtk,
+    );
+  });
+
+  it("Mystic Code: só as skills marcadas entram", () => {
+    const mc = { id: 20, level: 10 }; // Chaldea Combat Uniform: skill 1 = ATK up ptAll
+    expect(np({}, { mysticCode: mc }).breakdown.atkMod).toBe(0);
+    const comSkill = np({}, { mysticCode: mc, buffStack: [{ kind: "mysticCodeSkill", index: 0 }] });
+    expect(comSkill.breakdown.atkMod).toBeCloseTo(0.3, 5);
+  });
+
+  it("skill de MC sem MC equipado não faz nada", () => {
+    // O estado é representável pela query string (`mcs=1` sem `mc=`), então
+    // precisa ser inofensivo em vez de estourar.
+    const r = np({}, { buffStack: [{ kind: "mysticCodeSkill", index: 0 }] });
+    expect(r.avg).toBe(np().avg);
+  });
+
+  it("CE e MC somam nos slots certos, sem se atropelar", () => {
+    const r = np(
+      { ce: { id: GRAIL.id, mlb: true } },
+      { mysticCode: { id: 20, level: 10 }, buffStack: [{ kind: "mysticCodeSkill", index: 0 }] },
+    );
+    expect(r.breakdown.npDamageMod).toBeCloseTo(0.8, 5); // CE
+    expect(r.breakdown.atkMod).toBeCloseTo(0.3, 5); // MC
+    expect(r.breakdown.servantAtk).toBe(14621); // 12221 + 2400
   });
 });
