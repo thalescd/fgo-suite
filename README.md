@@ -47,11 +47,11 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 262 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 267 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
-| `npm run data:validate` | Confere a saída contra 97 valores conhecidos do jogo. |
+| `npm run data:validate` | Confere a saída contra 100 valores conhecidos do jogo. |
 | `npm run data:all` | Os três de dados em sequência. |
 | `npm run mcp` | Sobe o servidor MCP solto, para depurar sem cliente. |
 | `npm run damage:cases` | Casos de conferência da calculadora e o nosso número em cada um (R4). |
@@ -125,6 +125,11 @@ Dezessete NPs somam dano por unidade de um trait acumulado — 〔Heroic King〕
 próprio **Charlemagne**, 〔roman〕 no alvo do **Romulus**. São dois campos, porque
 são contagens de entidades diferentes, e a tela só mostra o que o NP escolhido
 usa (R27).
+
+O décimo-oitavo conta outra coisa: a **Ereshkigal** soma por fase de um medidor,
+não por trait, e o teto dele vive num campo que a ingestão não lia (R33). Da
+fase 0 à 10 o NP dela vai de 13.001 a 25.863 — o dobro. Mesma máquina de
+contagem, mesmo campo na tela.
 
 Sete servos batem mais forte machucados — Cú Chulainn, Leonidas, Passionlip,
 Hijikata, Aśvatthāman e as duas Anne Bonny & Mary Read. O campo **Current HP**

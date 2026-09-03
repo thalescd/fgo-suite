@@ -26,6 +26,7 @@ import type {
 import { convertMultiplier, convertRate, convertValues, isSupportedBuff, valueRuleFor } from "../core/units.js";
 import type {
   AtlasAttributeRelation,
+  AtlasBattlePointGroup,
   AtlasBuff,
   AtlasCard,
   AtlasClassAttackRate,
@@ -115,6 +116,26 @@ export function collectTraitNames(raw: unknown): Map<number, string> {
 const traitById = (id: number): Trait => ({ id, name: traitNames.get(id) ?? "unknown" });
 
 /**
+ * Medidores de Battle Point, `id do grupo -> fases` (R33).
+ *
+ * Dicionário global pela mesma razão de `traitNames`: a função de dano
+ * referencia o medidor **por id** (`Target: 3300200`), não por posição, então
+ * ele não precisa estar no mesmo servo que o consome. Hoje está — só a
+ * Ereshkigal cn417 tem um —, mas ler por id é o que o dado pede.
+ */
+let battlePoints = new Map<number, AtlasBattlePointGroup>();
+
+export function setBattlePoints(dict: Map<number, AtlasBattlePointGroup>): void {
+  battlePoints = dict;
+}
+
+export function collectBattlePoints(servants: AtlasServant[]): Map<number, AtlasBattlePointGroup> {
+  const dict = new Map<number, AtlasBattlePointGroup>();
+  for (const s of servants) for (const g of s.battlePoints ?? []) dict.set(g.id, g);
+  return dict;
+}
+
+/**
  * Bônus super-efetivo, de `Target`/`TargetList` (traits do alvo) + `Correction`
  * (multiplicador). Só existe em funções `damageNp*`.
  *
@@ -141,10 +162,46 @@ function ocColumn(f: AtlasFunction, pick: (s: AtlasSval) => number): SuperEffect
   return { values: read(f.svals), valuesByOvercharge };
 }
 
+/**
+ * `damageNpBattlePointPhase`: o multiplicador cresce por **fase de um medidor**
+ * (R33), e não por unidade de um trait.
+ *
+ * Mesma forma da família soma — base em `Value2`, acréscimo em `Correction` —,
+ * com duas diferenças que impedem reusar o caminho comum:
+ *
+ *  - `Target` é o **id do medidor**, não um trait. Foi por isso que o R27
+ *    barrou esta família inteira: deixá-la passar criava um trait 3300200
+ *    inexistente. Barrar estava certo; o que faltou foi o caso próprio.
+ *  - O teto não está em `ParamAddMaxCount`, e sim na última fase do medidor.
+ *
+ * O que se conta é a **fase** (1 a 10), não o tier. Os tiers — Mate, Buddy,
+ * Darling, Destiny — agrupam as fases para outros efeitos, que não são de dano;
+ * viram só o rótulo do contador, que é o que o jogador vê na tela do jogo.
+ */
+function toBattlePointScaling(f: AtlasFunction): SuperEffective | null {
+  const first = f.svals?.[0];
+  if (!first || first.Value2 === undefined) return null;
+
+  const grupo = first.Target !== undefined ? battlePoints.get(first.Target) : undefined;
+  const fases = (grupo?.phases ?? []).filter((p) => p.value >= 0);
+  // Sem o medidor não há teto, e sem teto o contador não teria onde parar.
+  // Devolver `null` mantém o comportamento anterior em vez de inventar um.
+  if (fases.length === 0) return null;
+
+  const tiers = [...new Set(fases.map((p) => p.name).filter((n): n is string => !!n))];
+  return {
+    traits: [],
+    ...ocColumn(f, (s) => (s.Value2 ?? 0) / 10),
+    perCount: (first.Correction ?? 0) / 10,
+    maxCount: Math.max(...fases.map((p) => p.phase)),
+    // O medidor é dela; `Target` aqui não diz lado nenhum.
+    countsOn: "self",
+    countLabel: tiers.join("/") || null,
+  };
+}
+
 function toSuperEffective(f: AtlasFunction): SuperEffective | null {
-  // Ereshkigal: aqui `Correction` é escala de fase de um medidor e `Target` é
-  // o **id do medidor**, não um trait. Não há super-efetivo nenhum (R27).
-  if (f.funcType === "damageNpBattlePointPhase") return null;
+  if (f.funcType === "damageNpBattlePointPhase") return toBattlePointScaling(f);
 
   const first = f.svals?.[0];
   if (!first) return null;
@@ -165,6 +222,8 @@ function toSuperEffective(f: AtlasFunction): SuperEffective | null {
     perCount: isSum ? (first.Correction ?? 0) / 10 : 0,
     maxCount: isSum ? first.ParamAddMaxCount ?? 0 : 0,
     countsOn: isSum && first.Target === 0 ? "self" : "target",
+    // Quem conta trait já tem nome; o rótulo só existe para quem não tem.
+    countLabel: null,
   };
 }
 

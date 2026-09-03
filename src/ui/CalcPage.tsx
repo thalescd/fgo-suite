@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Link, useSearchParams } from "react-router-dom";
 
 import { specFor } from "../core/buffs.js";
-import { calculateDamage, enemyTraitNames, selectableNps, type DamageData, type RollMode } from "../core/damage.js";
+import { calculateDamage, countFieldLabel, enemyTraitNames, selectableNps, type DamageData, type RollMode } from "../core/damage.js";
 import type { CraftEssence, IndexEntryServant, MysticCode, Servant, Skill } from "../core/model.js";
 import { EMPTY_FILTERS, search } from "../core/search.js";
 import { Block, Stars } from "./components.js";
@@ -656,7 +656,8 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
    */
   const seCount = isNP && np?.damageEffectIndex != null ? np.effects[np.damageEffectIndex]?.superEffective : null;
   const stackSpec = seCount && seCount.maxCount > 0 ? seCount : null;
-  const stackLabel = stackSpec ? stackSpec.traits.map((t) => t.name).join("/") : "";
+  // O rótulo sai do núcleo para a tela e a auditoria não divergirem (R33).
+  const stackLabel = stackSpec ? countFieldLabel(stackSpec) : "";
 
   const classRow = boot.constants.classRelation[servant.className] ?? {};
   const attrRow = boot.constants.attributeRelation[servant.attribute] ?? {};
@@ -775,7 +776,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 </>
               )}
               {stackSpec?.countsOn === "self" && (
-                <Field label={`${stackLabel} stacks`} hint={`on self — up to ${stackSpec.maxCount}, +${stackSpec.perCount}% each`}>
+                <Field label={stackLabel} hint={`on self — up to ${stackSpec.maxCount}, +${stackSpec.perCount}% each${stackSpec.countLabel ? ` · ${stackSpec.countLabel}` : ""}`}>
                   <input type="number" min={0} max={stackSpec.maxCount} value={state.stacksSelf}
                     onChange={(e) => patch({ stacksSelf: Number(e.target.value) })} />
                 </Field>
@@ -1105,7 +1106,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 Romulus aplica um por uso, até 10.
               */}
               {stackSpec?.countsOn === "target" && (
-                <Field label={`${stackLabel} stacks`} hint={`on the target — up to ${stackSpec.maxCount}, +${stackSpec.perCount}% each`}>
+                <Field label={stackLabel} hint={`on the target — up to ${stackSpec.maxCount}, +${stackSpec.perCount}% each`}>
                   <input type="number" min={0} max={stackSpec.maxCount} value={state.stacksTarget}
                     onChange={(e) => patch({ stacksTarget: Number(e.target.value) })} />
                 </Field>

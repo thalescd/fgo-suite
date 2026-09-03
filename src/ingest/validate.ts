@@ -154,6 +154,32 @@ async function main(): Promise<void> {
   const xx = await read<Servant>(`servant/${byCn(423).id}.json`);
   check("Heroine XX (Alter), o outro caso, = 600..1000%", xx.np?.damageMultiplier, [600, 800, 900, 950, 1000]);
 
+  // R33 — a mesma Ereshkigal, o outro campo. O teto vem de `battlePoints`, que
+  // é o único lugar do dump onde ele existe; sem ele o contador não aparece.
+  console.log("\nR33 — fase de medidor");
+  const ereshSe = eresh.np?.effects[eresh.np.damageEffectIndex ?? -1]?.superEffective;
+  check(
+    "base neutra, +10% por fase, teto 10, contado nela",
+    [ereshSe?.values[0], ereshSe?.perCount, ereshSe?.maxCount, ereshSe?.countsOn],
+    [100, 10, 10, "self"],
+  );
+  // O teto vem de `battlePoints`, único lugar do dump onde ele existe. Sem ele
+  // `maxCount` seria 0, e `maxCount > 0` é o que faz o contador aparecer.
+  check("sem trait para nomear: o rótulo são os tiers", [ereshSe?.traits, ereshSe?.countLabel], [
+    [], "Mate/Buddy/Darling/Destiny",
+  ]);
+  // Um medidor a mais no dump é mecânica nova para conferir, não regressão —
+  // por isso o número está aqui, e não escondido numa desigualdade.
+  const comMedidor: string[] = [];
+  for (const s of servants) {
+    const f = await servant(s.id);
+    for (const np of [f.np, ...f.npAlternatives].filter((x) => x != null)) {
+      const se = np!.effects[np!.damageEffectIndex ?? -1]?.superEffective;
+      if (se?.countLabel != null) comMedidor.push(f.name);
+    }
+  }
+  check("só a Ereshkigal tem medidor, no NP e no rank up", comMedidor, ["Ereshkigal", "Ereshkigal"]);
+
   // Asset ausente não quebra nada — a tela só não mostra imagem —, então o
   // erro sobreviveu desde a fase 0: `toMysticCode` lia `charaGraph`, que é
   // campo de servo e não existe em Mystic Code. Os 28 vinham com `null`.
@@ -236,13 +262,15 @@ async function main(): Promise<void> {
       if (e.superEffective.traits.some((t) => t.id === 0)) seZero++;
     }
   }
-  // 138/72 nos 462 do índice; as formas de combate somam mais alguns.
+  // 139/72 nos 462 do índice; as formas de combate somam mais alguns.
   //
-  // Era 139/69 antes de R27, e os dois deltas se explicam: a Ereshkigal saiu
-  // (o `damageNpBattlePointPhase` dela não é super-efetivo, era leitura errada
-  // de `Correction`), e três NPs da família soma entraram no grupo que escala
-  // com overcharge — `Value2` varia com OC em 3 dos 21, `Correction` em nenhum.
-  check("138 NPs com super-efetivo no índice, 72 escalando com OC", [seCount, seOc], [138, 72]);
+  // O número foi de 139 a 138 no R27 e voltou a 139 no R33, pela **mesma**
+  // Ereshkigal — e as duas mexidas estavam certas. R27 tirou porque `Correction`
+  // ali não é multiplicador super-efetivo, e mantê-la era leitura errada. R33
+  // devolveu porque ela **tem** um bônus que cresce, só que por fase de medidor,
+  // com o teto vindo de `battlePoints`. O 72 subiu de 69 no R27 e não se moveu:
+  // `Value2` varia com OC em 3 dos 21 da família soma, `Correction` em nenhum.
+  check("139 NPs com super-efetivo no índice, 72 escalando com OC", [seCount, seOc], [139, 72]);
   check("nenhum trait placeholder id 0 sobrou", seZero, 0);
 
   console.log("\n§3.4.2 — buff que multiplica buff (R21)");

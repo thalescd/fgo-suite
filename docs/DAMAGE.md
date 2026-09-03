@@ -465,7 +465,47 @@ do piso calado:
 8 of up to 12 own Heroic King stacks (+80% super effective)
 ```
 
-### 3.16 Sete servos batem mais forte machucados (R25)
+### 3.16 Nem toda contagem é de trait (R33)
+
+O R27 ensinou 17 NPs a somar dano **por unidade de um trait acumulado**. Um
+décimo-oitavo NP soma da mesma forma, mas o que ele conta não é trait nenhum:
+
+```
+Ereshkigal, Edin Shugurra Collapsar
+  damageNpBattlePointPhase   Value 4500  Value2 1000  Correction 100  Target 3300200
+```
+
+`Target` aqui é o **id do medidor**, não de um trait — e foi por isso que o R27
+barrou a família inteira com um `return null`. Estava certo no que viu: deixá-la
+passar criaria um trait `3300200` inexistente e a tela diria "vs trait 3300200".
+O que faltou foi o caso próprio.
+
+**O teto mora noutro campo.** Não há `ParamAddMaxCount`; as fases estão em
+`servant.battlePoints`, que a ingestão não lia:
+
+```
+grupo 3300200 | 10 fases | Mate(1-3) Buddy(4-6) Darling(7-9) Destiny(10)
+```
+
+Com isso a mecânica cai inteira na máquina que já existia — `perCount`,
+`maxCount`, `countsOn`, o contador que a tela desenha sozinha, o `ss=` do link,
+o `stacksOnSelf` da tool. **Nenhum campo novo de entrada.**
+
+| fase | 0 | 1 | 5 | 10 |
+|---|---:|---:|---:|---:|
+| super-efetivo | 100% | 110% | 150% | 200% |
+| dano | 13.001 | 14.288 | 19.432 | 25.863 |
+
+**Conta-se a fase (1–10), não o tier.** Os quatro tiers agrupam fases para
+outros efeitos, que não são de dano — informação de jogo, que o dump não diz.
+Eles viram o **rótulo** do contador, porque é o que o jogador vê na tela do
+jogo; `countLabel` existe só para isso, e é `null` em quem conta trait.
+
+**O grupo é lido por id, não por posição.** Hoje o medidor está no mesmo servo
+que o consome, mas a função o referencia por `Target`, então a ingestão monta um
+dicionário global — o mesmo desenho do dicionário de traits.
+
+### 3.17 Sete servos batem mais forte machucados (R25)
 
 Dois mecanismos **independentes**, com nomes e formatos diferentes, que fazem a
 mesma coisa. Os dois entram por `hpPercent`, o HP atual em % do máximo.
@@ -511,9 +551,9 @@ Na auditoria, um buff que escala aparece com `atFullHp` **sempre**, inclusive
 com HP cheio: é justamente aí que ele vale menos, e saber que o número cresce
 se você apanhar é a informação toda.
 
-### 3.17 O HP mexe no buff de duas formas, em dois campos (R30)
+### 3.18 O HP mexe no buff de duas formas, em dois campos (R30)
 
-R25 (§3.16) leu uma delas: o HP muda o **valor**, e a informação está em `svals`
+R25 (§3.17) leu uma delas: o HP muda o **valor**, e a informação está em `svals`
 (`RatioHPLow`, `RatioHPRange*`). A outra é um **liga/desliga**, e mora em
 `buff.script`:
 
@@ -548,11 +588,11 @@ debuff hoje; o caminho existe para quando for.
 
 **Um efeito pode ter os dois.** A Passionlip tem: `RatioHPRange*` para escalar e
 `HP_LOWER: 500` para ligar. Antes, acima de 50% de HP ela aparecia **contada
-valendo zero** — que §3.16 já apontava como o pior formato que um erro pode ter
+valendo zero** — que §3.17 já apontava como o pior formato que um erro pode ter
 aqui, porque não parece defeito, parece skill fraca. Agora sai da lista com o
 motivo.
 
-### 3.18 `condFunc` diz em QUEM o efeito cai (R31)
+### 3.19 `condFunc` diz em QUEM o efeito cai (R31)
 
 Um terceiro campo de condição, ao lado de `condSelf` (§3.1) e `condTarget`
 (§3.8) — e o único que fala do **destinatário**. A descrição japonesa não deixa
@@ -595,7 +635,7 @@ que **D14** adiou. Antes eles entravam sempre — número alto e calado; agora s
 com o motivo, que é conservador e conferível. Os de prefixo `buff` dizem
 explicitamente que é estado; os outros dizem qual trait falta.
 
-### 3.19 Buffs externos não são uma party (5b)
+### 3.20 Buffs externos não são uma party (5b)
 
 O terceiro slot da conta não é "os outros dois membros". É uma **lista de fontes
 externas**, sem posição, sem limite de três, com repetição permitida — porque

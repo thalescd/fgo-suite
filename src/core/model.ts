@@ -230,6 +230,15 @@ export interface SuperEffective extends SuperEffectiveValues {
    * Molay conta queimadura **no alvo**. 8 NPs contam em si, 13 no alvo.
    */
   countsOn: "self" | "target";
+  /**
+   * Como chamar o que se conta, quando não é um trait (R33).
+   *
+   * `null` na regra: quem conta trait usa o nome dele — "Heroic King", 〔roman〕.
+   * A Ereshkigal conta **fases de um medidor**, que não é trait nenhum, e sem
+   * isto o contador apareceria sem rótulo. Traz os nomes dos tiers, que é o que
+   * o jogador vê na tela do jogo: `"Mate/Buddy/Darling/Destiny"`.
+   */
+  countLabel: string | null;
 }
 
 /**

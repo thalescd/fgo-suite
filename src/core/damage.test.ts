@@ -1168,6 +1168,60 @@ describe("contagem de stacks (R27)", () => {
  * Resultado: dano 10x, sem sintoma. A Ereshkigal batia 128.759 onde deveria
  * bater 12.876.
  */
+/**
+ * R33 — a Ereshkigal conta FASES de um medidor, não stacks de um trait.
+ *
+ * O R27 barrou esta família inteira com um `return null`, e estava certo no que
+ * viu: ali `Target` é o id do medidor, e lê-lo como trait criaria um trait 3300200
+ * inexistente. O que faltou foi o caso próprio — o teto não está em
+ * `ParamAddMaxCount`, e sim nas fases do medidor, que vivem noutro campo do servo.
+ *
+ * O que se conta é a fase (1 a 10). Os tiers — Mate, Buddy, Darling, Destiny —
+ * agrupam fases para outros efeitos, que não são de dano.
+ */
+describe("fase de medidor (R33)", () => {
+  const ERESH = loadServant(417);
+  const dataE: DamageData = { ...data, servants: new Map([...data.servants, [ERESH.id, ERESH]]) };
+  const at = (stacks: number) =>
+    calculateDamage(
+      input({ attacker: { servantId: ERESH.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1, stacks } }),
+      dataE,
+    );
+
+  it("a ingestão preenche o que a máquina de contagem precisa", () => {
+    const se = ERESH.np!.effects[ERESH.np!.damageEffectIndex!]!.superEffective!;
+    // Base neutra em Value2, +10% por fase em Correction, teto nas fases.
+    expect([se.values[0], se.perCount, se.maxCount, se.countsOn]).toEqual([100, 10, 10, "self"]);
+    // Sem trait para nomear o contador: o rótulo são os tiers.
+    expect(se.traits).toEqual([]);
+    expect(se.countLabel).toBe("Mate/Buddy/Darling/Destiny");
+  });
+
+  it("cada fase soma 10%, e a última dobra o super-efetivo", () => {
+    expect([at(0), at(1), at(5), at(10)].map((r) => r.breakdown.superEffectiveModifier))
+      .toEqual([100, 110, 150, 200]);
+  });
+
+  it("acima do teto prende, em vez de continuar somando", () => {
+    expect(at(99).avg).toBe(at(10).avg);
+  });
+
+  it("a fase zero não sai calada — a linha convida a informar", () => {
+    const linha = at(0).assumptions.resolved.find((x) => /Battle Point/.test(x));
+    expect(linha).toBe("Battle Point phase 0 of 10 (Mate/Buddy/Darling/Destiny) — none counted");
+  });
+
+  it("quem conta trait continua dizendo stacks, não fase", () => {
+    // O rótulo sai do dado: um servo com trait usa o nome dele, e o texto do
+    // medidor não vaza para ele.
+    const linha = calculateDamage(
+      input({ attacker: { servantId: CHARLEMAGNE.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1, stacks: 8 } }),
+      { ...data, servants: new Map([...data.servants, [CHARLEMAGNE.id, CHARLEMAGNE]]) },
+    ).assumptions.resolved.find((x) => /stacks/.test(x));
+    expect(linha).toContain("8 of up to 12 own Heroic King stacks");
+  });
+});
+
 describe("unidade do multiplicador de NP (R28)", () => {
   const ERESH = loadServant(417);
   const dataE: DamageData = { ...data, servants: new Map([...data.servants, [ERESH.id, ERESH]]) };

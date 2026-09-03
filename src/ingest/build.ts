@@ -36,7 +36,9 @@ import { loadManifest, readRaw } from "./sync.js";
 import {
   PLAYABLE_TYPES,
   classifyEquip,
+  collectBattlePoints,
   collectTraitNames,
+  setBattlePoints,
   setTraitNames,
   disambiguate,
   toConstants,
@@ -235,6 +237,10 @@ export async function build(): Promise<BuildStats> {
   const traitDict = collectTraitNames(rawServants);
   const traitWarnings = await loadTraitNames(traitDict);
   setTraitNames(traitDict);
+
+  // Medidor de Battle Point (R33): a função de dano referencia o grupo por id,
+  // então ele é um dicionário global, como o de traits.
+  setBattlePoints(collectBattlePoints(rawServants));
 
   // ---- servos
   const servants: Servant[] = rawServants

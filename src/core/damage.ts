@@ -33,6 +33,7 @@ import type {
   MysticCode,
   NoblePhantasm,
   Servant,
+  SuperEffective,
   SuperEffectiveValues,
   Trait,
 } from "./model.js";
@@ -444,6 +445,28 @@ function condFuncRejection(
   return side === "attacker"
     ? `only applies to allies with ${what}, and the attacker has none of them`
     : `only applies to targets with ${what}`;
+}
+
+/**
+ * Como se chama o que um NP conta, em texto — tela, auditoria e MCP dizem a
+ * mesma coisa porque saem daqui (R33).
+ *
+ * Quase todos contam **trait**, e o nome do trait basta. A Ereshkigal conta
+ * **fases de um medidor**, que não é trait nenhum: `traits` vem vazio e o nome
+ * do que se conta vem de `countLabel`.
+ */
+export function countFieldLabel(se: SuperEffective): string {
+  const traits = se.traits.map((t) => t.name).join("/");
+  return traits ? `${traits} stacks` : "Battle Point phase";
+}
+
+/** A frase da auditoria. Duas formas porque "fase 7 de 10" não é "7 stacks". */
+export function countPhrase(se: SuperEffective, n: number): string {
+  const traits = se.traits.map((t) => t.name).join("/");
+  if (traits) {
+    return `${n} of up to ${se.maxCount} ${se.countsOn === "self" ? "own" : "target"} ${traits} stacks`;
+  }
+  return `Battle Point phase ${n} of ${se.maxCount}${se.countLabel ? ` (${se.countLabel})` : ""}`;
 }
 
 // --------------------------------------------------------- resolução de buff
@@ -1250,8 +1273,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
         // stacks calado (R27). Com zero a linha vira o convite para informar.
         ...(seCounts
           ? [
-              `${seStacks} of up to ${se!.maxCount} ${se!.countsOn === "self" ? "own" : "target"} ` +
-                `${se!.traits.map((t) => t.name).join("/")} stacks` +
+              countPhrase(se!, seStacks) +
                 (seStacks > 0 ? ` (+${se!.perCount * seStacks}% super effective)` : " — none counted"),
             ]
           : []),

@@ -15,7 +15,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { labelForTag } from "../core/capabilities.js";
-import { calculateDamage, selectableNps, type DamageData } from "../core/damage.js";
+import { calculateDamage, countFieldLabel, selectableNps, type DamageData } from "../core/damage.js";
 import type { Effect, IndexEntryServant, NoblePhantasm, Servant, Skill } from "../core/model.js";
 import { parseCalc, toDamageInput } from "../core/scenario.js";
 import { EMPTY_FILTERS, search, type SearchFilters } from "../core/search.js";
@@ -71,8 +71,10 @@ function describeEffect(e: Effect, levelIndex: number): string {
     // dos stacks faria o assistente ler um NP forte como um NP comum.
     parts.push(
       se.maxCount > 0
-        ? `damage scales with ${se.countsOn === "self" ? "own" : "target"} ${names} stacks: ` +
-            `${vals}% base, +${se.perCount}% each, up to ${se.maxCount} (pass stacksOn${se.countsOn === "self" ? "Self" : "Target"})`
+        ? `damage scales with ${se.traits.length > 0 ? `${se.countsOn === "self" ? "own" : "target"} ${names} stacks` : countFieldLabel(se)}: ` +
+            `${vals}% base, +${se.perCount}% each, up to ${se.maxCount}` +
+            (se.countLabel ? ` (tiers: ${se.countLabel})` : "") +
+            ` (pass stacksOn${se.countsOn === "self" ? "Self" : "Target"})`
         : `extra damage vs ${names}: ${vals}%`,
     );
   }

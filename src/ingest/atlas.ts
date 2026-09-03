@@ -154,6 +154,17 @@ export interface AtlasServant {
   appendPassive?: { num?: number; priority?: number; skill: AtlasSkill }[];
   noblePhantasms?: AtlasNoblePhantasm[];
   extraAssets?: AtlasExtraAssets;
+  /**
+   * Medidores de Battle Point (R33). Só a Ereshkigal cn417 tem um, e é o NP
+   * dela que o consome — por `id`, e não por posição, que é por que o grupo
+   * vira um dicionário global na ingestão.
+   */
+  battlePoints?: AtlasBattlePointGroup[];
+}
+
+export interface AtlasBattlePointGroup {
+  id: number;
+  phases?: { phase: number; value: number; name?: string }[];
 }
 
 export interface AtlasExtraAssets {
