@@ -45,7 +45,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 251 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 258 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -104,6 +104,11 @@ traits. O resultado vem com **min / média / max** e a auditoria junto: cada ter
 da fórmula com o valor que assumiu, cada buff que entrou, e cada buff que **não**
 entrou com o motivo. Foi lendo um desses motivos que o bug do card do NP
 apareceu.
+
+Quando a chain **abre em Buster**, todas as cartas dela ganham +0.5 no termo de
+card — não só a primeira (R32). Numa chain B-A-A isso é +42% na segunda carta e
++34% no turno. A caixa vem marcada e travada quando a própria carta já é a
+abertura.
 
 A fórmula da comunidade é de 2018 e o jogo andou: mecânicas mais novas entram
 como exceção documentada. Duas até agora: a skill 3 do **Oberon**, que dobra os

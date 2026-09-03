@@ -159,6 +159,14 @@ export interface DamageInput {
     card?: CardType;
     position?: 1 | 2 | 3;
     isCrit: boolean;
+    /**
+     * A **primeira carta da chain** foi Buster? (R32)
+     *
+     * Propriedade do turno, não desta carta: quando a chain abre em Buster,
+     * todas as cartas dela ganham `firstCardBonus`. Omitido = deduzido — esta
+     * carta ser a Buster de abertura, ou ser uma Buster Chain, já responde sim.
+     */
+    busterFirst?: boolean;
     busterChain: boolean;
     braveChain: boolean;
   };
@@ -244,6 +252,13 @@ export interface DamageResult {
     cardMod: number;
     /** `firstCardBonus + cardDamageValue * (1 + cardMod)` já resolvido. */
     cardTerm: number;
+    /**
+     * A parcela de `cardTerm` que veio da chain ter aberto em Buster (R32).
+     *
+     * Separada porque é a única do termo que **não** depende desta carta: some
+     * a mesma 0,5 de uma Arts em segunda posição e de uma Buster em terceira.
+     */
+    firstCardBonus: number;
     classAtkBonus: number;
     /** Já com a sobrescrita aplicada, quando houver. */
     triangleModifier: number;
@@ -1063,8 +1078,25 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
   // "NP cards act as a First card of the appropriate type."
   const position = isNP ? 1 : input.action.position ?? 1;
   const cardEntry = k.cardMultiplier[card]?.[position] ?? { adjustAtk: 1, addAtk: 0 };
-  // "firstCardBonus: 0.5 if first card is a Buster card. No bonus to NPs."
-  const firstCardBonus = isNP ? 0 : position === 1 ? cardEntry.addAtk : 0;
+  /**
+   * "firstCardBonus: 0.5 **if first card is a Buster card**. No bonus to NPs."
+   *
+   * O bônus é da **chain**, não da carta: quando a primeira é Buster, as três
+   * ganham. Ler `addAtk` da carta atual dava o bônus só à Buster em primeira
+   * posição — a 2ª e a 3ª de uma chain aberta em Buster saíam sem ele, e uma
+   * Arts em segunda posição perdia 0,5 de um termo que vale 1,2 (R32).
+   *
+   * A entrada é factual: "a primeira carta foi Buster?". Quando *esta* carta é
+   * a Buster de abertura, ou quando é uma Buster Chain, a resposta é sim por
+   * construção e não se pergunta.
+   */
+  const busterOpened =
+    !isNP &&
+    (input.action.busterFirst === true ||
+      input.action.busterChain ||
+      (position === 1 && card === "buster"));
+  // Do dump, não literal: `buster[1].addAtk` é onde o 0,5 mora.
+  const firstCardBonus = busterOpened ? k.cardMultiplier["buster"]?.[1]?.addAtk ?? 0 : 0;
   const cardMod = sumSlot(applied, "cardMod");
   const cardTerm = firstCardBonus + cardEntry.adjustAtk * (1 + cardMod);
 
@@ -1182,6 +1214,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
       superEffectiveStacks: seStacks,
       cardMod,
       cardTerm,
+      firstCardBonus,
       classAtkBonus,
       triangleModifier,
       triangleModifierBase,

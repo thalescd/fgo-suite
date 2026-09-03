@@ -192,6 +192,9 @@ server.registerTool(
       action: z.enum(["np", "buster", "arts", "quick", "extra"]).optional().describe("Default np."),
       cardPosition: z.number().int().min(1).max(3).optional().describe("Position in the chain; later cards hit harder. Cards only."),
       critical: z.boolean().optional().describe("Cards only — an NP cannot crit."),
+      busterFirstCard: z.boolean().optional().describe(
+        "Did the chain OPEN with a Buster card? If so every card in it gets +0.5, not just the first. Implied when this card is itself the opening Buster, or in a Buster chain.",
+      ),
       busterChain: z.boolean().optional().describe("Buster command cards only."),
       braveChain: z.boolean().optional().describe("Raises the extra card from x2 to x3.5."),
       enemyClass: z.string().optional().describe("Default saber. Beast variants are accepted (beastI, beastII, beastIIIR...)."),

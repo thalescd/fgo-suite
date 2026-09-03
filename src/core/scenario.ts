@@ -127,6 +127,14 @@ export interface CalcState {
   action: ActionKind;
   position: number;
   isCrit: boolean;
+  /**
+   * A primeira carta da chain foi Buster (R32).
+   *
+   * É do turno, não desta carta: quando a chain abre em Buster, as três ganham
+   * `firstCardBonus`. Fica separado da posição porque uma Arts em 2ª posição
+   * numa chain aberta em Buster ganha o bônus, e nada na carta diz isso.
+   */
+  busterFirst: boolean;
   busterChain: boolean;
   braveChain: boolean;
 
@@ -163,6 +171,7 @@ export const DEFAULT_CALC: CalcState = {
   action: "np",
   position: 1,
   isCrit: false,
+  busterFirst: false,
   busterChain: false,
   braveChain: false,
   enemyClass: "saber",
@@ -208,6 +217,7 @@ const KEYS = {
   action: "act",
   position: "pos",
   isCrit: "crit",
+  busterFirst: "bfirst",
   busterChain: "bchain",
   braveChain: "brave",
   enemyClass: "ec",
@@ -330,6 +340,7 @@ export function parseCalc(p: URLSearchParams): CalcState {
     action,
     position: clamp(int(p, KEYS.position, 1), 1, 3),
     isCrit: p.get(KEYS.isCrit) === "1",
+    busterFirst: p.get(KEYS.busterFirst) === "1",
     busterChain: p.get(KEYS.busterChain) === "1",
     braveChain: p.get(KEYS.braveChain) === "1",
     enemyClass: p.get(KEYS.enemyClass) ?? DEFAULT_CALC.enemyClass,
@@ -369,6 +380,7 @@ export function serializeCalc(s: CalcState): URLSearchParams {
   if (s.action !== DEFAULT_CALC.action) p.set(KEYS.action, s.action);
   putNum(KEYS.position, s.position, 1);
   if (s.isCrit) p.set(KEYS.isCrit, "1");
+  if (s.busterFirst) p.set(KEYS.busterFirst, "1");
   if (s.busterChain) p.set(KEYS.busterChain, "1");
   if (s.braveChain) p.set(KEYS.braveChain, "1");
   if (s.enemyClass !== DEFAULT_CALC.enemyClass) p.set(KEYS.enemyClass, s.enemyClass);
@@ -462,6 +474,8 @@ export function toDamageInput(
       card: isNP ? undefined : (state.action as CardType),
       position: clamp(state.position, 1, 3) as 1 | 2 | 3,
       isCrit: isNP ? false : state.isCrit,
+      // Num NP a pergunta não existe: NP não ganha `firstCardBonus`.
+      busterFirst: isNP ? false : state.busterFirst,
       busterChain: state.busterChain,
       braveChain: state.braveChain,
     },

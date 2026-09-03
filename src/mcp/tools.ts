@@ -260,6 +260,7 @@ export interface DamageArgs {
   action?: string;
   cardPosition?: number;
   critical?: boolean;
+  busterFirstCard?: boolean;
   busterChain?: boolean;
   braveChain?: boolean;
   enemyClass?: string;
@@ -357,6 +358,7 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
   put("act", a.action);
   put("pos", a.cardPosition);
   if (a.critical) p.set("crit", "1");
+  if (a.busterFirstCard) p.set("bfirst", "1");
   if (a.busterChain) p.set("bchain", "1");
   if (a.braveChain) p.set("brave", "1");
   put("ec", a.enemyClass);
@@ -405,6 +407,9 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
       // quantos entraram, a resposta não é conferível.
       ...(b.superEffectiveStacks > 0 ? { superEffectiveStacksCounted: b.superEffectiveStacks } : {}),
       cardTerm: Number(b.cardTerm.toFixed(4)),
+      // R32: a parcela do termo que veio da chain, não desta carta. Sem
+      // separá-la, um +0,5 numa Arts em 2ª posição parece erro de conta.
+      ...(b.firstCardBonus !== 0 ? { firstCardBonus: b.firstCardBonus } : {}),
       classAttackRate: b.classAtkBonus,
       classAdvantage: b.triangleModifier,
       ...(b.triangleModifierBase !== b.triangleModifier

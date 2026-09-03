@@ -198,6 +198,89 @@ describe("termos da fórmula", () => {
   });
 });
 
+/**
+ * R32 — o `firstCardBonus` é da CHAIN, não da carta.
+ *
+ * "0.5 if **first card is a Buster card**, 0 otherwise. No bonus to NPs." O
+ * dump guarda esse 0,5 em `buster[1].addAtk`, que é o bônus que a Buster de
+ * abertura **concede** — e o código o lia como o bônus que aquela carta
+ * **recebe**. A Buster em primeira posição acertava por coincidência; a 2ª e a
+ * 3ª de uma chain aberta em Buster saíam sem nada.
+ */
+describe("bônus de primeira carta Buster (R32)", () => {
+  const card = (
+    kind: "card" | "extra",
+    over: Partial<DamageInput["action"]> = {},
+  ) =>
+    calculateDamage(
+      input({
+        action: {
+          kind,
+          card: kind === "card" ? "arts" : undefined,
+          position: 1,
+          isCrit: false,
+          busterChain: false,
+          braveChain: false,
+          ...over,
+        },
+      }),
+      data,
+    );
+
+  it("uma Arts em 2ª posição ganha o bônus se a chain abriu em Buster", () => {
+    // cardDamageValue da Arts em 2ª é 1.2. Sem o bônus, o termo é 1.2; com ele,
+    // 1.7 — 42% a mais num termo que multiplica o produto inteiro.
+    expect(card("card", { position: 2 }).breakdown.cardTerm).toBeCloseTo(1.2, 6);
+    expect(card("card", { position: 2, busterFirst: true }).breakdown.cardTerm).toBeCloseTo(1.7, 6);
+  });
+
+  it("a parcela sai separada no breakdown, porque não é desta carta", () => {
+    expect(card("card", { position: 2 }).breakdown.firstCardBonus).toBe(0);
+    expect(card("card", { position: 2, busterFirst: true }).breakdown.firstCardBonus).toBe(0.5);
+  });
+
+  it("a Buster de abertura não precisa ser declarada — ela é a abertura", () => {
+    const b = card("card", { card: "buster", position: 1 });
+    expect(b.breakdown.firstCardBonus).toBe(0.5);
+    expect(b.breakdown.cardTerm).toBeCloseTo(2, 6);
+  });
+
+  it("numa Buster Chain as três ganham, não só a primeira", () => {
+    // Se as três são Buster, a primeira é Buster: perguntar seria redundante, e
+    // deixar de deduzir daria à 2ª e à 3ª um número mais baixo que o da 1ª.
+    for (const position of [1, 2, 3] as const) {
+      expect(card("card", { card: "buster", position, busterChain: true }).breakdown.firstCardBonus).toBe(0.5);
+    }
+  });
+
+  it("o card extra também está na chain", () => {
+    // A única exceção que a fórmula nomeia é o NP. O extra é uma carta.
+    expect(card("extra").breakdown.firstCardBonus).toBe(0);
+    expect(card("extra", { busterFirst: true }).breakdown.firstCardBonus).toBe(0.5);
+  });
+
+  it("NP não ganha, nem quando a chain abriu em Buster", () => {
+    const np = calculateDamage(
+      input({
+        action: { kind: "np", position: 1, isCrit: false, busterFirst: true, busterChain: false, braveChain: false },
+      }),
+      data,
+    );
+    // Excalibur é Buster e conta como primeira posição — mas "No bonus to NPs".
+    expect(np.breakdown.firstCardBonus).toBe(0);
+  });
+
+  it("o cenário carrega a resposta, e o NP a descarta", () => {
+    const q = "s=100100&act=arts&pos=2&bfirst=1";
+    const st = parseCalc(new URLSearchParams(q));
+    expect(st.busterFirst).toBe(true);
+    expect(toDamageInput(st, ARTORIA, () => "x").action.busterFirst).toBe(true);
+    // No NP a pergunta não existe, então nem chega ao núcleo.
+    const semNp = parseCalc(new URLSearchParams("s=100100&bfirst=1"));
+    expect(toDamageInput(semNp, ARTORIA, () => "x").action.busterFirst).toBe(false);
+  });
+});
+
 describe("super-efetivo", () => {
   const gilInput = (over: Partial<DamageInput["attacker"]> = {}, e: Partial<Enemy> = {}) =>
     input({

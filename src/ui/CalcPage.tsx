@@ -639,6 +639,14 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
   const preDamageEffects = np?.damageEffectIndex ?? 0;
   /** Chain é feita de command cards; NP e extra ficam de fora mesmo sendo Buster. */
   const canBusterChain = state.action === "buster";
+  /**
+   * R32: quando esta carta já É a Buster de abertura, ou é uma Buster Chain, a
+   * chain abriu em Buster por construção — não há o que perguntar.
+   */
+  const busterFirstImplied =
+    !isNP && ((state.action === "buster" && state.position === 1) || state.busterChain);
+  const busterFirstAsked = !isNP && !busterFirstImplied;
+  const busterFirstOn = !isNP && (busterFirstImplied || state.busterFirst);
   /** 50 servos têm NP de suporte. Calcular "dano" ali daria um número sem sentido. */
   const npDealsNoDamage = isNP && (np == null || np.damageEffectIndex === null);
   /**
@@ -832,6 +840,25 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                   <input type="checkbox" disabled={isNP} checked={state.isCrit}
                     onChange={() => patch({ isCrit: !state.isCrit })} />
                   <span>critical hit{isNP && " — NPs cannot crit"}</span>
+                </label>
+                {/*
+                  R32: propriedade da CHAIN, não desta carta — se a primeira foi
+                  Buster, as três ganham +0.5. Quando esta carta já é a Buster
+                  de abertura, ou é uma Buster Chain, a resposta é sim por
+                  construção, e a caixa se mostra marcada e travada em vez de
+                  convidar a desmarcar algo que não é escolha.
+                */}
+                <label className={`opt${busterFirstAsked ? "" : " inert"}`}>
+                  <input type="checkbox" disabled={!busterFirstAsked} checked={busterFirstOn}
+                    onChange={() => patch({ busterFirst: !state.busterFirst })} />
+                  <span>
+                    chain opened with a Buster card
+                    {isNP
+                      ? " — an NP gets no first-card bonus"
+                      : busterFirstImplied
+                        ? " — this card already is it"
+                        : " — +0.5 to every card in the chain"}
+                  </span>
                 </label>
                 <label className={`opt${canBusterChain ? "" : " inert"}`}>
                   <input type="checkbox" disabled={!canBusterChain} checked={state.busterChain}

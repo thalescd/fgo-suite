@@ -100,10 +100,37 @@ Só os efeitos **antes** da função de dano entram no próprio golpe. A fonte
 Gilgamesh ganha `upNpdamage` 30% antes do dano — 1,3× no próprio NP. Artoria
 recupera NP depois, e isso não entra no golpe.
 
-### 3.3 NP não ganha `firstCardBonus`
+### 3.3 O `firstCardBonus` é da chain, não da carta (R32)
 
-Um card Buster em primeira posição soma `+0.5`; um NP Buster, não. O NP conta
-como "primeira posição do tipo dele" só para o `cardDamageValue`.
+> `firstCardBonus = {0.5 if **first card is a Buster card**, 0 otherwise. No bonus to NPs}`
+
+O sujeito da frase é a **primeira carta do turno**, e o bônus vai para **todas**
+as cartas daquela chain. O dump guarda o 0,5 em `buster[1].addAtk` — o bônus que
+a Buster de abertura *concede* —, e lê-lo como o bônus que aquela carta *recebe*
+acerta a primeira por coincidência e erra o resto:
+
+| Chain B-A-A, Artoria | antes | agora | |
+|---|---:|---:|---|
+| 1ª Buster | 6.183 | 6.183 | — |
+| 2ª Arts | 3.710 | 5.256 | **+42%** |
+| 3ª Arts | 4.328 | 5.874 | **+36%** |
+| extra (brave) | 10.821 | 16.232 | **+50%** |
+| **turno** | **25.042** | **33.545** | **+34%** |
+
+Numa Arts de segunda posição o termo vai de `1.2` para `1.7`, e ele multiplica o
+produto inteiro.
+
+**A entrada é factual**: "a primeira carta foi Buster?". Quando *esta* carta já é
+a Buster de abertura, ou quando é uma Buster Chain, a resposta é sim por
+construção e não se pergunta — a caixa aparece marcada e travada.
+
+**As duas únicas exclusões.** O NP não ganha, e é a única exceção que a fórmula
+nomeia; o card extra ganha, porque é uma carta da chain. Um NP conta como
+"primeira posição do tipo dele" só para o `cardDamageValue`.
+
+> **Em aberto:** se um NP **Buster** na primeira posição concede o bônus às
+> cartas seguintes. A fórmula não diz, e não há caso conferido. Como a entrada é
+> "a primeira carta foi Buster", quem sabe responde; nada é assumido no código.
 
 ### 3.4 Pierce ignora Def Up, não Def Down
 
