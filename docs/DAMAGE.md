@@ -484,7 +484,48 @@ Na auditoria, um buff que escala aparece com `atFullHp` **sempre**, inclusive
 com HP cheio: é justamente aí que ele vale menos, e saber que o número cresce
 se você apanhar é a informação toda.
 
-### 3.17 Buffs externos não são uma party (5b)
+### 3.17 O HP mexe no buff de duas formas, em dois campos (R30)
+
+R25 (§3.16) leu uma delas: o HP muda o **valor**, e a informação está em `svals`
+(`RatioHPLow`, `RatioHPRange*`). A outra é um **liga/desliga**, e mora em
+`buff.script`:
+
+```
+C.I.E.L, Phase-Gliding Blade B+
+  upCriticaldamage  script: { HP_HIGHER: 500 }    HPが50%以上の間
+  upCriticaldamage  script: { HP_HIGHER: 1000 }   HPが100%の時
+```
+
+São dois efeitos idênticos em tudo menos no limiar — e sem lê-lo os dois somam
+sempre: 100% de crit damage com 1 de vida, quando o correto é 50% e, abaixo de
+metade, nenhum.
+
+**Ler uma metade e não a outra deixa a segunda sempre ligada, e sempre ligado é
+o valor máximo.** Não é um erro que apareça: é a skill parecendo boa.
+
+| | |
+|---|---|
+| `HP_HIGHER` / `HP_LOWER` no dump inteiro | **8**, sendo **7** de dano |
+| servos | 3 — C.I.E.L, Aesc the Rain Witch, Passionlip |
+| sentidos | os dois: a C.I.E.L exige HP **alto**, a Aesc exige HP **baixo** |
+
+A Aesc é o caso que mostra o tamanho: quatro camadas de 10% abaixo de 99%, 75%,
+50% e 25%, numa skill chamada *Charisma of Adversity*. Sempre ligadas, davam
+**40% de ataque de graça** a uma servo ilesa.
+
+**O limiar é de quem carrega o buff, não de quem o deu.** Num buff de party a
+cópia que interessa é a que caiu no atacante, e é o HP dele que decide. Num
+debuff o portador é o inimigo — e o HP do inimigo não é modelado, então ali a
+recusa diz isso, em vez de avaliar contra o HP errado. Nenhum dos 8 casos é um
+debuff hoje; o caminho existe para quando for.
+
+**Um efeito pode ter os dois.** A Passionlip tem: `RatioHPRange*` para escalar e
+`HP_LOWER: 500` para ligar. Antes, acima de 50% de HP ela aparecia **contada
+valendo zero** — que §3.16 já apontava como o pior formato que um erro pode ter
+aqui, porque não parece defeito, parece skill fraca. Agora sai da lista com o
+motivo.
+
+### 3.18 Buffs externos não são uma party (5b)
 
 O terceiro slot da conta não é "os outros dois membros". É uma **lista de fontes
 externas**, sem posição, sem limite de três, com repetição permitida — porque

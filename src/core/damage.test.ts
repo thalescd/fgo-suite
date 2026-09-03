@@ -724,11 +724,18 @@ describe("escala por HP (R25)", () => {
     expect([total(100), total(0)]).toEqual([0.2, 0.5]);
   });
 
-  it("a faixa é um gatilho, não um limite — o valor cai a zero acima dela", () => {
-    // Passionlip é a única com `RatioHPRange*`: "HP50%以下で発動".
+  it("a faixa é um gatilho, não um limite — acima dela o buff nem entra", () => {
+    // Passionlip é a única com `RatioHPRange*`: "HP50%以下で発動". Ela também
+    // carrega o limiar do R30, e é ele que agora recusa o buff acima de 50%.
+    // Antes o buff era listado **valendo zero**, que parece skill fraca e não
+    // defeito; agora sai da lista com o motivo, que é o que se pode conferir.
     const at = (hp: number) => skillBuff(LIP, 2, hp, "upAtk")?.value;
-    expect([at(100), at(51)]).toEqual([0, 0]);
+    expect([at(100), at(51)]).toEqual([undefined, undefined]);
     expect([at(50), at(25), at(0)]).toEqual([30, 40, 50]);
+
+    const recusa = atHp(LIP, 100, { buffStack: [{ kind: "ownSkill", skillNum: 2, level: 10 }] })
+      .assumptions.skippedBuffs.find((b) => b.buffType === "upAtk");
+    expect(recusa?.reason).toBe("holds only at HP at most 50%, and the attacker is at 100%");
   });
 
   it("escala também fora do atkMod: crit damage do Hijikata vai a 100%", () => {
@@ -768,6 +775,77 @@ describe("escala por HP (R25)", () => {
   it("HP fora de 0..100 é preso na borda, venha de onde vier", () => {
     expect(atHp(CU, 500).avg).toBe(atHp(CU, 100).avg);
     expect(atHp(CU, -20).avg).toBe(atHp(CU, 0).avg);
+  });
+});
+
+/**
+ * R30 — o limiar de HP que liga e desliga o buff.
+ *
+ * A outra metade da mecânica de HP, e mora em outro campo: R25 lê `svals`, onde
+ * o HP mexe no **valor**; isto lê `buff.script`, onde ele decide se o efeito
+ * existe. Ler só uma delas deixa a outra sempre ligada — e sempre ligado é o
+ * valor máximo, que é um número plausível e por isso passa despercebido.
+ *
+ * São oito no dump, sete de dano, em três servos. Os dois sentidos aparecem: a
+ * C.I.E.L exige HP **alto** e a Aesc exige HP **baixo**.
+ */
+describe("limiar de HP (R30)", () => {
+  const CIEL = loadServant(418); // duas camadas de crítico: >= 50% e = 100%
+  const AESC = loadServant(385); // quatro camadas de ataque, cada uma abaixo de um limiar
+
+  const atHp = (s: Servant, hp: number, over: Partial<DamageInput> = {}) =>
+    calculateDamage(
+      input({
+        attacker: { servantId: s.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1, hpPercent: hp },
+        ...over,
+      }),
+      { ...data, servants: new Map([...data.servants, [s.id, s]]) },
+    );
+
+  const critAt = (hp: number) =>
+    atHp(CIEL, hp, {
+      buffStack: [{ kind: "ownSkill", skillNum: 2, level: 10 }],
+      action: { kind: "card", card: "arts", position: 1, isCrit: true, busterChain: false, braveChain: false },
+    });
+
+  it("as duas camadas da C.I.E.L só somam com HP cheio", () => {
+    // 50% cada, sobre os 12% fixos da passiva Independent Action EX. Cheio: as
+    // duas. Entre 50 e 99: só a de >= 50%. Abaixo de 50: nenhuma, e sobra a
+    // passiva. Antes, 1.12 era o número em qualquer HP.
+    expect([critAt(100), critAt(99), critAt(50), critAt(49)].map((r) => r.breakdown.critDamageMod))
+      .toEqual([1.12, 0.62, 0.62, 0.12]);
+  });
+
+  it("a camada recusada diz o limiar e o HP atual, em vez de sumir", () => {
+    const fora = critAt(49).assumptions.skippedBuffs.filter((b) => b.buffType === "upCriticaldamage");
+    expect(fora.map((b) => b.reason)).toEqual([
+      "holds only at HP at least 50%, and the attacker is at 49%",
+      "holds only at HP at least 100%, and the attacker is at 49%",
+    ]);
+  });
+
+  it("a que passa carrega o limiar na auditoria — depender de HP é um fato do buff", () => {
+    // A passiva entra sem limiar e por isso sem o campo: ele marca quem depende
+    // de HP, e marcar quem não depende diria o contrário do que se quer.
+    const dentro = critAt(100).assumptions.appliedBuffs.filter((b) => b.buffType === "upCriticaldamage");
+    expect(dentro.map((b) => b.hpGate)).toEqual([undefined, "HP at least 50%", "HP at least 100%"]);
+  });
+
+  it("na Aesc o sentido é o inverso: as camadas só existem machucada", () => {
+    // Skill 2: Charisma sem limiar + quatro camadas de 10% abaixo de 99, 75,
+    // 50 e 25%. Sem ler o limiar, as quatro somavam sempre — 40% de graça com
+    // HP cheio, numa skill cujo nome é "Charisma of Adversity".
+    const atk = (hp: number) =>
+      atHp(AESC, hp, { buffStack: [{ kind: "ownSkill", skillNum: 2, level: 10 }] }).breakdown.atkMod;
+    // Arredondado: somar 0.1 em ponto flutuante não fecha em 0.3 exato.
+    const r = (n: number) => Math.round(n * 100) / 100;
+    expect([r(atk(100)), r(atk(99)), r(atk(75)), r(atk(50)), r(atk(25))]).toEqual([0.2, 0.3, 0.4, 0.5, 0.6]);
+  });
+
+  it("buff sem limiar não ganha o campo", () => {
+    const sem = atHp(CU, 100, { buffStack: [{ kind: "ownSkill", skillNum: 1, level: 10 }] })
+      .assumptions.appliedBuffs;
+    expect(sem.every((b) => b.hpGate === undefined)).toBe(true);
   });
 });
 

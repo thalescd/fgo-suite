@@ -13,6 +13,7 @@ import type {
   Constants,
   CraftEssence,
   Effect,
+  HpGate,
   HpScaling,
   MysticCode,
   NoblePhantasm,
@@ -25,6 +26,7 @@ import type {
 import { convertMultiplier, convertRate, convertValues, isSupportedBuff, valueRuleFor } from "../core/units.js";
 import type {
   AtlasAttributeRelation,
+  AtlasBuff,
   AtlasCard,
   AtlasClassAttackRate,
   AtlasClassRelation,
@@ -201,6 +203,22 @@ function toHpScaling(svals: AtlasSval[]): HpScaling | null {
 }
 
 /**
+ * Limiar de HP que liga e desliga o efeito (R30).
+ *
+ * Fica em `buff.script`, não em `svals` — que é onde mora a outra metade da
+ * mecânica de HP (`hpScaling`, R25). Ler só uma das duas deixa a outra sempre
+ * ligada, e sempre ligado é o valor máximo: a C.I.E.L entregava as duas camadas
+ * de crítico com qualquer HP, e a Aesc as quatro de ataque sem se machucar.
+ *
+ * O limiar vem por mil, como o resto do dump.
+ */
+function toHpGate(script: AtlasBuff["script"]): HpGate | null {
+  if (script?.HP_HIGHER !== undefined) return { kind: "atLeast", percent: script.HP_HIGHER / 10 };
+  if (script?.HP_LOWER !== undefined) return { kind: "atMost", percent: script.HP_LOWER / 10 };
+  return null;
+}
+
+/**
  * `atkSide` da matriz sobrescrita, achatado.
  *
  * O Atlas guarda `{ [classe do atacante]: { [classe do alvo]: {...} } }`; um
@@ -273,6 +291,7 @@ function toEffect(f: AtlasFunction): Effect {
     boostsBuffTraits: buff?.script?.UpBuffRateBuffIndiv ? toTraits(buff.script.UpBuffRateBuffIndiv) : null,
     classRelationOverrides: toClassRelationOverrides(buff?.script?.relationId?.atkSide),
     hpScaling: toHpScaling(svals),
+    hpGate: toHpGate(buff?.script),
     supported: isSupportedBuff(buffType),
   };
 }

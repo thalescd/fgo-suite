@@ -132,8 +132,34 @@ export interface Effect {
    */
   hpScaling: HpScaling | null;
 
+  /**
+   * O efeito só vale enquanto o HP de quem o carrega está de um lado de um
+   * limiar (R30). `null` no caso normal.
+   *
+   * **Não confundir com `hpScaling`**, que é a outra metade da mesma ideia e
+   * mora em outro lugar do dump: lá o HP mexe no *valor* e a informação está em
+   * `svals`; aqui ele liga e desliga o efeito, e a informação está em
+   * `buff.script`. Um efeito pode ter os dois, nenhum, ou só um.
+   */
+  hpGate: HpGate | null;
+
   /** false => a calculadora reporta em `assumptions.unmodeled` em vez de ignorar (R12). */
   supported: boolean;
+}
+
+/**
+ * Liga/desliga por limiar de HP do portador (`buff.script.HP_HIGHER`/`HP_LOWER`).
+ *
+ * São 8 no dump inteiro, 7 deles de dano, em três servos — e todos estavam
+ * sempre ligados, o que dá o valor máximo com HP cheio. Na C.I.E.L são duas
+ * camadas de crítico (>= 50% e = 100%) que somavam sempre; na Aesc, quatro
+ * camadas de ataque que só existem **machucada** e valiam de graça.
+ */
+export interface HpGate {
+  /** `atLeast` = HP_HIGHER, `atMost` = HP_LOWER. */
+  kind: "atLeast" | "atMost";
+  /** Limiar em % do HP máximo, já convertido do por-mil do dump. */
+  percent: number;
 }
 
 /**

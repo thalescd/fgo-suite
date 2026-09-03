@@ -27,6 +27,10 @@ export interface AtlasBuff {
       /** Muda o dano recebido; não é lido, nada aqui calcula dano recebido. */
       defSide?: Record<string, Record<string, { damageRate?: number; type?: string }>>;
     };
+    /** Limiar de HP do portador, por mil: o buff só vale acima dele (R30). */
+    HP_HIGHER?: number;
+    /** Idem, só vale abaixo. */
+    HP_LOWER?: number;
   };
 }
 

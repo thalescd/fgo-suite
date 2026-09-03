@@ -28,6 +28,7 @@ import type {
   Constants,
   CraftEssence,
   Effect,
+  HpGate,
   HpScaling,
   MysticCode,
   NoblePhantasm,
@@ -200,6 +201,16 @@ export interface ResolvedBuff {
    * com HP; presente mesmo quando o HP está cheio e os dois são iguais.
    */
   atFullHp?: number;
+  /**
+   * O limiar de HP que este buff exige, quando ele exige um (R30) — em texto,
+   * já resolvido: `"HP at least 50%"`.
+   *
+   * Presente só quando o limiar **passou**; o que reprova sai em `skippedBuffs`
+   * com o motivo. Aparece mesmo assim porque o buff estar valendo *agora* e
+   * depender do HP são dois fatos distintos, e o segundo é o que explica o
+   * número cair quando você apanha.
+   */
+  hpGate?: string;
 }
 
 export interface SkippedBuff {
@@ -428,6 +439,24 @@ function isEventOnlyBonus(c: Candidate): boolean {
   );
 }
 
+/** Como o limiar se lê em inglês, para a auditoria e para o motivo da recusa. */
+const gateLabel = (g: HpGate): string => `HP ${g.kind === "atLeast" ? "at least" : "at most"} ${g.percent}%`;
+
+/**
+ * Limiar de HP do portador (R30). Devolve o motivo da recusa, ou `null`.
+ *
+ * **O limiar é de quem carrega o buff**, não de quem o deu. Num buff de party a
+ * cópia que interessa é a que caiu no atacante, e é o HP dele que decide. Num
+ * debuff, o portador é o inimigo — e o HP do inimigo não é modelado, então ali
+ * se recusa dizendo isso, em vez de avaliar contra o HP errado.
+ */
+function hpGateRejection(gate: HpGate | null, side: "attacker" | "enemy", hpPercent: number): string | null {
+  if (gate === null) return null;
+  if (side !== "attacker") return `holds only at ${gateLabel(gate)} on the target, and enemy HP is not modelled`;
+  const ok = gate.kind === "atLeast" ? hpPercent >= gate.percent : hpPercent <= gate.percent;
+  return ok ? null : `holds only at ${gateLabel(gate)}, and the attacker is at ${hpPercent}%`;
+}
+
 function valueOf(effect: Effect, levelIndex: number, overcharge: number): number {
   const row = effect.valuesByOvercharge ? effect.valuesByOvercharge[overcharge - 1] : effect.values;
   return row?.[Math.min(levelIndex, (row.length || 1) - 1)] ?? 0;
@@ -495,6 +524,8 @@ function resolveBuffs(
 
   const isNPAction = input.action.kind === "np";
   const cardName = CARD_TRAIT[actionCard];
+  /** Serve às duas mecânicas de HP: a que escala o valor (R25) e a que liga o efeito (R30). */
+  const hpPercent = clampPercent(input.attacker.hpPercent ?? 100);
 
   /** `faceCard` é "command card", ou seja, qualquer coisa que não seja NP. */
   const isCardTrait = (name: string) => name.startsWith("card") || name === "faceCard";
@@ -601,6 +632,15 @@ function resolveBuffs(
       continue;
     }
 
+    // R30: limiar de HP. Vem de `buff.script`, não de `svals` — é a outra
+    // metade da mecânica de HP, a que liga e desliga em vez de escalar. Sem
+    // isto as duas camadas de crítico da C.I.E.L somavam com qualquer HP.
+    const byHp = hpGateRejection(e.hpGate, side, hpPercent);
+    if (byHp !== null) {
+      skipped.push({ source: c.source, buffType: label, reason: byHp });
+      continue;
+    }
+
     if (relationRows.length > 0) {
       relationOverrides.push({ source: c.source, buffType: label, rows: relationRows });
       continue;
@@ -609,7 +649,6 @@ function resolveBuffs(
     const flat = valueOf(e, c.levelIndex, c.overcharge ?? input.attacker.overcharge);
     // R25: quatro buffs de dano crescem conforme o HP cai. Sem isto sobra o
     // valor de HP cheio, que na Passionlip e no Leonidas é zero.
-    const hpPercent = clampPercent(input.attacker.hpPercent ?? 100);
     const raw = e.hpScaling ? hpScaledValue(flat, e.hpScaling, c.levelIndex, hpPercent) : flat;
 
     if (boostTargets.length > 0) {
@@ -635,6 +674,9 @@ function resolveBuffs(
       ...(e.hpScaling
         ? { atFullHp: hpScaledValue(flat, e.hpScaling, c.levelIndex, 100) * signOf(e.buffType) }
         : {}),
+      // Mesma razão do `atFullHp`: o buff estar valendo agora e depender do HP
+      // são fatos distintos, e o segundo explica o número mudar quando apanha.
+      ...(e.hpGate ? { hpGate: gateLabel(e.hpGate) } : {}),
       // Os dois slots condicionais da fórmula: `critDamageMod * isCrit` e
       // `npDamageMod * isNP`.
       counted:

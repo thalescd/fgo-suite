@@ -196,6 +196,8 @@ export function DamageReport({ result, constants }: { result: DamageResult; cons
                   scales with HP — {pct(b.atFullHp / 100)} at full HP
                 </span>
               )}
+              {/* R30: o outro jeito de o HP mexer no buff — liga e desliga. */}
+              {b.hpGate !== undefined && <span className="reason">only at {b.hpGate}</span>}
             </li>
           ))}
         </ul>

@@ -290,6 +290,28 @@ async function main(): Promise<void> {
   check("Solomon -> NP5 (welfare vence raridade)", npLevel(servants.find((s) => s.name === "Solomon")!), 5);
   check("Artoria 5★ -> NP1", npLevel(byCn(2)), 1);
 
+  // R30 — o limiar de HP mora em `buff.script`, não em `svals`, que é onde vive
+  // a outra metade da mecânica (R25). São poucos, e "poucos" é justamente o que
+  // faz um campo perdido passar em silêncio: sem limiar o buff fica sempre
+  // ligado, e sempre ligado é o valor máximo — um número plausível.
+  console.log("\nR30 — limiar de HP");
+  const ciel = await servant(byCn(418).id);
+  const critGates = ciel.skills
+    .find((s) => s.num === 2)!
+    .effects.filter((e) => e.buffType === "upCriticaldamage")
+    .map((e) => e.hpGate);
+  check("C.I.E.L: duas camadas de crítico, 50% e 100%", critGates, [
+    { kind: "atLeast", percent: 50 },
+    { kind: "atLeast", percent: 100 },
+  ]);
+  const aesc = await servant(byCn(385).id);
+  check(
+    "Aesc: quatro camadas de ataque, no sentido inverso",
+    aesc.skills.find((s) => s.num === 2)!.effects.filter((e) => e.hpGate?.kind === "atMost").map((e) => e.hpGate!.percent),
+    [99, 75, 50, 25],
+  );
+  check("buff sem limiar continua sem o campo", artoria.skills[0]!.effects[0]!.hpGate, null);
+
   console.log("\nR9 — identidade");
   check("displayName único para todos", new Set(servants.map((s) => s.displayName)).size, servants.length);
   check("displayName desambiguado", byCn(2).displayName, "Altria Pendragon (saber, 5★)");

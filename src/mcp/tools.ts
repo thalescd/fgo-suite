@@ -432,7 +432,9 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
           (x.boostedBy ? ` (boosted by ${x.boostedBy})` : "") +
           // R25: dizer que o buff é sensível a HP importa mesmo com HP cheio,
           // que é justamente quando ele vale menos.
-          (x.atFullHp !== undefined ? ` (scales with HP; ${x.atFullHp} at full HP)` : ""),
+          (x.atFullHp !== undefined ? ` (scales with HP; ${x.atFullHp} at full HP)` : "") +
+          // R30: o outro jeito de o HP mexer no buff — aqui ele liga e desliga.
+          (x.hpGate !== undefined ? ` (only at ${x.hpGate})` : ""),
       ),
     // O que NÃO entrou, com o motivo. É o que permite a quem lê perceber que
     // faltou marcar uma skill, em vez de aceitar um número baixo como verdade.
