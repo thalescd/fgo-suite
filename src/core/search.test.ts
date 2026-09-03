@@ -43,6 +43,14 @@ describe("busca por texto", () => {
     expect(r.map((e) => e.name)).toContain("Gilgamesh");
   });
 
+  it("nome de iniciais pontuadas é achável colado", () => {
+    // "C.I.E.L" normaliza para quatro termos de uma letra, e cada um casa como
+    // substring: digitar o nome como ele se escreve devolve 600 resultados. O
+    // apelido é o que dá uma consulta que funciona.
+    const r = search(index, F({ text: "ciel" }));
+    expect(r.map((e) => e.name)).toEqual(["Mysterious Executor C.I.E.L"]);
+  });
+
   it("acha sem acento", () => {
     expect(search(index, F({ text: "scathach" })).length).toBeGreaterThan(0);
   });
