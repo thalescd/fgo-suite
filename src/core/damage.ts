@@ -373,6 +373,21 @@ const CARD_TRAIT: Record<CardType, string> = {
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
+ * Alvo sem classe e sem atributo — "não me importo com vantagem".
+ *
+ * Não é uma classe do jogo, e é justamente esse o ponto: dizer que o inimigo é
+ * um Shielder é uma **afirmação sobre o inimigo**, e traz o trait
+ * `classShielder` junto, que 4 efeitos do roster procuram. Dizer `neutral` é
+ * dizer que o cenário não fixou classe nenhuma — nenhum multiplicador, nenhum
+ * trait derivado.
+ *
+ * Os dois multiplicadores tratam o caso **explicitamente**, e não por o `?? 1`
+ * do lookup falhar: acertar por engano é como a maioria dos defeitos deste
+ * projeto começou.
+ */
+export const NEUTRAL = "neutral";
+
+/**
  * Traits efetivos do inimigo: os escolhidos mais os derivados de classe e
  * atributo (D15).
  *
@@ -382,8 +397,9 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  */
 export function enemyTraitNames(enemy: Enemy): Set<string> {
   const names = new Set(enemy.traits.map((t) => t.name));
-  names.add(`class${cap(enemy.className)}`);
-  names.add(`attribute${cap(enemy.attribute)}`);
+  // `neutral` não deriva trait: não há classe nem atributo para derivar de.
+  if (enemy.className !== NEUTRAL) names.add(`class${cap(enemy.className)}`);
+  if (enemy.attribute !== NEUTRAL) names.add(`attribute${cap(enemy.attribute)}`);
   return names;
 }
 
@@ -1125,7 +1141,8 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
 
   // ---- multiplicadores de classe e atributo
   const classAtkBonus = k.classAttackRate[attacker.className] ?? 1;
-  const triangleModifierBase = k.classRelation[attacker.className]?.[input.enemy.className] ?? 1;
+  const triangleModifierBase =
+    input.enemy.className === NEUTRAL ? 1 : k.classRelation[attacker.className]?.[input.enemy.className] ?? 1;
   const { triangleModifier, note: relationNote } = applyRelationOverrides(
     triangleModifierBase,
     attacker.className,
@@ -1134,7 +1151,9 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
     skipped,
   );
   const attributeModifier =
-    k.attributeRelation[attacker.attribute]?.[input.enemy.attribute as keyof typeof k.attributeRelation] ?? 1;
+    input.enemy.attribute === NEUTRAL
+      ? 1
+      : k.attributeRelation[attacker.attribute]?.[input.enemy.attribute as keyof typeof k.attributeRelation] ?? 1;
 
   // ---- modificadores de buff
   const atkMod = sumSlot(applied, "atkMod");

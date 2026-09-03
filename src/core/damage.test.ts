@@ -15,8 +15,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { calculateDamage, selectableNps, type DamageData, type DamageInput, type Enemy } from "./damage.js";
-import { parseCalc, toDamageInput } from "./scenario.js";
+import { calculateDamage, enemyTraitNames, selectableNps, type DamageData, type DamageInput, type Enemy } from "./damage.js";
+import { DEFAULT_CALC, parseCalc, toDamageInput } from "./scenario.js";
 import type { CardType, Constants, CraftEssence, IndexEntry, IndexEntryServant, MysticCode, Servant, Trait } from "./model.js";
 
 const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as IndexEntry[];
@@ -278,6 +278,72 @@ describe("bônus de primeira carta Buster (R32)", () => {
     // No NP a pergunta não existe, então nem chega ao núcleo.
     const semNp = parseCalc(new URLSearchParams("s=100100&bfirst=1"));
     expect(toDamageInput(semNp, ARTORIA, () => "x").action.busterFirst).toBe(false);
+  });
+});
+
+/**
+ * O alvo neutro: ausência de classe e de atributo, não uma classe neutra.
+ *
+ * `saber`/`human` era o padrão só por ser o começo da lista, e torcia o número
+ * de graça — contra Saber um Archer ganha 1,5x. `shielder` chegou a ser cogitado
+ * porque é o único alvo que dá 1,0 vindo de todo atacante, mas dizer que o
+ * inimigo é um Shielder é uma afirmação sobre ele, e arrasta o trait
+ * `classShielder`, que 4 efeitos do roster procuram.
+ */
+describe("alvo neutro", () => {
+  const vs = (className: string, attribute: string) =>
+    calculateDamage(input({ enemy: enemy({ className, attribute }) }), data);
+
+  it("é o padrão do cenário, e não uma classe da lista", () => {
+    expect([DEFAULT_CALC.enemyClass, DEFAULT_CALC.enemyAttribute]).toEqual(["neutral", "neutral"]);
+    expect(constants.classRelation).not.toHaveProperty("neutral");
+    expect(constants.attributeRelation).not.toHaveProperty("neutral");
+  });
+
+  it("zera os dois multiplicadores, venha de que atacante vier", () => {
+    // A Artoria é saber/earth e o Gil é archer/sky: contra saber/human um pega
+    // 1,0 e o outro 1,5. Contra neutro, os dois pegam 1,0.
+    for (const s of [ARTORIA, GIL]) {
+      const r = calculateDamage(
+        input({
+          attacker: { servantId: s.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1 },
+          enemy: enemy({ className: "neutral", attribute: "neutral" }),
+        }),
+        data,
+      );
+      expect([r.breakdown.triangleModifier, r.breakdown.attributeModifier]).toEqual([1, 1]);
+    }
+  });
+
+  it("não deriva trait nenhum — é isso que o separa de escolher shielder", () => {
+    const neutro = enemyTraitNames({ className: "neutral", attribute: "neutral", traits: [], defMod: 0, specialDefMod: 0 });
+    expect([...neutro]).toEqual([]);
+    // Já o Shielder é neutro no multiplicador, mas ainda é um Shielder.
+    const shielder = enemyTraitNames({ className: "shielder", attribute: "star", traits: [], defMod: 0, specialDefMod: 0 });
+    expect([...shielder].sort()).toEqual(["attributeStar", "classShielder"]);
+  });
+
+  it("um lado neutro não apaga o outro", () => {
+    const r = vs("lancer", "neutral");
+    expect([r.breakdown.triangleModifier, r.breakdown.attributeModifier]).toEqual([2, 1]);
+    const r2 = vs("neutral", "sky");
+    // Artoria é earth, e earth -> sky é 0.9 — a mesma pegadinha que já derrubou
+    // o teste de atributo lá em cima. O neutro não mexe nisso: ele só apaga o
+    // eixo que foi marcado como neutro.
+    expect([r2.breakdown.triangleModifier, r2.breakdown.attributeModifier]).toEqual([1, 0.9]);
+  });
+
+  it("trait declarado à mão continua valendo com alvo neutro", () => {
+    // Neutro tira o que é DERIVADO de classe e atributo; o que o usuário
+    // declarou é escolha dele e não some junto.
+    const t = enemyTraitNames({
+      className: "neutral",
+      attribute: "neutral",
+      traits: [{ id: 2008, name: "weakToEnumaElish" }],
+      defMod: 0,
+      specialDefMod: 0,
+    });
+    expect([...t]).toEqual(["weakToEnumaElish"]);
   });
 });
 

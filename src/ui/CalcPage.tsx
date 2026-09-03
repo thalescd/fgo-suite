@@ -14,7 +14,15 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Link, useSearchParams } from "react-router-dom";
 
 import { specFor } from "../core/buffs.js";
-import { calculateDamage, countFieldLabel, enemyTraitNames, selectableNps, type DamageData, type RollMode } from "../core/damage.js";
+import {
+  calculateDamage,
+  countFieldLabel,
+  enemyTraitNames,
+  selectableNps,
+  NEUTRAL,
+  type DamageData,
+  type RollMode,
+} from "../core/damage.js";
 import type { CraftEssence, IndexEntryServant, MysticCode, Servant, Skill } from "../core/model.js";
 import { EMPTY_FILTERS, search } from "../core/search.js";
 import { Block, Stars } from "./components.js";
@@ -1065,8 +1073,14 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
 
           <Block title="Enemy">
             <div className="fields">
-              <Field label="Class" hint="multiplier shown is against this attacker — shielder is the neutral one">
+              <Field label="Class" hint="multiplier shown is against this attacker">
                 <select value={state.enemyClass} onChange={(e) => patch({ enemyClass: e.target.value })}>
+                  {/*
+                    Fora dos optgroups e no topo: não é uma classe do jogo, é a
+                    ausência de uma. Listá-la junto das outras sugeriria que
+                    existe um inimigo "Neutral" para enfrentar.
+                  */}
+                  <option value={NEUTRAL}>neutral — no class advantage</option>
                   <optgroup label="Playable classes">
                     {PLAYABLE_CLASSES.map((c) => <option key={c} value={c}>{classLabel(c)}</option>)}
                   </optgroup>
@@ -1079,8 +1093,9 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 </select>
               </Field>
 
-              <Field label="Attribute" hint="star is neutral for every attacker but the 5 beast ones">
+              <Field label="Attribute">
                 <select value={state.enemyAttribute} onChange={(e) => patch({ enemyAttribute: e.target.value })}>
+                  <option value={NEUTRAL}>neutral — no attribute affinity</option>
                   {ATTRIBUTES.map((a) => {
                     const m = attrRow[a as keyof typeof attrRow] ?? 1;
                     return <option key={a} value={a}>{m === 1 ? a : `${a} — x${m}`}</option>;
@@ -1119,7 +1134,9 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
               onChange={(ids) => patch({ enemyTraits: ids })}
             />
             <p className="footnote">
-              Always on, derived from class and attribute: {derivedTraits.join(", ")}.
+              {derivedTraits.length > 0
+                ? `Always on, derived from class and attribute: ${derivedTraits.join(", ")}.`
+                : "A neutral target derives no traits — nothing anti-class or anti-attribute can fire."}
             </p>
           </Block>
         </div>

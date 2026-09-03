@@ -47,7 +47,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 267 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 272 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -106,10 +106,10 @@ um suporte removido em outro, calada.
 
 Escolhe-se atacante, nível/fou/NP/overcharge, a ação (NP ou card, posição na
 chain, crítico), quais skills estão ativas, e o inimigo — classe, atributo,
-traits. **O alvo começa neutro**: `shielder` é o único que dá 1,0 vindo de todo
-atacante, e `star` é neutro para 457 dos 462. Quem não mexe no bloco Enemy não
-está pedindo vantagem de classe — começar em Saber dava 1,5× a um Archer de
-graça. O resultado vem com **min / média / max** e a auditoria junto: cada termo
+traits. **O alvo começa sem classe e sem atributo** — a primeira opção dos dois
+menus é `neutral`, que zera os multiplicadores e não deriva trait nenhum. Quem
+não mexe no bloco Enemy não está pedindo vantagem: começar em Saber dava 1,5× a
+um Archer de graça, e ainda ligava 67 efeitos anti-Saber. O resultado vem com **min / média / max** e a auditoria junto: cada termo
 da fórmula com o valor que assumiu, cada buff que entrou, e cada buff que **não**
 entrou com o motivo. Foi lendo um desses motivos que o bug do card do NP
 apareceu.

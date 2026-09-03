@@ -336,33 +336,36 @@ Chain"* — uma chain é formada por três **command cards**, e um NP não é co
 card. Testar só "buster chain aumenta o dano de um card Buster" deixa a metade
 errada passar; o teste cobre as duas.
 
-### 3.12 O alvo padrão é neutro, não o primeiro da lista
+### 3.12 O alvo padrão não tem classe nem atributo
 
 `saber`/`human` era o padrão só por ser o começo da lista, e isso torce o número
 de graça: contra Saber, um Archer ganha **1,5×** e um Lancer perde **metade**,
 sem ninguém ter pedido. Quem não mexe no bloco Enemy não está pedindo vantagem
-nenhuma — está dizendo "não me importo".
+nenhuma — está dizendo que o cenário não fixou o alvo.
 
-O padrão passou a ser o par neutro, e os dois saem da própria matriz do jogo:
+O padrão passou a ser `NEUTRAL`, um valor que **não é classe nem atributo**:
 
-| | |
-|---|---|
-| `shielder` | o **único** alvo que dá 1,0 vindo de todo atacante jogável |
-| `star` | neutro para 457 dos 462; só os 5 de atributo `beast` veem 1,1 |
+```
+triangleModifier   = 1
+attributeModifier  = 1
+traits derivados   = nenhum
+```
 
-Não há alvo pseudo-inventado: a Mash é uma classe de verdade, e a neutralidade
-dela é do `classRelation`. O seletor continua mostrando o multiplicador no
-rótulo (`lancer — x2`), então trocar para um alvo com vantagem continua sendo uma
-escolha visível.
+**Por que não `shielder`.** Ele é o único alvo que dá 1,0 vindo de todo atacante
+jogável, então serviria para o multiplicador. Mas dizer que o inimigo é um
+Shielder é uma **afirmação sobre o inimigo**, e arrasta `classShielder` junto —
+que 4 efeitos do roster procuram. `star` teria o mesmo problema com
+`attributeStar`, mais 3 efeitos, e ainda não é neutro contra os 5 atacantes de
+atributo `beast`. Um alvo que não tem classe não ativa nada anti-classe, que é o
+que "não me importo" quer dizer.
 
-De quebra, o par neutro quase não ativa condição por acaso:
+Os dois multiplicadores tratam o caso **explicitamente**, e não deixando o
+`?? 1` do lookup falhar: acertar por engano é como a maioria dos defeitos desta
+página começou.
 
-| trait de alvo | efeitos que o exigem |
-|---|---:|
-| `classSaber` | 67 |
-| `classShielder` | **4** |
-| `attributeHuman` | 27 |
-| `attributeStar` | **3** |
+**Os eixos são independentes.** `neutral`/`sky` apaga a classe e mantém a
+afinidade; `lancer`/`neutral` faz o contrário. E trait declarado à mão continua
+valendo: o neutro tira o que era *derivado*, não o que foi escolhido.
 
 ### 3.13 Traits derivados do inimigo (D15)
 

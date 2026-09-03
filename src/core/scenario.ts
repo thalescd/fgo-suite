@@ -15,6 +15,7 @@
  * seja literalmente um link que abre na tela.
  */
 
+import { NEUTRAL } from "./damage.js";
 import type { BuffSource, DamageInput, RollMode } from "./damage.js";
 import type { CardType, Servant, Trait } from "./model.js";
 
@@ -174,21 +175,18 @@ export const DEFAULT_CALC: CalcState = {
   busterFirst: false,
   busterChain: false,
   braveChain: false,
-  // Alvo NEUTRO por padrão, não o primeiro da lista.
+  // Alvo sem classe e sem atributo, não o primeiro da lista.
   //
-  // `saber`/`human` deixava o número torto de graça: contra Saber, um Archer
-  // ganha 1,5x e um Lancer perde metade, sem ninguém ter pedido nada. O
-  // `shielder` é o único alvo que dá **1,0 vindo de todo atacante jogável** — é
-  // a Mash, e a neutralidade é da própria matriz do jogo, não invenção daqui.
+  // `saber`/`human` era padrão só por ser o começo da lista, e torcia o número
+  // de graça: contra Saber, um Archer ganha 1,5x e um Lancer perde metade, sem
+  // ninguém ter pedido. Quem não mexe no bloco Enemy não está pedindo vantagem
+  // — está dizendo que o cenário não fixou o alvo.
   //
-  // `star` é neutro para 457 dos 462: só os 5 atacantes de atributo `beast`
-  // veem 1,1, e o rótulo do seletor mostra o multiplicador quando ele não é 1.
-  //
-  // De quebra, o par neutro quase não ativa condição por acaso: 4 efeitos
-  // olham `classShielder` contra 67 que olham `classSaber`, e 3 olham
-  // `attributeStar` contra 27 que olham `attributeHuman`.
-  enemyClass: "shielder",
-  enemyAttribute: "star",
+  // `NEUTRAL` diz exatamente isso, e por isso não é `shielder`: chamar o
+  // inimigo de Shielder é uma afirmação sobre ele, e traz o trait
+  // `classShielder` junto, que 4 efeitos do roster procuram.
+  enemyClass: NEUTRAL,
+  enemyAttribute: NEUTRAL,
   enemyTraits: [],
   enemyDefMod: 0,
   enemySpecialDefMod: 0,
