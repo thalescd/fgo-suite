@@ -32,7 +32,7 @@ Insight que organiza tudo: **(2) e (3) são a mesma entrega** — um MCP server 
 | D10 | **Append passives no schema, fora do cálculo por default** | Só entram se o usuário especificar. Ver §4.2. |
 | D11 | **Class board ignorado na v1** | Bônus de status do conteúdo novo. `nice_class_board.json` não é ingerido. |
 | D12 | **Calculadora recebe `BuffStack`, não `servo + skills`** | Skills próprias, CE, MC e servos de suporte alimentam a mesma estrutura. Ver §5.1. |
-| D13 | **Templates são listas de referência, e são do usuário** | Nunca valores literais — sobrevivem a rebalanceamento. Vivem no navegador de quem usa e **nunca no link**, que carrega sempre os buffs expandidos. Revisto em 5b; ver §5.2. |
+| D13 | **Templates são listas de referência, e são do usuário** | Nunca valores literais — sobrevivem a rebalanceamento. Vivem no navegador de quem usa e **nunca no link**, que carrega sempre os buffs expandidos. Revisto em 5b; ver §5.2. **Exceção prevista em 5e:** um alvo salvo é por *valor*, porque não existe documento de inimigo para apontar. A regra vale onde há o que referenciar. |
 | D14 | **Condições de trait entram na v1** | Revisão do escopo anterior: atacante e inimigo são structs explícitos, comparar trait é trivial. Só condições de *estado* (HP, contagem de buff, turno) ficam adiadas. |
 | D15 | **Classe e atributo do inimigo geram traits automaticamente** | `saber` → `classSaber`, `human` → `attributeHuman`. Nunca checkbox manual. Ver §5.4. |
 | D16 | **Lista de traits do inimigo gerada no build** | 91 traits de identidade, ordenados por frequência de uso. Servo novo traz o trait dele sem edição manual. |
@@ -546,6 +546,8 @@ porque a fonte `support` não tinha caminho de entrada (§8.1, 5b).
 | ~~**5b**~~ | ~~Suportes e templates~~ | ✅ | ✅ **pronta** |
 | **5c** | Condições de estado | ❌ a fazer | inputs de estado no cenário |
 | **5d** | Comparação lado a lado | n/a | tela |
+| **5e** | Alvos salvos | n/a | mesma máquina dos templates de buff |
+| **5f** | Exportar/importar a biblioteca | n/a | um arquivo, as duas listas |
 
 #### 5a — CE e Mystic Code
 
@@ -615,6 +617,67 @@ exibida é ruído do dado.
 
 Por último de propósito: comparar antes de 5a e 5b seria comparar números que
 ainda ignoram CE.
+
+#### 5e — Alvos salvos
+
+Ideia do Thales. O bloco Enemy é hoje a parte mais cara de preencher — classe,
+atributo, cada trait buscado um a um, def buff, special def — e a que mais se
+repete: quem farma bate no mesmo nó, quem testa boss bate no mesmo boss.
+
+Reaproveita inteira a máquina da 5b: `localStorage`, o modal, as sementes, o
+nome sugerido do conteúdo, o seletor ao lado do bloco.
+
+**Duas listas separadas, não um "cenário".** A mesma double Castoria vai contra
+três bosses diferentes; juntar as duas coisas força combinação explosiva. Elas
+compõem na tela, não no armazenamento.
+
+**O alvo é por valor, e isso é forçado.** O template de buff é por *referência*
+(`504500:1,3`), e é o que o faz sobreviver a rebalanceamento (**D13**). O alvo
+não tem para onde apontar — não existe documento de inimigo —, então ele guarda
+os valores. Não é defeito, mas os dois envelhecem diferente, e o formato da 5f
+não deve fingir que são a mesma coisa.
+
+Duas decisões que a ideia força:
+
+- **Traits por id, nunca por nome** (**R10**). O nome muda entre dumps; o id não.
+- **`stacksTarget` fica de fora.** Ele é do combate, não do alvo: quantos
+  〔roman〕 o inimigo acumulou depende de quantas vezes o *atacante* usou o NP
+  (**R27**). Guardá-lo dentro de um inimigo salvo misturaria as duas coisas.
+
+*Pronto quando:* salvar "Gawain de Camelot, special def 50%" e reaplicá-lo
+reproduz o mesmo número, e o link continua carregando o inimigo expandido —
+nunca um `enemyTpl=`, pela mesma razão do `tpl=` (§5.2).
+
+#### 5f — Exportar/importar a biblioteca
+
+Ideia do Thales, e **fecha um buraco aberto pela 5b**: hoje não há como tirar um
+template do navegador. Limpou cache, perdeu; trocou de máquina, perdeu.
+
+**Não é sobre compartilhar.** O link já carrega o cenário inteiro, inimigo
+incluso, e quem recebe salva como template dele. Isto é sobre **backup e
+volume** — a biblioteca toda de uma vez.
+
+Três decisões que a ideia força:
+
+- **Um arquivo com as duas listas, e `version` desde o primeiro dia.** No
+  instante em que alguém exporta, o formato virou promessa. As fontes de buff
+  continuam sendo a mesma string do link (`504500:1,3`): um formato só para o
+  mesmo dado, que é a regra que este projeto já pagou caro para seguir (R23,
+  R25, R27).
+- **Import é merge, e diz o que fez.** Substituir a lista de alguém em silêncio
+  é destrutivo. Colisão de nome precisa de resposta explícita, nem que seja
+  "3 importados, 2 já existiam e foram mantidos".
+- **Import é entrada não confiável.** Vale a regra do `revive()` — valida
+  inteiro, descarta o inválido —, mas **dizendo quantos caíram**. Ao contrário
+  da leitura silenciosa do `localStorage`, aqui o usuário está agindo e espera
+  resposta.
+
+As **sementes ficam fora do arquivo**: exportadas, virariam cópias congeladas
+que param de melhorar quando o projeto as melhora.
+
+*Ordem:* **5e antes de 5f.** O arquivo tem de cobrir as duas listas; definir o
+formato antes de alvos existirem custa uma versão nova logo em seguida, ou um
+campo vazio esperando. Com alvos prontos, a primeira versão já nasce completa.
 
 ---
 

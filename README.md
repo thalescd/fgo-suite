@@ -24,6 +24,8 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **5b** | Buffs externos e templates de composição | ✅ pronta |
 | **5c** | Condições de estado (HP, contagem de buffs, turno) | pendente |
 | **5d** | Comparação lado a lado | pendente |
+| **5e** | Alvos salvos, como os templates de buff | pendente |
+| **5f** | Exportar/importar a biblioteca em JSON | pendente |
 
 Detalhe de cada uma em [`PLANO.md`](PLANO.md) §8.1.
 
