@@ -525,7 +525,50 @@ valendo zero** — que §3.16 já apontava como o pior formato que um erro pode 
 aqui, porque não parece defeito, parece skill fraca. Agora sai da lista com o
 motivo.
 
-### 3.18 Buffs externos não são uma party (5b)
+### 3.18 `condFunc` diz em QUEM o efeito cai (R31)
+
+Um terceiro campo de condição, ao lado de `condSelf` (§3.1) e `condTarget`
+(§3.8) — e o único que fala do **destinatário**. A descrição japonesa não deixa
+dúvida:
+
+```
+Altria, 理想郷の騎士 EX
+  upAtk -> ptAll                        味方全体の攻撃力をアップ
+  upAtk -> ptAll  functvals: 円卓の騎士   味方全体の〔円卓の騎士〕の攻撃力をアップ
+```
+
+Dois efeitos gêmeos, um sem condição e outro para os aliados **que são
+Cavaleiros da Távola Redonda**. Sem ler o `functvals`, os dois somam para
+qualquer um. O caso que apareceu primeiro foi a Queen Medb: `upAtk` 〔genderMale〕
+entrando numa atacante feminina — **+20% de `atkMod` que não existem**.
+
+| | |
+|---|---:|
+| Efeitos de dano com `condFunc` | **65** |
+| Que caem no lado do atacante | 62 |
+| Que caem no inimigo e sobrevivem ao filtro de lado (§3.7) | 1 |
+
+**A lista é OR, e o dado prova.** O Hans exige
+`alignmentGood + alignmentBalanced + alignmentEvil` num efeito só, e esses três
+se excluem: sob AND a skill dele não valeria para servo nenhum.
+
+**Casa por id, nunca por nome.** Seis condições têm o nome `"unknown"` (R10), e
+quase todo servo carrega um trait chamado `"unknown"` no fim da lista. O caso
+que decide: o Jekyll exige o trait **600710**, que é o id da forma **Hyde** e não
+tem nome. Jekyll e Hyde carregam, cada um, um trait chamado `"unknown"` — com
+ids diferentes. Por nome, o buff cairia no Jekyll, que é o oposto do que a skill
+faz.
+
+**O que não dá para satisfazer é recusado, com o motivo à vista.** Oito efeitos
+dependem de **estado**, não de identidade: 〔buffGuts〕 do Tezcatlipoca,
+〔holdingHolyGrail〕 da Sodom's Beast (três, um deles `pierceDefence`), dois
+traits sem nome do Jade Rabbit e 〔wrathOfTheEnshrinedDeity〕 da Cait Cú. Nenhum
+aparece na lista estática de traits de servo nenhum, e o estado de batalha é o
+que **D14** adiou. Antes eles entravam sempre — número alto e calado; agora saem
+com o motivo, que é conservador e conferível. Os de prefixo `buff` dizem
+explicitamente que é estado; os outros dizem qual trait falta.
+
+### 3.19 Buffs externos não são uma party (5b)
 
 O terceiro slot da conta não é "os outros dois membros". É uma **lista de fontes
 externas**, sem posição, sem limite de três, com repetição permitida — porque

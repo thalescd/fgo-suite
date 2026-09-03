@@ -312,6 +312,35 @@ async function main(): Promise<void> {
   );
   check("buff sem limiar continua sem o campo", artoria.skills[0]!.effects[0]!.hpGate, null);
 
+  // R31 — `functvals` filtra quem RECEBE o efeito. Os três checks prendem as
+  // três decisões que o dado impôs: a condição existe ao lado de um efeito
+  // gêmeo sem condição, ela é OR, e ela casa por id.
+  console.log("\nR31 — condição de quem recebe");
+  const medb = await servant(byCn(99).id);
+  check(
+    "Medb: um upAtk para todos e outro só 〔genderMale〕",
+    medb.skills.find((s) => s.num === 2)!.effects
+      .filter((e) => e.buffType === "upAtk")
+      .map((e) => `${e.target}:${e.condFunc.map((t) => t.name).join("+") || "-"}`),
+    ["ptAll:-", "ptOther:genderMale"],
+  );
+  const hans = await servant(byCn(33).id);
+  check(
+    "Hans exige três alinhamentos que se excluem — logo é OR",
+    hans.skills.find((s) => s.num === 1)!.effects.find((e) => e.condFunc.length === 3)!.condFunc.map((t) => t.name),
+    ["alignmentGood", "alignmentBalanced", "alignmentEvil"],
+  );
+  // O Jekyll exige o id da forma Hyde num trait chamado "unknown", e os DOIS
+  // servos carregam um trait com esse nome — com ids diferentes. Casar por nome
+  // aplicaria o buff no Jekyll, que é o oposto do que a skill faz.
+  check("Jekyll exige o trait 600710, sem nome",
+    hyde.skills.find((s) => s.num === 3)!.effects.find((e) => e.condFunc.length > 0)!.condFunc,
+    [{ id: 600710, name: "unknown" }]);
+  check("e só a forma Hyde carrega esse id", [
+    hyde.traits.some((t) => t.id === 600710),
+    jekyll.traits.some((t) => t.id === 600710),
+  ], [true, false]);
+
   console.log("\nR9 — identidade");
   check("displayName único para todos", new Set(servants.map((s) => s.displayName)).size, servants.length);
   check("displayName desambiguado", byCn(2).displayName, "Altria Pendragon (saber, 5★)");

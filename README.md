@@ -45,11 +45,11 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 245 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 251 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
-| `npm run data:validate` | Confere a saída contra 93 valores conhecidos do jogo. |
+| `npm run data:validate` | Confere a saída contra 97 valores conhecidos do jogo. |
 | `npm run data:all` | Os três de dados em sequência. |
 | `npm run mcp` | Sobe o servidor MCP solto, para depurar sem cliente. |
 | `npm run damage:cases` | Casos de conferência da calculadora e o nosso número em cada um (R4). |
@@ -125,6 +125,12 @@ O HP também **liga e desliga** buffs, num campo diferente do dump (R30). A skil
 100%, e as duas somavam com qualquer HP — o valor máximo, sempre. A Aesc the Rain
 Witch é o inverso: quatro camadas que só existem machucada, e que davam 40% de
 ataque de graça a uma servo ilesa. São 8 casos no jogo, 7 deles de dano.
+
+E um buff pode valer **só para certos aliados** (R31). A skill 2 da Queen Medb
+tem dois `upAtk`: um para a party e outro só para 〔genderMale〕 — e o segundo
+entrava numa atacante feminina. São 65 efeitos assim, de 〔Cavaleiros da Távola
+Redonda〕 a 〔Evil〕. O que exige um estado de batalha, e não uma identidade, é
+**recusado com o motivo** em vez de aplicado sempre.
 
 **Craft Essence e Mystic Code entram no cálculo** (5a). Uma CE contribui com a
 ATK **e** os efeitos na mesma declaração — o Black Grail é +2.400 de ATK *e*

@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest";
 
 import { calculateDamage, selectableNps, type DamageData, type DamageInput, type Enemy } from "./damage.js";
 import { parseCalc, toDamageInput } from "./scenario.js";
-import type { CardType, Constants, CraftEssence, IndexEntry, IndexEntryServant, MysticCode, Servant } from "./model.js";
+import type { CardType, Constants, CraftEssence, IndexEntry, IndexEntryServant, MysticCode, Servant, Trait } from "./model.js";
 
 const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as IndexEntry[];
 const constants = JSON.parse(readFileSync("public/data/constants.json", "utf8")) as Constants;
@@ -846,6 +846,95 @@ describe("limiar de HP (R30)", () => {
     const sem = atHp(CU, 100, { buffStack: [{ kind: "ownSkill", skillNum: 1, level: 10 }] })
       .assumptions.appliedBuffs;
     expect(sem.every((b) => b.hpGate === undefined)).toBe(true);
+  });
+});
+
+/**
+ * R31 — `condFunc` filtra quem RECEBE o efeito.
+ *
+ * As descrições japonesas são explícitas: 味方全体の〔円卓の騎士〕の攻撃力をアップ
+ * — "sobe o ataque dos aliados **que são Cavaleiros da Távola Redonda**". Nunca
+ * era lido, e a skill 2 da Queen Medb buffava uma atacante feminina em 20% que
+ * não existem.
+ *
+ * São 65 efeitos de dano no roster, todos condição de **trait** — o que os põe
+ * no D14, que trouxe trait para a v1, e não na 5c, que adiou estado.
+ */
+describe("condição de quem recebe o buff (R31)", () => {
+  const MEDB = loadServant(99); // skill 2: um upAtk para todos, outro só 〔genderMale〕
+  const MORIARTY = loadServant(346); // skill 1: o único condFunc que cai no INIMIGO e sobrevive ao filtro de lado
+  const TEZCA = loadServant(371); // o único que exige estado de buff: 〔buffGuts〕
+  const JEKYLL = loadServant(81); // skill 3 exige o id da forma Hyde, num trait chamado "unknown"
+  const HYDE = JSON.parse(readFileSync("public/data/servant/600710.json", "utf8")) as Servant;
+
+  const withSupport = (a: Servant, sup: Servant, skills: number[], over: Partial<DamageInput> = {}) =>
+    calculateDamage(
+      input({
+        attacker: { servantId: a.id, level: 90, fou: 1000, npLevel: 1, overcharge: 1 },
+        buffStack: [{ kind: "support", servantId: sup.id, skills, skillLevel: 10, targetsAttacker: true }],
+        ...over,
+      }),
+      { ...data, servants: new Map([...data.servants, [a.id, a], [sup.id, sup]]) },
+    );
+
+  it("a Medb buffa o aliado homem duas vezes e a mulher uma só", () => {
+    // 20% incondicional para a party + 20% só para 〔genderMale〕. Sem ler o
+    // condFunc, os dois entravam sempre e a Artoria ganhava 40%.
+    expect(withSupport(ARTORIA, MEDB, [2]).breakdown.atkMod).toBe(0.2);
+    expect(withSupport(GIL, MEDB, [2]).breakdown.atkMod).toBe(0.4);
+  });
+
+  it("a recusa nomeia o trait exigido e diz que o atacante não o tem", () => {
+    const fora = withSupport(ARTORIA, MEDB, [2]).assumptions.skippedBuffs.find((b) => /Medb/.test(b.source));
+    expect(fora?.reason).toBe("only applies to allies with genderMale, and the attacker has none of them");
+  });
+
+  it("no lado do inimigo a exigência é do inimigo", () => {
+    // Moriarty skill 1: dois `downDefencecommandall -> enemyAll`, ambos só em
+    // Arts, e o segundo só contra 〔alignmentEvil〕. É o único condFunc que cai
+    // no alvo e sobrevive ao filtro de lado (§3.7).
+    const vs = (traits: Trait[]) =>
+      withSupport(ARTORIA, MORIARTY, [1], {
+        enemy: enemy({ traits }),
+        action: { kind: "card", card: "arts", position: 1, isCrit: false, busterChain: false, braveChain: false },
+      }).breakdown.defMod;
+    expect(vs([])).toBe(-0.2);
+    expect(vs([{ id: 304, name: "alignmentEvil" }])).toBe(-0.4);
+  });
+
+  it("estado de buff não é identidade, e a recusa diz isso", () => {
+    // Tezcatlipoca exige 〔buffGuts〕 no aliado — estado, não quem ele é (D14).
+    const fora = withSupport(ARTORIA, TEZCA, [1, 2, 3]).assumptions.skippedBuffs.find((b) => /buffGuts/.test(b.reason));
+    expect(fora?.reason).toBe("requires the holder to carry buffGuts — buff state is not modelled");
+  });
+
+  it("trait sem nome casa por id, nunca por nome", () => {
+    // O Jekyll exige o trait 600710, que é o id da forma Hyde e se chama
+    // "unknown". Os DOIS servos carregam um trait chamado "unknown" — com ids
+    // diferentes. Casar por nome aplicaria o buff no Jekyll, que é o contrário
+    // do que a skill faz.
+    const crit = (s: Servant) =>
+      calculateDamage(
+        input({
+          attacker: { servantId: s.id, level: 80, fou: 1000, npLevel: 1, overcharge: 1 },
+          buffStack: [{ kind: "ownSkill", skillNum: 3, level: 10 }],
+          action: { kind: "card", card: "buster", position: 1, isCrit: true, busterChain: false, braveChain: false },
+        }),
+        { ...data, servants: new Map([...data.servants, [s.id, s]]) },
+      ).breakdown.critDamageMod;
+    expect(crit(HYDE)).toBeGreaterThan(crit(JEKYLL));
+  });
+
+  it("a lista é OR: o Hans exige três alinhamentos que se excluem", () => {
+    // `alignmentGood + alignmentBalanced + alignmentEvil` num efeito só. Sob
+    // AND, nenhum servo do jogo satisfaria — é o que prova a semântica.
+    const hans = loadServant(33);
+    const efeito = hans.skills
+      .flatMap((sk) => sk.effects)
+      .find((e) => e.condFunc.length === 3)!;
+    expect(efeito.condFunc.map((t) => t.name)).toEqual(["alignmentGood", "alignmentBalanced", "alignmentEvil"]);
+    // A Artoria é lawful **good**: casa no primeiro e o buff vale.
+    expect(withSupport(ARTORIA, hans, [1]).assumptions.appliedBuffs.filter((b) => /Hans/.test(b.source) && b.buffType === "upCriticaldamage")).toHaveLength(2);
   });
 });
 

@@ -371,6 +371,66 @@ export function enemyTraitNames(enemy: Enemy): Set<string> {
   return names;
 }
 
+/**
+ * Os traits de um lado, por id **e** por nome.
+ *
+ * Os dois porque nenhum sozinho basta. Seis condições do dump têm o nome
+ * `"unknown"` (R10), e casar por nome faria qualquer uma delas bater com o
+ * `unknown` que quase todo servo carrega no fim da lista — a Artoria tem um.
+ * Já os traits derivados do inimigo (`classSaber`, `attributeHuman`) existem só
+ * como nome, porque são deduzidos e não vêm do dump.
+ */
+interface SideTraits {
+  ids: Set<number>;
+  names: Set<string>;
+}
+
+const sideTraitsOf = (traits: Trait[], extraNames?: Set<string>): SideTraits => ({
+  ids: new Set(traits.map((t) => t.id)),
+  names: extraNames ?? new Set(traits.map((t) => t.name)),
+});
+
+/** Id primeiro; o nome só vale quando é um nome de verdade. */
+const carries = (t: Trait, s: SideTraits): boolean =>
+  s.ids.has(t.id) || (t.name !== "unknown" && s.names.has(t.name));
+
+/**
+ * `condFunc` (`functvals`): o efeito só cai em **quem tem** certos traits (R31).
+ *
+ * As descrições japonesas não deixam dúvida sobre de quem é a exigência:
+ * 味方全体の**〔円卓の騎士〕**の攻撃力をアップ — "sobe o ataque dos aliados **que
+ * são Cavaleiros da Távola Redonda**". É filtro de destinatário, então o lado
+ * avaliado é aquele em que o efeito cai.
+ *
+ * **A lista é OR, e o dado prova.** O Hans exige
+ * `alignmentGood + alignmentBalanced + alignmentEvil`, que são mutuamente
+ * exclusivos: sob AND a skill dele nunca valeria para ninguém.
+ */
+function condFuncRejection(
+  conds: Trait[],
+  side: "attacker" | "enemy",
+  attacker: SideTraits,
+  enemy: SideTraits,
+): string | null {
+  if (conds.length === 0) return null;
+
+  const identity = conds.filter((t) => !t.name.startsWith("buff"));
+  if (identity.some((t) => carries(t, side === "attacker" ? attacker : enemy))) return null;
+
+  // Estado de buff, como em `condTarget` (§3.8): não é identidade e não é
+  // modelado (D14). Vem depois do OR de propósito — um trait de identidade que
+  // casou já resolveu a condição, e aí o estado não precisa ser consultado.
+  const state = conds.filter((t) => t.name.startsWith("buff"));
+  if (state.length > 0) {
+    return `requires the holder to carry ${state.map((t) => t.name).join("/")} — buff state is not modelled`;
+  }
+
+  const what = identity.map((t) => (t.name === "unknown" ? `trait ${t.id}` : t.name)).join("/");
+  return side === "attacker"
+    ? `only applies to allies with ${what}, and the attacker has none of them`
+    : `only applies to targets with ${what}`;
+}
+
 // --------------------------------------------------------- resolução de buff
 
 /** Buff que pega a party inteira: alcança quem ataca sem perguntar. 400 efeitos. */
@@ -500,6 +560,8 @@ function resolveBuffs(
   candidates: Candidate[],
   input: DamageInput,
   enemyTraits: Set<string>,
+  /** Os traits do servo que ataca — de quem `condFunc` fala quando o buff cai nele. */
+  attackerTraits: Trait[],
   /**
    * Card **efetivo** da ação, já resolvido pelo chamador.
    *
@@ -526,6 +588,9 @@ function resolveBuffs(
   const cardName = CARD_TRAIT[actionCard];
   /** Serve às duas mecânicas de HP: a que escala o valor (R25) e a que liga o efeito (R30). */
   const hpPercent = clampPercent(input.attacker.hpPercent ?? 100);
+  // Os dois lados na mesma forma, para `condFunc` avaliar contra quem recebe.
+  const attackerSide = sideTraitsOf(attackerTraits);
+  const enemySide = sideTraitsOf(input.enemy.traits, enemyTraits);
 
   /** `faceCard` é "command card", ou seja, qualquer coisa que não seja NP. */
   const isCardTrait = (name: string) => name.startsWith("card") || name === "faceCard";
@@ -629,6 +694,14 @@ function resolveBuffs(
     const reason = rejectionOf(e);
     if (reason !== null) {
       skipped.push({ source: c.source, buffType: label, reason });
+      continue;
+    }
+
+    // R31: `condFunc` filtra QUEM recebe o efeito. Nunca era lido, e o `upAtk`
+    // 〔genderMale〕 da Queen Medb entrava numa atacante feminina.
+    const byWho = condFuncRejection(e.condFunc, side, attackerSide, enemySide);
+    if (byWho !== null) {
+      skipped.push({ source: c.source, buffType: label, reason: byWho });
       continue;
     }
 
@@ -951,7 +1024,13 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
       : input.action.card ?? "arts";
 
   const candidates = collectCandidates(input, data);
-  const { applied, skipped, unmodeled, relationOverrides } = resolveBuffs(candidates, input, enemyTraits, card);
+  const { applied, skipped, unmodeled, relationOverrides } = resolveBuffs(
+    candidates,
+    input,
+    enemyTraits,
+    attacker.traits,
+    card,
+  );
 
   // ---- ATK
   const base = attacker.atkGrowth[input.attacker.level - 1] ?? 0;
