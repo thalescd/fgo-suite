@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import type { IndexEntry } from "../core/model.js";
 import { labelForTag } from "../core/capabilities.js";
-import { facetCounts, isDefaultFilters, search, type FacetOption } from "../core/search.js";
+import { facetCounts, isDefaultFilters, search, statKindOf, type FacetOption } from "../core/search.js";
 import { Facet, ResultCard } from "./components.js";
 import type { Bootstrap } from "./data.js";
 import { useFilters } from "./useFilters.js";
@@ -74,6 +74,17 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
   );
   const originOpts = useMemo(
     () => build(fc("origin", (e) => (e.kind === "equip" ? e.origin : null))),
+    [index, filters],
+  );
+  // As três se excluem, então o OR de sempre vale: marcar "ATK only" e
+  // "ATK + HP" dá todas as que sobem ataque.
+  const statOpts = useMemo(
+    () =>
+      build(
+        fc("statKind", (e) => (e.kind === "equip" ? statKindOf(e) : null)),
+        ["atk", "hp", "both"],
+        (v) => (v === "atk" ? "ATK only" : v === "hp" ? "HP only" : "ATK + HP"),
+      ),
     [index, filters],
   );
 
@@ -164,6 +175,9 @@ export function SearchPage({ boot }: { boot: Bootstrap }) {
             <Facet title="Category" selectedCount={filters.category.length} options={catOpts} open
               isSelected={(v) => filters.category.includes(String(v))}
               onToggle={(v) => { toggle("category", String(v)); setShown(PAGE); }} />
+            <Facet title="Stat bonus" selectedCount={filters.statKind.length} options={statOpts} open
+              isSelected={(v) => filters.statKind.includes(String(v))}
+              onToggle={(v) => { toggle("statKind", String(v)); setShown(PAGE); }} />
             <Facet title="Origin" selectedCount={filters.origin.length} options={originOpts}
               isSelected={(v) => filters.origin.includes(String(v))}
               onToggle={(v) => { toggle("origin", String(v)); setShown(PAGE); }} />

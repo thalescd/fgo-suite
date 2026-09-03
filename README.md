@@ -45,7 +45,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 258 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 262 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -64,10 +64,14 @@ MCP na fase 4.
 ```
 /?kind=servant&class=archer&rarity=5&np=aoe&sort=atk&dir=desc
 /?kind=equip&cat=combat&q=kaleidoscope
+/?kind=equip&stat=atk&sort=atk&dir=desc          CEs de ATK puro, da que mais dá para a que menos
 ```
 
 Servos filtram por raridade, classe, atributo, alvo do NP (ST/AoE/support), card
-do NP, welfare e traits; CEs por raridade, categoria (combate/farm) e origem.
+do NP, welfare e traits; CEs por raridade, categoria (combate/farm), origem e
+**que status dão** — 386 só ATK, 156 só HP, 1.607 as duas. As três opções se
+excluem, então marcar *ATK only* e *ATK + HP* dá tudo que sobe ataque; com duas
+caixas independentes, "só HP" não teria como ser pedido.
 Busca textual cobre nome, apelido curado e `collectionNo`, ignorando acentos —
 `scathach` acha *Scáthach*, `auo` acha *Gilgamesh*.
 

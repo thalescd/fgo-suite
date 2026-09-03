@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import type { IndexEntry, IndexEntryServant } from "./model.js";
-import { EMPTY_FILTERS, facetCounts, normalize, search, type SearchFilters } from "./search.js";
+import { EMPTY_FILTERS, facetCounts, normalize, search, statKindOf, type SearchFilters } from "./search.js";
 
 const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as IndexEntry[];
 const servants = index.filter((e): e is IndexEntryServant => e.kind === "servant");
@@ -122,6 +122,42 @@ describe("facetas de craft essence", () => {
     expect(combat).toBe(1309);
     expect(farm).toBe(840);
     expect(combat + farm).toBe(2149);
+  });
+
+  describe("que status a CE dá", () => {
+    const n = (...kinds: string[]) => search(index, F({ kind: "equip", statKind: kinds })).length;
+
+    it("as três opções particionam o catálogo", () => {
+      // Nenhuma CE fica de fora e nenhuma entra duas vezes — é o que autoriza
+      // a partição em vez de duas caixas independentes.
+      expect([n("atk"), n("hp"), n("both")]).toEqual([386, 156, 1607]);
+      expect(n("atk", "hp", "both")).toBe(2149);
+    });
+
+    it("marcar duas soma, porque a faceta é OR", () => {
+      // "dá ATK" é o par ATK + ambas. Com caixas independentes isso não teria
+      // como ser dito sem também dizer "dá HP".
+      expect(n("atk", "both")).toBe(386 + 1607);
+      expect(n("hp", "both")).toBe(156 + 1607);
+    });
+
+    it("o rótulo corresponde ao que a CE tem de fato", () => {
+      const equips = search(index, F({ kind: "equip" })).filter((e) => e.kind === "equip");
+      for (const e of equips) {
+        const k = statKindOf(e);
+        expect([k, e.atkAtDefault > 0, e.hpAtDefault > 0]).toEqual([
+          k,
+          k !== "hp",
+          k !== "atk",
+        ]);
+      }
+    });
+
+    it("combina com as outras facetas em vez de substituí-las", () => {
+      const combatAtk = search(index, F({ kind: "equip", category: ["combat"], statKind: ["atk"] })).length;
+      expect(combatAtk).toBeGreaterThan(0);
+      expect(combatAtk).toBeLessThan(n("atk"));
+    });
   });
 });
 

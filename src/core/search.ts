@@ -37,6 +37,15 @@ export interface SearchFilters {
   // craft essence
   category: string[];
   origin: string[];
+  /**
+   * Que status a CE dá: `atk`, `hp` ou `both`.
+   *
+   * Partição, não duas caixas independentes. Com caixas "dá ATK" e "dá HP", o
+   * caso mais natural — marcar as duas — devolveria as 2.149, porque a regra de
+   * uma faceta é OR; e nenhuma combinação diria "só HP". Assim as três opções se
+   * excluem, o OR de sempre vale, e "dá ATK" é ATK + ambas.
+   */
+  statKind: string[];
 
   sort: SortKey;
   dir: SortDir;
@@ -55,6 +64,7 @@ export const EMPTY_FILTERS: SearchFilters = {
   capabilities: [],
   category: [],
   origin: [],
+  statKind: [],
   sort: "collectionNo",
   dir: "asc",
 };
@@ -71,7 +81,8 @@ export function isDefaultFilters(f: SearchFilters): boolean {
     f.traitIds.length === 0 &&
     f.capabilities.length === 0 &&
     f.category.length === 0 &&
-    f.origin.length === 0
+    f.origin.length === 0 &&
+    f.statKind.length === 0
   );
 }
 
@@ -123,9 +134,25 @@ function matchesServant(e: IndexEntryServant, f: SearchFilters): boolean {
   return true;
 }
 
+export type StatKind = "atk" | "hp" | "both";
+
+/**
+ * Que status a CE dá, derivado de `atkAtDefault`/`hpAtDefault`.
+ *
+ * Derivado na consulta, não gravado no índice: são duas comparações sobre
+ * campos que já estão lá, e a regra fica num lugar só. Medido no dump: 386 só
+ * ATK, 156 só HP, 1.607 ambas — e **nenhuma** sem nenhum dos dois, por isso o
+ * tipo tem três casos e não quatro.
+ */
+export function statKindOf(e: IndexEntryEquip): StatKind {
+  const atk = e.atkAtDefault > 0;
+  return atk && e.hpAtDefault > 0 ? "both" : atk ? "atk" : "hp";
+}
+
 function matchesEquip(e: IndexEntryEquip, f: SearchFilters): boolean {
   if (!anyOf(f.category, e.category)) return false;
   if (!anyOf(f.origin, e.origin)) return false;
+  if (!anyOf(f.statKind, statKindOf(e))) return false;
   return true;
 }
 

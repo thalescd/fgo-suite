@@ -27,6 +27,7 @@ const KEYS = {
   capabilities: "cap",
   category: "cat",
   origin: "origin",
+  statKind: "stat",
   sort: "sort",
   dir: "dir",
 } as const satisfies Record<keyof SearchFilters, string>;
@@ -57,6 +58,7 @@ export function parseFilters(p: URLSearchParams): SearchFilters {
     capabilities: list(p, KEYS.capabilities),
     category: list(p, KEYS.category),
     origin: list(p, KEYS.origin),
+    statKind: list(p, KEYS.statKind),
     sort,
     dir,
   };
@@ -78,12 +80,15 @@ export function serializeFilters(f: SearchFilters): URLSearchParams {
   put(KEYS.capabilities, f.capabilities.join(","));
   put(KEYS.category, f.category.join(","));
   put(KEYS.origin, f.origin.join(","));
+  put(KEYS.statKind, f.statKind.join(","));
   if (f.sort !== EMPTY_FILTERS.sort) p.set(KEYS.sort, f.sort);
   if (f.dir !== EMPTY_FILTERS.dir) p.set(KEYS.dir, f.dir);
   return p;
 }
 
-type ArrayKeys = "rarity" | "traitIds" | "capabilities" | "className" | "attribute" | "npTarget" | "npCard" | "category" | "origin";
+type ArrayKeys =
+  | "rarity" | "traitIds" | "capabilities" | "className" | "attribute"
+  | "npTarget" | "npCard" | "category" | "origin" | "statKind";
 
 export interface FilterApi {
   filters: SearchFilters;
