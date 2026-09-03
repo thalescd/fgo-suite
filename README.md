@@ -18,7 +18,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **0** | Ingestão, manifest, modelo canônico | ✅ pronta |
 | **1** | Busca com filtros diretos (servos e CEs) | ✅ pronta |
 | **2** | Capabilities + busca por skill | ✅ pronta |
-| **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **11 de 16 casos conferidos contra calculadora externa (R4)** |
+| **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **12 de 17 casos conferidos contra calculadora externa (R4)** |
 | **4** | MCP server — busca e calculadora como tools | ✅ pronta |
 | **5a** | CE e Mystic Code na query string, na tela e nas tools | ✅ pronta |
 | **5b** | Buffs externos e templates de composição | ✅ pronta |
@@ -178,9 +178,10 @@ rebalanceamento. Duas composições vêm prontas como exemplo.
 
 Fora por enquanto: condições de estado (5c) e comparação lado a lado (5d).
 
-**11 dos 16 casos do R4 estão conferidos** contra calculadora da comunidade —
-33 números, reproduzidos exatamente. Isso prende a espinha multiplicativa inteira
-e cinco mecânicas que nasceram de relato (R21–R24, R26).
+**12 dos 17 casos do R4 estão conferidos** contra calculadora da comunidade —
+36 números, reproduzidos exatamente. Isso prende a espinha multiplicativa inteira
+e cinco mecânicas que nasceram de relato (R21–R24, R26). O décimo-segundo é o
+primeiro de **card**, e o primeiro em que o `firstCardBonus` entra na conta.
 
 Duas ressalvas continuam valendo. Os 5 casos que faltam são todos de **card**, e
 a fonte usada só calcula NP. E conferir contra outra calculadora **não é** conferir
@@ -270,7 +271,7 @@ API mudar um campo, conserta-se em um lugar só.
 | [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md) | Tags de busca: formato, limiares, como adicionar |
 | [`docs/DAMAGE.md`](docs/DAMAGE.md) | Fórmula, mapeamento buff→slot, sutilezas, estado da validação |
 | [`docs/MCP.md`](docs/MCP.md) | As tools, como o assistente as descobre, e por que a descrição é interface |
-| [`docs/VALIDATION.md`](docs/VALIDATION.md) | **Como conferir a calculadora contra o jogo** — os 16 casos e o procedimento |
+| [`docs/VALIDATION.md`](docs/VALIDATION.md) | **Como conferir a calculadora contra o jogo** — os 17 casos e o procedimento |
 | [`damage_formula.txt`](damage_formula.txt) | A fórmula de dano da comunidade (fonte da fase 3) |
 
 Se você herdou este projeto: comece pelo `PLANO.md`. Ele registra *por que* cada

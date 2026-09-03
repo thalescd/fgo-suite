@@ -15,9 +15,7 @@
     "`sourceName` registra de onde veio o número — sem isso não dá para revisitar",
     "uma divergência meses depois."
   ],
-
   "preset": "Todos os casos: nível natural máximo, 1000 fou de ATK, sem CE, sem Mystic Code, sem suporte.",
-
   "cases": [
     {
       "id": "base-artoria-np",
@@ -66,13 +64,23 @@
       "calc": "s=100100&act=buster&pos=1&ec=saber&ea=earth",
       "source": "calc",
       "mode": "avg",
-      "expected": null
+      "expected": 5621,
+      "sourceName": "maketakunai.github.io"
     },
     {
       "id": "card-buster-3rd",
-      "why": "Prende cardDamageValue 2.1 na 3a posicao E a ausencia do firstCardBonus fora da 1a.",
-      "scenario": "Igual, card Buster em 3a posicao",
+      "why": "Prende cardDamageValue 2.1 na 3a posicao. A chain NAO abriu em Buster, entao nao ha' firstCardBonus -- ver card-arts-2nd-buster-first para o outro lado (R32).",
+      "scenario": "Igual, card Buster em 3a posicao, numa chain que nao abriu em Buster",
       "calc": "s=100100&act=buster&pos=3&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
+      "id": "card-arts-2nd-buster-first",
+      "why": "R32: o firstCardBonus e' da CHAIN, nao da carta. Uma Arts em 2a posicao numa chain aberta em Buster ganha os mesmos 0.5, e o termo vai de 1.2 para 1.7. Nenhum dos 16 casos originais cobria isto, e o defeito viveu ai'.",
+      "scenario": "Artoria, card Arts em 2a posicao, chain aberta em Buster, contra Saber/earth",
+      "calc": "s=100100&act=arts&pos=2&bfirst=1&ec=saber&ea=earth",
       "source": "calc",
       "mode": "avg",
       "expected": null

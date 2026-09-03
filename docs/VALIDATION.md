@@ -10,7 +10,7 @@ npm run damage:cases    # imprime os casos, o link de cada um e o nosso número
 
 ---
 
-## 1. Por que 16 casos bastam
+## 1. Por que 17 casos bastam
 
 A fórmula é um **produto de termos**. Isso muda tudo sobre quanto trabalho é
 preciso: não é necessário testar combinações, só cobrir cada fator uma vez.
@@ -112,8 +112,8 @@ motivos que o primeiro bug apareceu.
 
 ## 5. Diferenças já conhecidas e explicadas
 
-Contra **maketakunai.github.io**, em **11 casos — 33 números**. Reconstruindo o
-produto sem o piso a partir da própria auditoria, os 33 são reproduzidos
+Contra **maketakunai.github.io**, em **12 casos — 36 números**. Reconstruindo o
+produto sem o piso a partir da própria auditoria, os 36 são reproduzidos
 **exatamente** sob duas convenções que não são as nossas:
 
 ```
@@ -128,9 +128,14 @@ produto sem o piso a partir da própria auditoria, os 33 são reproduzidos
 ✓ class-relation-override     23600/26223/28819
 ✓ card-res-down-on-target     30681/34090/37464
 ✓ buff-boost                  42957/47730/52455
+✓ card-buster-1st              5059/ 5621/ 6184
 ```
 
-Trinta e três números, **duas** diferenças, nenhuma terceira.
+O último é o **primeiro caso de card** conferido, e o primeiro em que o
+`firstCardBonus` entra na conta — os onze anteriores são todos de NP, que não
+ganha o bônus. Min e média exatos; o max repete a divergência de sempre.
+
+Trinta e seis números, **duas** diferenças, nenhuma terceira.
 
 **Arredondamento.** Eles arredondam, nós truncamos. Vale 1 ponto, e só quando a
 fração passa de `,5`.
@@ -141,29 +146,34 @@ fração passa de `,5`.
 > falta de motivo para mudar, não por conhecimento.
 
 **Teto do random.** `ATTACK_RATE_RANDOM_MIN/MAX` no dump são `900` e `1100`.
-Eles usam **1,099** como máximo; nós usamos 1,100. Onze em onze, na casa decimal.
+Eles usam **1,099** como máximo; nós usamos 1,100. Doze em doze, na casa decimal.
 
 A leitura por trás do 1,099 é que o jogo sorteia um **inteiro** em `[900, 1100)`
 — limite superior exclusivo, como é convenção em RNG —, e nesse caso 1,100 não
-pode acontecer. O detalhe que sustenta isso: o **mínimo bate exato** nos onze
+pode acontecer. O detalhe que sustenta isso: o **mínimo bate exato** nos doze
 casos, o que só faz sentido se o limite de baixo for fechado e o de cima não.
 
 > **Em aberto, de propósito.** A interpretação é boa, mas é dedução a partir do
-> nome de uma constante — não medição. Onze casos confirmam que a escolha *deles*
-> é essa, não que ela esteja certa: é uma fonte só, repetida onze vezes.
+> nome de uma constante — não medição. Doze casos confirmam que a escolha *deles*
+> é essa, não que ela esteja certa: é uma fonte só, repetida doze vezes.
 >
 > **O que resolveria:** um dano in-game acima de `exato × 1,099`. Um único acerto
 > desses fecha a favor do 1,100; muitos tiros parando abaixo fecham a favor do
 > 1,099. Até lá, impacto de 0,09% e só no `max` — o `min`, que é o que interessa
-> para "dano garantido", bate nos onze.
+> para "dano garantido", bate nos doze.
 
-### O que os 11 casos já provam
+### O que os 12 casos já provam
 
 **A espinha multiplicativa inteira:** ATK por `atkGrowth` + fou (sem `atkMax`,
 que erraria 8% — R7), `cardTerm` 1,5 do NP Buster sem `firstCardBonus`,
 `classAtkBonus`, `ATTACK_RATE` 0,23, `triangleModifier` 2,0,
 `attributeModifier` 1,1, multiplicador de NP em 400% e 600%, e com eles os
 divisores de unidade (R14).
+
+**E, desde `card-buster-1st`, o primeiro termo que só existe em card:**
+`firstCardBonus` 0,5 somado ao `cardDamageValue` 1,5 do Buster de abertura.
+Os onze anteriores são de NP, que não ganha o bônus — foi dentro desse vão que
+o R32 viveu.
 
 **E quatro mecânicas que nasceram de relato**, o que importa mais, porque cada
 uma foi corrigida na base de leitura do dado e não tinha confirmação externa:
@@ -182,15 +192,21 @@ a fonte externa concorda com 200 e 175, não com 20 e 17,5. Aquela correção ti
 só `damage_formula.txt` ("note the lack of %") e os nossos próprios testes atrás
 dela.
 
-### O buraco que os 11 não cobrem
+### O buraco que os 12 não cobrem
 
-Nenhum caso toca as famílias **por servo** — escala por HP (R25), super-efetivo
-por soma (R27) e unidade faltando no `funcType` (R28). Os três foram achados por
-alguém olhar um número e estranhar, não por este conjunto. É o que falta desenhar.
+Nenhum caso toca as famílias **por servo** — escala por HP (R25 e R30),
+super-efetivo por soma (R27), fase de medidor (R33), unidade faltando no
+`funcType` (R28) e condição de quem recebe (R31). Todos foram achados por alguém
+olhar um número e estranhar, não por este conjunto. É o que falta desenhar.
+
+O conjunto **cresceu de 16 para 17** quando o R32 apareceu: `card-arts-2nd-buster-first`
+existe porque nenhum dos 16 cobria uma carta não-primeira numa chain aberta em
+Buster, e era exatamente ali que o defeito estava. Um caso novo por mecânica
+nova é o que impede o conjunto de virar decoração.
 
 ## 6. Estado
 
-`npm run damage:cases` termina imprimindo `R4: N de 16 casos conferidos`. Hoje: **11 de 16**, todos contra
+`npm run damage:cases` termina imprimindo `R4: N de 17 casos conferidos`. Hoje: **12 de 17**, todos contra
 maketakunai.github.io.
 
 Os **5 que faltam são todos de card** — `card-buster-1st`, `card-buster-3rd`,
