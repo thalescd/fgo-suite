@@ -174,8 +174,21 @@ export const DEFAULT_CALC: CalcState = {
   busterFirst: false,
   busterChain: false,
   braveChain: false,
-  enemyClass: "saber",
-  enemyAttribute: "human",
+  // Alvo NEUTRO por padrão, não o primeiro da lista.
+  //
+  // `saber`/`human` deixava o número torto de graça: contra Saber, um Archer
+  // ganha 1,5x e um Lancer perde metade, sem ninguém ter pedido nada. O
+  // `shielder` é o único alvo que dá **1,0 vindo de todo atacante jogável** — é
+  // a Mash, e a neutralidade é da própria matriz do jogo, não invenção daqui.
+  //
+  // `star` é neutro para 457 dos 462: só os 5 atacantes de atributo `beast`
+  // veem 1,1, e o rótulo do seletor mostra o multiplicador quando ele não é 1.
+  //
+  // De quebra, o par neutro quase não ativa condição por acaso: 4 efeitos
+  // olham `classShielder` contra 67 que olham `classSaber`, e 3 olham
+  // `attributeStar` contra 27 que olham `attributeHuman`.
+  enemyClass: "shielder",
+  enemyAttribute: "star",
   enemyTraits: [],
   enemyDefMod: 0,
   enemySpecialDefMod: 0,

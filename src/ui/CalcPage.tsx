@@ -1065,7 +1065,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
 
           <Block title="Enemy">
             <div className="fields">
-              <Field label="Class" hint="multiplier shown is against this attacker">
+              <Field label="Class" hint="multiplier shown is against this attacker — shielder is the neutral one">
                 <select value={state.enemyClass} onChange={(e) => patch({ enemyClass: e.target.value })}>
                   <optgroup label="Playable classes">
                     {PLAYABLE_CLASSES.map((c) => <option key={c} value={c}>{classLabel(c)}</option>)}
@@ -1079,7 +1079,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                 </select>
               </Field>
 
-              <Field label="Attribute">
+              <Field label="Attribute" hint="star is neutral for every attacker but the 5 beast ones">
                 <select value={state.enemyAttribute} onChange={(e) => patch({ enemyAttribute: e.target.value })}>
                   {ATTRIBUTES.map((a) => {
                     const m = attrRow[a as keyof typeof attrRow] ?? 1;

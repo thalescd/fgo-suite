@@ -106,7 +106,10 @@ um suporte removido em outro, calada.
 
 Escolhe-se atacante, nível/fou/NP/overcharge, a ação (NP ou card, posição na
 chain, crítico), quais skills estão ativas, e o inimigo — classe, atributo,
-traits. O resultado vem com **min / média / max** e a auditoria junto: cada termo
+traits. **O alvo começa neutro**: `shielder` é o único que dá 1,0 vindo de todo
+atacante, e `star` é neutro para 457 dos 462. Quem não mexe no bloco Enemy não
+está pedindo vantagem de classe — começar em Saber dava 1,5× a um Archer de
+graça. O resultado vem com **min / média / max** e a auditoria junto: cada termo
 da fórmula com o valor que assumiu, cada buff que entrou, e cada buff que **não**
 entrou com o motivo. Foi lendo um desses motivos que o bug do card do NP
 apareceu.

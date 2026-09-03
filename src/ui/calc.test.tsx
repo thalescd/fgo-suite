@@ -200,7 +200,10 @@ describe("o cenário chega inteiro no cálculo", () => {
     const weak = run(artoria, `s=${artoria.id}&ec=lancer`);
     expect(neutral.breakdown.triangleModifier).toBe(1);
     expect(weak.breakdown.triangleModifier).toBe(2);
-    expect(weak.avg / neutral.avg).toBeCloseTo(2, 5);
+    // `avg` é inteiro, então a razão entre dois danos nunca é exata. A garantia
+    // real é "o dobro a menos de um ponto de arredondamento" — e era isso que
+    // o `toBeCloseTo(2, 5)` dizia por sorte, até o alvo padrão mudar.
+    expect(Math.abs(weak.avg - neutral.avg * 2)).toBeLessThanOrEqual(1);
   });
 
   it("marcar as skills na URL muda o número", () => {

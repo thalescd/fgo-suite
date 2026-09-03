@@ -336,7 +336,35 @@ Chain"* — uma chain é formada por três **command cards**, e um NP não é co
 card. Testar só "buster chain aumenta o dano de um card Buster" deixa a metade
 errada passar; o teste cobre as duas.
 
-### 3.12 Traits derivados do inimigo (D15)
+### 3.12 O alvo padrão é neutro, não o primeiro da lista
+
+`saber`/`human` era o padrão só por ser o começo da lista, e isso torce o número
+de graça: contra Saber, um Archer ganha **1,5×** e um Lancer perde **metade**,
+sem ninguém ter pedido. Quem não mexe no bloco Enemy não está pedindo vantagem
+nenhuma — está dizendo "não me importo".
+
+O padrão passou a ser o par neutro, e os dois saem da própria matriz do jogo:
+
+| | |
+|---|---|
+| `shielder` | o **único** alvo que dá 1,0 vindo de todo atacante jogável |
+| `star` | neutro para 457 dos 462; só os 5 de atributo `beast` veem 1,1 |
+
+Não há alvo pseudo-inventado: a Mash é uma classe de verdade, e a neutralidade
+dela é do `classRelation`. O seletor continua mostrando o multiplicador no
+rótulo (`lancer — x2`), então trocar para um alvo com vantagem continua sendo uma
+escolha visível.
+
+De quebra, o par neutro quase não ativa condição por acaso:
+
+| trait de alvo | efeitos que o exigem |
+|---|---:|
+| `classSaber` | 67 |
+| `classShielder` | **4** |
+| `attributeHuman` | 27 |
+| `attributeStar` | **3** |
+
+### 3.13 Traits derivados do inimigo (D15)
 
 `className: "saber"` injeta o trait `classSaber`; `attribute: "human"` injeta
 `attributeHuman`. Sem isso, 71 checagens anti-classe e 16 anti-atributo falham em
@@ -345,7 +373,7 @@ silêncio.
 E "humano" são cinco traits distintos — `human`, `attributeHuman`, `livingHuman`,
 `humanoid`, `hominidaeServant`. Nunca normalizar por semelhança de nome.
 
-### 3.13 Bônus de evento em Craft Essence (R29)
+### 3.14 Bônus de evento em Craft Essence (R29)
 
 CE de evento costuma dar *"ataque +X% neste evento"*. No dump isso chega como um
 `upDamage` **sem condição nenhuma** — e **qual** evento é vive em dado de quest
@@ -374,7 +402,7 @@ não o texto — e um teste varre o roster e falha se algum servo passar a ter
 `upAtk` de 10%/15% da Golden Sumo entram normalmente; só o `upDamage` fantasma
 sai, e sai **com o motivo** em `notCounted`.
 
-### 3.14 De onde vem cada buff que não é do servo (5a, 5b)
+### 3.15 De onde vem cada buff que não é do servo (5a, 5b)
 
 | Fonte | Onde se declara | Por quê |
 |---|---|---|
@@ -403,7 +431,7 @@ conjunto mais fraco. Já o `level` da CE mexe só na ATK, e omiti-lo significa "
 máximo daquela CE", resolvido no núcleo porque o teto varia de 50 a 100 conforme
 a raridade.
 
-### 3.15 O super-efetivo não mora sempre no mesmo campo (R27)
+### 3.16 O super-efetivo não mora sempre no mesmo campo (R27)
 
 Em quase todo NP o multiplicador super-efetivo vem de `svals[].Correction`. Em
 **`damageNpIndividualSum` não**: ali ele está em `Value2`, e `Correction` passa a
@@ -465,7 +493,7 @@ do piso calado:
 8 of up to 12 own Heroic King stacks (+80% super effective)
 ```
 
-### 3.16 Nem toda contagem é de trait (R33)
+### 3.17 Nem toda contagem é de trait (R33)
 
 O R27 ensinou 17 NPs a somar dano **por unidade de um trait acumulado**. Um
 décimo-oitavo NP soma da mesma forma, mas o que ele conta não é trait nenhum:
@@ -505,7 +533,7 @@ jogo; `countLabel` existe só para isso, e é `null` em quem conta trait.
 que o consome, mas a função o referencia por `Target`, então a ingestão monta um
 dicionário global — o mesmo desenho do dicionário de traits.
 
-### 3.17 Sete servos batem mais forte machucados (R25)
+### 3.18 Sete servos batem mais forte machucados (R25)
 
 Dois mecanismos **independentes**, com nomes e formatos diferentes, que fazem a
 mesma coisa. Os dois entram por `hpPercent`, o HP atual em % do máximo.
@@ -551,9 +579,9 @@ Na auditoria, um buff que escala aparece com `atFullHp` **sempre**, inclusive
 com HP cheio: é justamente aí que ele vale menos, e saber que o número cresce
 se você apanhar é a informação toda.
 
-### 3.18 O HP mexe no buff de duas formas, em dois campos (R30)
+### 3.19 O HP mexe no buff de duas formas, em dois campos (R30)
 
-R25 (§3.17) leu uma delas: o HP muda o **valor**, e a informação está em `svals`
+R25 (§3.18) leu uma delas: o HP muda o **valor**, e a informação está em `svals`
 (`RatioHPLow`, `RatioHPRange*`). A outra é um **liga/desliga**, e mora em
 `buff.script`:
 
@@ -588,11 +616,11 @@ debuff hoje; o caminho existe para quando for.
 
 **Um efeito pode ter os dois.** A Passionlip tem: `RatioHPRange*` para escalar e
 `HP_LOWER: 500` para ligar. Antes, acima de 50% de HP ela aparecia **contada
-valendo zero** — que §3.17 já apontava como o pior formato que um erro pode ter
+valendo zero** — que §3.18 já apontava como o pior formato que um erro pode ter
 aqui, porque não parece defeito, parece skill fraca. Agora sai da lista com o
 motivo.
 
-### 3.19 `condFunc` diz em QUEM o efeito cai (R31)
+### 3.20 `condFunc` diz em QUEM o efeito cai (R31)
 
 Um terceiro campo de condição, ao lado de `condSelf` (§3.1) e `condTarget`
 (§3.8) — e o único que fala do **destinatário**. A descrição japonesa não deixa
@@ -635,7 +663,7 @@ que **D14** adiou. Antes eles entravam sempre — número alto e calado; agora s
 com o motivo, que é conservador e conferível. Os de prefixo `buff` dizem
 explicitamente que é estado; os outros dizem qual trait falta.
 
-### 3.20 Buffs externos não são uma party (5b)
+### 3.21 Buffs externos não são uma party (5b)
 
 O terceiro slot da conta não é "os outros dois membros". É uma **lista de fontes
 externas**, sem posição, sem limite de três, com repetição permitida — porque
