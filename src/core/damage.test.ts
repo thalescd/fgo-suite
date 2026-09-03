@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { calculateDamage, selectableNps, type DamageData, type DamageInput, type Enemy } from "./damage.js";
+import { parseCalc, toDamageInput } from "./scenario.js";
 import type { CardType, Constants, CraftEssence, IndexEntry, IndexEntryServant, MysticCode, Servant } from "./model.js";
 
 const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as IndexEntry[];
@@ -39,6 +40,9 @@ const KALEID = loadEquip(34);
 // 5a — 2400 de ATK **e** upNpdamage 60/80: prende os dois caminhos da CE de uma
 // vez, e separa `effectsBase` de `effectsMlb`.
 const GRAIL = loadEquip(48);
+// 5b — CE que buffa a PARTY: upAtk 15% -> ptFull, sem condição. É o que um
+// suporte carrega para o time; o Black Grail é `self` e fica com ele.
+const CROWN = loadEquip(191);
 // R29 — CE de evento: dá ATK e upAtk como anuncia, mais um `upDamage` de 100%
 // (200% no MLB) que só vale dentro do evento e não aparece na descrição.
 const SUMO = loadEquip(261);
@@ -58,7 +62,7 @@ const data: DamageData = {
   servants: new Map(
     [ARTORIA, GIL, OBERON, CU, LEONIDAS, LIP, HIJIKATA, ANNE, MUSASHI, CHARLEMAGNE].map((s) => [s.id, s]),
   ),
-  equips: new Map([[KALEID.id, KALEID], [GRAIL.id, GRAIL], [SUMO.id, SUMO]]),
+  equips: new Map([[KALEID.id, KALEID], [GRAIL.id, GRAIL], [SUMO.id, SUMO], [CROWN.id, CROWN]]),
   mysticCodes: new Map(mysticCodes.map((m) => [m.id, m])),
   constants,
 };
@@ -1073,5 +1077,96 @@ describe("bônus de evento em CE (R29)", () => {
       }
     }
     expect(semCond).toEqual([]);
+  });
+});
+
+/**
+ * Fase 5b — buffs externos.
+ *
+ * Não é "party": é uma lista de contribuições. Sem posição, sem limite de três,
+ * repetição permitida — Order Change deixa mais de dois buffarem o mesmo ataque
+ * num turno, e duas cópias do mesmo suporte somam.
+ *
+ * Guardadas por **referência** (D13): quem e quais skills, nunca valores
+ * resolvidos. É o que preserva a condição de card do buff e os traits dele.
+ */
+describe("buffs externos (5b)", () => {
+  const CASTORIA = loadServant(284); // sk1 upAtk ptAll · sk3 upCommandall ptOne [cardArts] · NP sem dano
+  const LANLING = loadServant(227); // NP de suporte com upAtk que escala com overcharge
+  const dataX: DamageData = {
+    ...data,
+    servants: new Map([...data.servants, [CASTORIA.id, CASTORIA], [LANLING.id, LANLING]]),
+  };
+  const arts = (query: string) =>
+    calculateDamage(
+      toDamageInput(parseCalc(new URLSearchParams(`s=${ARTORIA.id}&act=arts&ec=saber&ea=earth&${query}`)), ARTORIA, () => "?"),
+      dataX,
+    );
+
+  it("um suporte contribui, e o mesmo suporte duas vezes soma", () => {
+    const sozinha = arts("");
+    const uma = arts(`sup=${CASTORIA.id}:1,2,3`);
+    const duas = arts(`sup=${CASTORIA.id}:1,2,3&sup=${CASTORIA.id}:1,2,3`);
+    expect([sozinha.breakdown.atkMod, sozinha.breakdown.cardMod]).toEqual([0, 0]);
+    expect([uma.breakdown.atkMod, uma.breakdown.cardMod]).toEqual([0.2, 0.5]);
+    // Duas cópias empilham aditivamente: é assim no jogo.
+    expect([duas.breakdown.atkMod, duas.breakdown.cardMod]).toEqual([0.4, 1]);
+  });
+
+  it("buff de alvo único só chega se apontado para quem ataca", () => {
+    // A skill 3 da Castoria é `ptOne`: buffa UM aliado, e qual é escolha de quem
+    // joga. Antes de 5b um `ptOne` passava mesmo com `targetsAttacker: false`,
+    // porque estava na mesma lista do `ptAll`.
+    expect(arts(`sup=${CASTORIA.id}:3`).breakdown.cardMod).toBe(0.5);
+    expect(arts(`sup=${CASTORIA.id}:3;t0`).breakdown.cardMod).toBe(0);
+  });
+
+  it("e a recusa distingue 'nunca chegaria' de 'não foi apontado'", () => {
+    const r = arts(`sup=${CASTORIA.id}:3;t0`);
+    // Filtrar por fonte: a passiva Riding da própria Artoria também é um
+    // `upCommandall` recusado aqui, e com toda a razão — ela é Quick.
+    const s = r.assumptions.skippedBuffs.find((b) => /Altria Caster/.test(b.source) && b.buffType === "upCommandall");
+    expect(s?.reason).toMatch(/not pointed at the attacker/);
+  });
+
+  it("NP de suporte não tem função de dano — então tudo nele vale", () => {
+    // `damageEffectIndex` é null em 20 dos 47 NPs que buffam a party, e é onde
+    // estão Castoria e Merlin. Cortar em null os deixaria com zero buff (D20).
+    expect(CASTORIA.np?.damageEffectIndex).toBeNull();
+    expect(arts(`sup=${CASTORIA.id}:;np=5`).breakdown.atkMod).toBe(0.5);
+  });
+
+  it("o overcharge do NP do suporte é dele, não de quem ataca", () => {
+    // Prince of Lan Ling: upAtk 30/35/40/45/50 por overcharge. 26 dos 47 escalam.
+    expect(arts(`sup=${LANLING.id}:;np=1;oc=1`).breakdown.atkMod).toBe(0.3);
+    expect(arts(`sup=${LANLING.id}:;np=1;oc=5`).breakdown.atkMod).toBe(0.5);
+    // E o overcharge do atacante não mexe no NP do suporte.
+    expect(arts(`oc=5&sup=${LANLING.id}:;np=1;oc=1`).breakdown.atkMod).toBe(0.3);
+  });
+
+  it("a CE do suporte entra com os efeitos e NUNCA com a ATK", () => {
+    // Crown of the Star: upAtk 15% -> ptFull, sem condição.
+    const sem = arts(`sup=${CASTORIA.id}:`);
+    const com = arts(`sup=${CASTORIA.id}:;ce=${CROWN.id}`);
+    // A ATK daquela CE é da Castoria. Somá-la em quem ataca daria centenas de
+    // ATK vindas do nada — plausível, errado, sem sintoma.
+    expect(com.breakdown.servantAtk).toBe(sem.breakdown.servantAtk);
+    expect(com.breakdown.atkMod).toBeCloseTo(0.15, 5);
+    expect(com.assumptions.appliedBuffs.some((b) => /Altria Caster's CE Crown of the Star/.test(b.source))).toBe(true);
+  });
+
+  it("CE de suporte com efeito `self` fica com o suporte", () => {
+    // O Black Grail é `upNpdamage -> self`: numa Castoria ele buffa o NP DELA.
+    // Não é caso de somar em quem ataca, é caso de recusar com o motivo.
+    const r = arts(`sup=${CASTORIA.id}:;ce=${GRAIL.id};mlb`);
+    expect(r.breakdown.npDamageMod).toBe(0);
+    const s = r.assumptions.skippedBuffs.find((b) => /Black Grail/.test(b.source));
+    expect(s?.reason).toMatch(/does not reach the attacker/);
+  });
+
+  it("passiva de classe e append do suporte ficam com ele", () => {
+    // São `self`: o filtro de alcance barra, e isso é o certo.
+    const r = arts(`sup=${CASTORIA.id}:1`);
+    expect(r.assumptions.appliedBuffs.some((b) => /Altria Caster passive/.test(b.source))).toBe(false);
   });
 });

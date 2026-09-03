@@ -2,7 +2,7 @@
  * Tela da calculadora.
  *
  * Casca fina: toda a regra está em `core/damage.ts`. Aqui só se monta o cenário,
- * e o cenário inteiro vive na query string (ver `calcState.ts`).
+ * e o cenário inteiro vive na query string (ver `core/scenario.ts`).
  *
  * A tela mostra de propósito o que costuma ficar escondido — o multiplicador de
  * classe embutido na escolha do inimigo, quais buffs de uma skill afetam dano,
@@ -10,7 +10,7 @@
  * número errado passa por certo.
  */
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { specFor } from "../core/buffs.js";
@@ -27,8 +27,17 @@ import {
   toDamageInput,
   type ActionKind,
   type CalcState,
+  type ExternalBuff,
 } from "../core/scenario.js";
 import { loadEquip, loadServant, type Bootstrap } from "./data.js";
+import {
+  loadTemplates,
+  removeTemplate,
+  saveTemplate,
+  suggestName,
+  SEED_TEMPLATES,
+  type BuffTemplate,
+} from "./templates.js";
 import { useAsync } from "./useAsync.js";
 
 const num = (n: number) => n.toLocaleString("en-US");
@@ -77,7 +86,16 @@ const numbers = (from: number, to: number) =>
 
 // ------------------------------------------------------------- escolha do servo
 
-function ServantPicker({ boot, onPick }: { boot: Bootstrap; onPick: (id: number) => void }) {
+function ServantPicker({
+  boot,
+  onPick,
+  placeholder = "who is attacking? name, alias or number…",
+}: {
+  boot: Bootstrap;
+  onPick: (id: number) => void;
+  /** O mesmo seletor serve para escolher o atacante e para acrescentar suporte. */
+  placeholder?: string;
+}) {
   const [query, setQuery] = useState("");
 
   // Reusa o motor de busca: apelido curado e insensibilidade a acento vêm de
@@ -92,7 +110,7 @@ function ServantPicker({ boot, onPick }: { boot: Bootstrap; onPick: (id: number)
     <div className="picker">
       <input
         className="search-input"
-        placeholder="who is attacking? name, alias or number…"
+        placeholder={placeholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         autoFocus
@@ -146,6 +164,324 @@ function EquipPicker({ boot, onPick }: { boot: Bootstrap; onPick: (id: number) =
         </div>
       )}
     </div>
+  );
+}
+
+// -------------------------------------------------------------- buffs externos
+
+/**
+ * Um cartão de fonte externa.
+ *
+ * Os controles aparecem conforme o **dado** de quem foi escolhido, não conforme
+ * o servo: o toggle de alvo único só existe se aquele servo tiver algum buff
+ * `ptOne`, e a caixa de NP só se o NP dele buffar a party. É a mesma regra do
+ * contador de stacks e dos campos da CE.
+ */
+function ExternalCard({
+  source,
+  servant,
+  ce,
+  boot,
+  onChange,
+  onRemove,
+}: {
+  source: ExternalBuff;
+  servant: Servant | null;
+  ce: CraftEssence | null;
+  boot: Bootstrap;
+  onChange: (next: ExternalBuff) => void;
+  onRemove: () => void;
+}) {
+  if (!servant) return <div className="ext-card"><p className="empty">loading…</p></div>;
+
+  const buffs = servant.skills.flatMap((sk) => sk.effects);
+  /** 78 dos 462 servos têm algum buff de alvo único; nos outros o toggle não faz nada. */
+  const temAlvoUnico = buffs.some((e) => /^pt(One|Other|OneOther|SelfAnotherFirst)/.test(e.target));
+  const npBuffs = (servant.np?.effects ?? []).filter(
+    (e) => e.buffType && specFor(e.buffType)?.slot && /^pt/.test(e.target),
+  );
+
+  return (
+    <div className="ext-card">
+      <div className="attacker-head">
+        {servant.assets.face && <img src={servant.assets.face} alt="" width={40} height={40} />}
+        <div>
+          <Link to={`/servant/${servant.id}`}>{servant.name}</Link>
+          <div className="orig">{servant.className} · <Stars n={servant.rarity} /></div>
+        </div>
+        <button className="linkish" type="button" onClick={onRemove}>remove</button>
+      </div>
+
+      <div className="opts">
+        {servant.skills.map((sk) => (
+          <SkillToggle
+            key={sk.id}
+            skill={sk}
+            level={source.skillLevel}
+            checked={source.skills.includes(sk.num)}
+            onToggle={() =>
+              onChange({
+                ...source,
+                skills: source.skills.includes(sk.num)
+                  ? source.skills.filter((n) => n !== sk.num)
+                  : [...source.skills, sk.num],
+              })
+            }
+          />
+        ))}
+      </div>
+
+      <div className="fields">
+        <Field label="Skill level" hint="this support's, not yours">
+          <Seg value={source.skillLevel} options={numbers(1, 10)} onChange={(v) => onChange({ ...source, skillLevel: v })} />
+        </Field>
+        {npBuffs.length > 0 && (
+          <Field label="NP used" hint={npBuffs.map((e) => e.buffType).join(", ")}>
+            <label className="opt">
+              <input
+                type="checkbox"
+                checked={source.np !== null}
+                onChange={() => onChange({ ...source, np: source.np ? null : { level: 5, overcharge: 1 } })}
+              />
+              <span className="name">yes</span>
+            </label>
+          </Field>
+        )}
+        {source.np && (
+          <>
+            <Field label="NP level">
+              <Seg value={source.np.level} options={numbers(1, 5)} onChange={(v) => onChange({ ...source, np: { ...source.np!, level: v } })} />
+            </Field>
+            <Field label="NP overcharge" hint="this support's own">
+              <Seg value={source.np.overcharge} options={numbers(1, 5)} onChange={(v) => onChange({ ...source, np: { ...source.np!, overcharge: v } })} />
+            </Field>
+          </>
+        )}
+        {temAlvoUnico && (
+          <Field label="Single-target buffs" hint="this servant has some — did they point at your attacker?">
+            <label className="opt">
+              <input
+                type="checkbox"
+                checked={source.targetsAttacker}
+                onChange={() => onChange({ ...source, targetsAttacker: !source.targetsAttacker })}
+              />
+              <span className="name">pointed at the attacker</span>
+            </label>
+          </Field>
+        )}
+      </div>
+
+      {/* A CE do suporte entra só com os efeitos que alcançam a party. */}
+      {ce ? (
+        <div className="attacker-head">
+          {ce.assets.face && <img src={ce.assets.face} alt="" width={32} height={32} />}
+          <div>
+            <Link to={`/equip/${ce.id}`}>{ce.name}</Link>
+            <div className="orig">effects only — this CE's ATK belongs to the support{source.ce?.mlb ? " · MLB" : ""}</div>
+          </div>
+          <button className="linkish" type="button" onClick={() => onChange({ ...source, ce: null })}>remove CE</button>
+        </div>
+      ) : (
+        <EquipPicker boot={boot} onPick={(id) => onChange({ ...source, ce: { id, mlb: false } })} />
+      )}
+      {source.ce && (
+        <label className="opt">
+          <input type="checkbox" checked={source.ce.mlb} onChange={() => onChange({ ...source, ce: { ...source.ce!, mlb: !source.ce!.mlb } })} />
+          <span className="name">MLB</span>
+        </label>
+      )}
+    </div>
+  );
+}
+
+/** Documentos das fontes externas, na mesma ordem da lista. */
+interface ExternalDocs {
+  servants: (Servant | null)[];
+  ces: (CraftEssence | null)[];
+}
+
+/**
+ * Uma linha do resumo, no bloco.
+ *
+ * O cartão inteiro é alto — skills, nível, NP, seletor de CE — e três deles
+ * empurrariam o resultado para fora da tela. Aqui fica só o suficiente para
+ * conferir que a composição é a que se pensou; editar é no editor.
+ */
+function ExternalSummaryRow({
+  source,
+  servant,
+  ce,
+}: {
+  source: ExternalBuff;
+  servant: Servant | null;
+  ce: CraftEssence | null;
+}) {
+  const bits: string[] = [];
+  if (source.skills.length > 0) bits.push(`skill ${[...source.skills].sort().join(", ")}`);
+  if (source.np) bits.push(`NP${source.np.level}${source.np.overcharge > 1 ? ` OC${source.np.overcharge}` : ""}`);
+  if (source.ce) bits.push(ce ? `${ce.name}${source.ce.mlb ? " (MLB)" : ""}` : "CE");
+  if (!source.targetsAttacker) bits.push("single-target buffs elsewhere");
+
+  return (
+    <div className="ext-row">
+      {servant?.assets.face && <img src={servant.assets.face} alt="" width={28} height={28} />}
+      <span className="name">{servant?.name ?? "loading…"}</span>
+      <span className="orig">{bits.length > 0 ? bits.join(" · ") : "nothing switched on"}</span>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------------- a janela
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  // Esc fecha. O `useEffect` não roda no servidor, então `document` nunca é
+  // tocado durante o render — a página continua montando em SSR.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{title}</h3>
+          <button className="linkish" type="button" onClick={onClose}>close</button>
+        </div>
+        <div className="modal-body">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Editor de buffs externos, com os templates.
+ *
+ * Aplicar um template **substitui** a lista. Não há mescla: duas composições
+ * somadas dariam um total que ninguém pediu, e o botão voltar do navegador
+ * desfaz a troca, porque a lista vive na URL.
+ */
+export function ExternalBuffsEditor({
+  sources,
+  docs,
+  boot,
+  templates,
+  servantName,
+  onChange,
+  onTemplates,
+  onClose,
+}: {
+  sources: ExternalBuff[];
+  docs: ExternalDocs | null;
+  boot: Bootstrap;
+  templates: BuffTemplate[];
+  servantName: (id: number) => string;
+  onChange: (next: ExternalBuff[]) => void;
+  onTemplates: (next: BuffTemplate[]) => void;
+  onClose: () => void;
+}) {
+  const suggested = suggestName(sources, servantName);
+  // `null` = ainda não digitou. Enquanto não digita, o nome acompanha o
+  // conteúdo; no instante em que digita, para de mudar sozinho.
+  const [draft, setDraft] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const name = draft ?? suggested;
+  const overwrites = templates.some((t) => t.name.toLowerCase() === name.trim().toLowerCase());
+
+  const apply = (result: ReturnType<typeof saveTemplate>) => {
+    if (result.ok) {
+      onTemplates(result.templates);
+      setProblem(null);
+    } else {
+      setProblem(result.reason);
+    }
+  };
+
+  return (
+    <Modal title="External buffs" onClose={onClose}>
+      {sources.length === 0 && (
+        <p className="footnote">
+          Other servants buffing this attack. Add the same one twice if two copies buffed — they stack.
+          Nothing here is a party: there is no position and no limit, because Order Change lets more than
+          two buff the same attack in one turn.
+        </p>
+      )}
+
+      {/*
+        O seletor vem ANTES dos cartões: depois deles, ele desceria a cada
+        suporte acrescentado, e acrescentar vários é justamente o caso comum.
+        Aqui ele fica parado no mesmo lugar, e o que cresce cresce abaixo.
+      */}
+      <ServantPicker
+        boot={boot}
+        placeholder="add a support — name, alias or number…"
+        onPick={(id) =>
+          onChange([...sources, { servantId: id, skills: [], skillLevel: 10, targetsAttacker: true, np: null, ce: null }])
+        }
+      />
+
+      {sources.map((e, i) => (
+        <ExternalCard
+          key={`${i}-${e.servantId}`}
+          source={e}
+          servant={docs?.servants[i] ?? null}
+          ce={docs?.ces[i] ?? null}
+          boot={boot}
+          onChange={(next) => onChange(sources.map((x, j) => (j === i ? next : x)))}
+          onRemove={() => onChange(sources.filter((_, j) => j !== i))}
+        />
+      ))}
+
+      <hr className="modal-sep" />
+
+      <h4 className="modal-sub">Templates</h4>
+      <p className="footnote">
+        Saved in this browser only, and never in the link — a link always carries the buffs themselves, so
+        whoever opens it sees the same scenario and can save it here as their own.
+      </p>
+
+      <div className="tpl-save">
+        <input
+          className="search-input"
+          placeholder="name this composition…"
+          value={name}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+        <button
+          className="linkish"
+          type="button"
+          disabled={sources.length === 0 || name.trim() === ""}
+          onClick={() => apply(saveTemplate(name, sources))}
+        >
+          {overwrites ? "overwrite" : "save"}
+        </button>
+      </div>
+      {sources.length === 0 && <p className="footnote">Nothing to save yet — add a servant above.</p>}
+      {problem && <p className="footnote warn">{problem}</p>}
+
+      <div className="tpl-list">
+        {[
+          ...templates.map((t) => ({ t, saved: true })),
+          ...SEED_TEMPLATES.map((t) => ({ t, saved: false })),
+        ].map(({ t, saved }) => (
+          <div className="tpl-row" key={`${saved ? "u" : "s"}-${t.name}`}>
+            <span className="name">{t.name}</span>
+            {/* Mesmo condensador do nome sugerido: "Castoria, Castoria" vira
+                "Double Altria Caster", que é o que se quer ler numa lista. */}
+            <span className="orig">
+              {suggestName(t.sources, servantName)}
+              {saved ? "" : " · example"}
+            </span>
+            <button className="linkish" type="button" onClick={() => onChange(t.sources)}>apply</button>
+            {saved && (
+              <button className="linkish" type="button" onClick={() => apply(removeTemplate(t.name))}>delete</button>
+            )}
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 }
 
@@ -224,6 +560,18 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
     [state.ceId],
   );
 
+  /**
+   * Documentos das fontes externas. Uma promessa só para a lista inteira: são
+   * poucos e o cache de `data.ts` já dedupe duas cópias do mesmo suporte.
+   */
+  const { data: extDocs } = useAsync<{ servants: (Servant | null)[]; ces: (CraftEssence | null)[] }>(
+    async () => ({
+      servants: await Promise.all(state.externals.map((e) => loadServant(e.servantId).catch(() => null))),
+      ces: await Promise.all(state.externals.map((e) => (e.ce ? loadEquip(e.ce.id).catch(() => null) : Promise.resolve(null)))),
+    }),
+    [state.externals.map((e) => `${e.servantId}/${e.ce?.id ?? ""}`).join("|")],
+  );
+
   const mysticCode = useMemo(
     () => boot.mysticCodes.find((m) => m.id === state.mcId) ?? null,
     [boot.mysticCodes, state.mcId],
@@ -234,11 +582,27 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
     [boot.traits],
   );
 
+  /** Nome do suporte sem carregar o documento dele: o índice já tem. */
+  const servantName = useCallback(
+    (id: number) => boot.index.find((e) => e.kind === "servant" && e.id === id)?.name ?? `servant ${id}`,
+    [boot.index],
+  );
+
+  const [editingExternals, setEditingExternals] = useState(false);
+  // Só os do usuário; as sementes entram do lado na hora de listar. O
+  // inicializador preguiçoso lê o `localStorage` uma vez — em SSR ele não
+  // existe e a função devolve lista vazia, sem tocar em `window`.
+  const [templates, setTemplates] = useState<BuffTemplate[]>(() => loadTemplates());
+
   const computed = useMemo(() => {
     if (!servant) return null;
     const data: DamageData = {
-      servants: new Map([[servant.id, servant]]),
-      equips: ce ? new Map([[ce.id, ce]]) : new Map(),
+      servants: new Map(
+        [servant, ...(extDocs?.servants ?? [])].filter((x): x is Servant => x !== null).map((x) => [x.id, x]),
+      ),
+      equips: new Map(
+        [ce, ...(extDocs?.ces ?? [])].filter((c): c is CraftEssence => c !== null).map((c) => [c.id, c]),
+      ),
       mysticCodes: new Map(boot.mysticCodes.map((m) => [m.id, m])),
       constants: boot.constants,
     };
@@ -247,7 +611,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
     } catch (e) {
       return { result: null, failure: e instanceof Error ? e.message : String(e) };
     }
-  }, [servant, ce, state, boot.constants, boot.mysticCodes, traitName]);
+  }, [servant, ce, extDocs, state, boot.constants, boot.mysticCodes, traitName]);
 
   if (error) return <div className="detail"><p className="empty">{error}</p></div>;
 
@@ -616,6 +980,61 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
             </details>
           </Block>
 
+          {/*
+            "External buffs", não "Party": não há posição, não há limite de
+            três, e repetir o mesmo servo é legítimo. Order Change deixa mais de
+            dois buffarem o mesmo ataque num turno.
+          */}
+          <Block title="External buffs">
+            {/*
+              O menu não guarda qual template está aplicado, e volta sempre para
+              o rótulo neutro. Não é descuido: a URL não tem `tpl=`, então
+              "aplicado" não existe como estado — assim que se edita um buff, um
+              nome fixado ali estaria mentindo. É uma lista de ações.
+            */}
+            <div className="row-actions">
+              <select
+                aria-label="Apply a template"
+                value=""
+                onChange={(e) => {
+                  const [kind, i] = [e.target.value.slice(0, 1), Number(e.target.value.slice(1))];
+                  const t = kind === "u" ? templates[i] : SEED_TEMPLATES[i];
+                  if (t) patch({ externals: t.sources });
+                }}
+              >
+                <option value="">Apply a template…</option>
+                {templates.length > 0 && (
+                  <optgroup label="Saved">
+                    {templates.map((t, i) => <option key={t.name} value={`u${i}`}>{t.name}</option>)}
+                  </optgroup>
+                )}
+                <optgroup label="Examples">
+                  {SEED_TEMPLATES.map((t, i) => <option key={t.name} value={`s${i}`}>{t.name}</option>)}
+                </optgroup>
+              </select>
+              <button className="linkish" type="button" onClick={() => setEditingExternals(true)}>
+                Edit external buffs…
+              </button>
+            </div>
+
+            {state.externals.length === 0 ? (
+              <p className="footnote">
+                None. Other servants buffing this attack go here — a template above is the quick way in.
+              </p>
+            ) : (
+              <div className="ext-summary">
+                {state.externals.map((e, i) => (
+                  <ExternalSummaryRow
+                    key={`${i}-${e.servantId}`}
+                    source={e}
+                    servant={extDocs?.servants[i] ?? null}
+                    ce={extDocs?.ces[i] ?? null}
+                  />
+                ))}
+              </div>
+            )}
+          </Block>
+
           <Block title="Enemy">
             <div className="fields">
               <Field label="Class" hint="multiplier shown is against this attacker">
@@ -689,6 +1108,19 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
           )}
         </div>
       </div>
+
+      {editingExternals && (
+        <ExternalBuffsEditor
+          sources={state.externals}
+          docs={extDocs}
+          boot={boot}
+          templates={templates}
+          servantName={servantName}
+          onChange={(externals) => patch({ externals })}
+          onTemplates={setTemplates}
+          onClose={() => setEditingExternals(false)}
+        />
+      )}
     </div>
   );
 }

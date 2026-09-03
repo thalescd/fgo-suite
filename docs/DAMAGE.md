@@ -347,13 +347,14 @@ não o texto — e um teste varre o roster e falha se algum servo passar a ter
 `upAtk` de 10%/15% da Golden Sumo entram normalmente; só o `upDamage` fantasma
 sai, e sai **com o motivo** em `notCounted`.
 
-### 3.13 De onde vem cada buff que não é do servo (5a)
+### 3.14 De onde vem cada buff que não é do servo (5a, 5b)
 
 | Fonte | Onde se declara | Por quê |
 |---|---|---|
 | Craft Essence | `attacker.ce` | é equipamento **do servo** |
 | Mystic Code | `DamageInput.mysticCode` | é do **Master**, um só para a party |
 | skills do MC | `buffStack: mysticCodeSkill` | só as que dispararam, como as do servo |
+| buff externo | `buffStack: support` | outro servo, com as skills, o NP e a CE **dele** |
 
 **Uma CE se declara em um lugar só, e dá as duas coisas.** Antes eram dois:
 `attacker.ce` movia a ATK e uma entrada no `buffStack` trazia os efeitos — e os
@@ -362,9 +363,9 @@ número plausível: com o Black Grail, ou faltavam 2.400 de ATK ou faltavam os
 +80% de dano de NP, e nada na saída indicava qual.
 
 **O Mystic Code fica fora de `attacker` de propósito.** Ele é do Master e vale
-para a party inteira; a CE é de quem ataca. A distinção só custa uma linha hoje,
-mas quando a 5b trouxer suportes cada um terá a sua CE e o MC continuará sendo um
-só — sem renomear nada.
+para a party inteira; a CE é de quem ataca. A distinção custava uma linha quando
+foi feita e se pagou na 5b: cada suporte trouxe a CE dele, dentro da própria
+entrada, e o MC continuou sendo um só — sem renomear nada.
 
 Os efeitos do MC entram marcados `fromSupport`, então o filtro de alcance de §3.7
 vale para eles: um `ptAll` chega ao atacante, um `self` fica no Master.
@@ -375,7 +376,7 @@ conjunto mais fraco. Já o `level` da CE mexe só na ATK, e omiti-lo significa "
 máximo daquela CE", resolvido no núcleo porque o teto varia de 50 a 100 conforme
 a raridade.
 
-### 3.13 O super-efetivo não mora sempre no mesmo campo (R27)
+### 3.15 O super-efetivo não mora sempre no mesmo campo (R27)
 
 Em quase todo NP o multiplicador super-efetivo vem de `svals[].Correction`. Em
 **`damageNpIndividualSum` não**: ali ele está em `Value2`, e `Correction` passa a
@@ -437,7 +438,7 @@ do piso calado:
 8 of up to 12 own Heroic King stacks (+80% super effective)
 ```
 
-### 3.13 Sete servos batem mais forte machucados (R25)
+### 3.16 Sete servos batem mais forte machucados (R25)
 
 Dois mecanismos **independentes**, com nomes e formatos diferentes, que fazem a
 mesma coisa. Os dois entram por `hpPercent`, o HP atual em % do máximo.
@@ -483,12 +484,50 @@ Na auditoria, um buff que escala aparece com `atFullHp` **sempre**, inclusive
 com HP cheio: é justamente aí que ele vale menos, e saber que o número cresce
 se você apanhar é a informação toda.
 
+### 3.17 Buffs externos não são uma party (5b)
+
+O terceiro slot da conta não é "os outros dois membros". É uma **lista de fontes
+externas**, sem posição, sem limite de três, com repetição permitida — porque
+Order Change deixa mais de dois buffarem o mesmo ataque num turno, e duas cópias
+do mesmo suporte somam. Modelar uma party de três teria embutido um limite que o
+jogo não tem.
+
+Cada fonte é guardada **por referência**: quem, quais skills, qual nível, se o
+NP foi usado, qual CE. Nunca o valor resolvido. A medição que fechou a questão:
+
+| | |
+|---|---|
+| 31% dos buffs de dano que alcançam aliado | carregam alguma condição — de card, de trait, de estado |
+| 100% deles | carregam traits de buff |
+| os 73 `upNpdamage` | carregam `buffNpDamageUp`, que é o que o `buffRate` do Oberon procura (§3.5) |
+
+Um template com `atkMod: 50` perde as três coisas de uma vez, e perde calado.
+
+**O alcance é o que separa o buff que conta do que não conta.** `ptAll`/`ptFull`
+alcançam a party e não perguntam nada; `ptOne` e parentes precisam ter apontado
+para o atacante, e é isso que o `targetsAttacker` (`t0=` na query) declara. O
+padrão é "apontou": quem acrescenta um suporte o faz para buffar quem ataca, e o
+contrário faria 78 servos entregarem menos sem dizer por quê.
+
+> **Um defeito latente vivia aqui.** As duas famílias estavam no mesmo conjunto,
+> e um ternário deixava `ptOne` passar mesmo com `targetsAttacker: false`. Nunca
+> apareceu porque a fonte `support` não tinha superfície — só teste chegava nela.
+> Dar interface a um caminho é o que expõe o que ele já fazia errado.
+
+**O NP do suporte não tem onde cortar.** A regra do D20 (§3.2) — só os efeitos
+antes da função de dano entram sozinhos — pressupõe uma função de dano. Em 20 dos
+47 NPs de suporte, Castoria e Merlin entre eles, `damageEffectIndex` é `null`: o
+`slice` os deixaria com zero buff. Sem dano, tudo vale.
+
+E o que é `self` fica com o suporte. A CE do Black Grail numa Castoria buffa o NP
+**dela**, não o seu — a recusa é a resposta certa, não um buraco.
+
 ---
 
 ## 4. A tela
 
 `/calc`. O cenário inteiro vive na **query string**
-([`src/ui/calcState.ts`](../src/ui/calcState.ts)), pela mesma razão dos filtros
+([`src/core/scenario.ts`](../src/core/scenario.ts)), pela mesma razão dos filtros
 de busca: link compartilhável, botão voltar funcionando, e os mesmos parâmetros
 viram a assinatura da tool de dano no MCP da fase 4.
 

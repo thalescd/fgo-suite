@@ -21,6 +21,33 @@ import type { CardType, Servant, Trait } from "./model.js";
 /** Um NP ou um card. `extra` é o card extra, que tem multiplicador próprio. */
 export type ActionKind = "np" | "buster" | "arts" | "quick" | "extra";
 
+/**
+ * Uma fonte de buff externa, **por referência**.
+ *
+ * Guarda quem e quais skills, nunca os valores resolvidos (D13). Um template
+ * com `atkMod: 50` apodrece calado quando o jogo rebalanceia a Castoria; um que
+ * diz "Castoria, skills 1 e 2" se atualiza no próximo `data:sync`. E é a
+ * referência que preserva as duas coisas que um número solto perde: a condição
+ * de card do buff (31% têm uma) e os traits dele, que é como o `buffRate` do
+ * Oberon acha o que multiplicar.
+ */
+export interface ExternalBuff {
+  servantId: number;
+  /** `num` das skills usadas. Vazio é válido: pode ser só o NP, ou só a CE. */
+  skills: number[];
+  skillLevel: number;
+  /**
+   * O buff de **alvo único** apontou para quem ataca? Buff de party não
+   * pergunta. Padrão `true`: quem acrescenta um suporte o faz para buffar o
+   * atacante, e o contrário faria 78 servos entregarem menos sem dizer por quê.
+   */
+  targetsAttacker: boolean;
+  /** O NP do suporte, se foi usado. Nível e overcharge são dele, não do atacante. */
+  np: { level: number; overcharge: number } | null;
+  /** CE do suporte — efeitos só; a ATK dela é do suporte. Sem nível, por isso. */
+  ce: { id: number; mlb: boolean } | null;
+}
+
 export interface CalcState {
   servantId: number | null;
   /** `null` = usar o padrão do servo (nível natural máximo). */
@@ -59,6 +86,15 @@ export interface CalcState {
   ceId: number | null;
   ceLevel: number | null;
   ceMlb: boolean;
+
+  /**
+   * Buffs externos: outros servos contribuindo para este ataque.
+   *
+   * Lista, não party — sem posição, sem limite de três, e repetição permitida.
+   * Order Change deixa mais de dois buffarem o mesmo ataque num turno, e duas
+   * cópias do mesmo suporte somam.
+   */
+  externals: ExternalBuff[];
 
   /**
    * Mystic Code do Master, e quais das skills dele dispararam.
@@ -120,6 +156,7 @@ export const DEFAULT_CALC: CalcState = {
   mcId: null,
   mcSkills: [],
   mcLevel: 10,
+  externals: [],
   hpPercent: 100,
   stacksSelf: 0,
   stacksTarget: 0,
@@ -164,6 +201,7 @@ const KEYS = {
   mcId: "mc",
   mcSkills: "mcs",
   mcLevel: "mclv",
+  externals: "sup",
   hpPercent: "hp",
   stacksSelf: "ss",
   stacksTarget: "st",
@@ -186,6 +224,66 @@ const ROLLS: RollMode[] = ["min", "avg", "max"];
 /** O `filter(Boolean)` não é enfeite: sem ele `"".split(",")` vira `[""]` e `Number("")` vira 0. */
 const nums = (p: URLSearchParams, k: string): number[] =>
   (p.get(k) ?? "").split(",").filter(Boolean).map(Number).filter(Number.isFinite);
+
+/**
+ * Uma fonte externa numa string. `servoId:skills` é posicional porque sempre
+ * existe; o resto é `chave=valor` separado por `;`.
+ *
+ *   504500:1,2,3
+ *   504500:1,3;np=5;oc=3
+ *   504500:1;lv=6;ce=9400480;mlb;t0
+ *
+ * Chave **repetida** em vez de índice (`sup1`, `sup2`): a lista é editada, e com
+ * índice remover o do meio exige renumerar — inclusive as sub-chaves. Uma
+ * sub-chave órfã grudaria a CE de um suporte removido em outro, calada. Aqui os
+ * campos de uma fonte viajam dentro do mesmo valor e não têm como se separar.
+ *
+ * Exportado porque os templates salvos no navegador guardam exatamente esta
+ * string. Um template é um pedaço de link, e passa pelo mesmo parser — não há
+ * um segundo formato para o mesmo dado envelhecer sozinho.
+ */
+export function parseExternalBuff(raw: string): ExternalBuff | null {
+  const [head, ...flags] = raw.split(";");
+  const [idPart, skillPart = ""] = (head ?? "").split(":");
+  const servantId = Number(idPart);
+  if (!Number.isFinite(servantId) || servantId <= 0) return null;
+
+  const field = (name: string): string | undefined =>
+    flags.find((f) => f.startsWith(`${name}=`))?.slice(name.length + 1);
+  const has = (name: string) => flags.includes(name);
+
+  const npLevel = Number(field("np"));
+  const ceId = Number(field("ce"));
+  const skillLevel = Number(field("lv"));
+  const oc = Number(field("oc"));
+
+  return {
+    servantId,
+    skills: skillPart.split(",").filter(Boolean).map(Number).filter(Number.isFinite),
+    skillLevel: Number.isFinite(skillLevel) ? clamp(skillLevel, 1, 10) : 10,
+    // `t0` desliga; ausência significa ligado. Ver o comentário do campo.
+    targetsAttacker: !has("t0"),
+    np: Number.isFinite(npLevel)
+      ? { level: clamp(npLevel, 1, 5), overcharge: Number.isFinite(oc) ? clamp(oc, 1, 5) : 1 }
+      : null,
+    ce: Number.isFinite(ceId) && ceId > 0 ? { id: ceId, mlb: has("mlb") } : null,
+  };
+}
+
+export function serializeExternalBuff(e: ExternalBuff): string {
+  const out = [`${e.servantId}:${e.skills.join(",")}`];
+  if (e.skillLevel !== 10) out.push(`lv=${e.skillLevel}`);
+  if (e.np) {
+    out.push(`np=${e.np.level}`);
+    if (e.np.overcharge !== 1) out.push(`oc=${e.np.overcharge}`);
+  }
+  if (e.ce) {
+    out.push(`ce=${e.ce.id}`);
+    if (e.ce.mlb) out.push("mlb");
+  }
+  if (!e.targetsAttacker) out.push("t0");
+  return out.join(";");
+}
 
 function int(p: URLSearchParams, k: string, fallback: number): number {
   const raw = p.get(k);
@@ -222,6 +320,8 @@ export function parseCalc(p: URLSearchParams): CalcState {
     mcId: maybeInt(p, KEYS.mcId),
     mcSkills: nums(p, KEYS.mcSkills),
     mcLevel: clamp(int(p, KEYS.mcLevel, 10), 1, 10),
+    // `getAll`: chave repetida é a forma nativa de lista aqui.
+    externals: p.getAll(KEYS.externals).map(parseExternalBuff).filter((x): x is ExternalBuff => x !== null),
     hpPercent: clamp(int(p, KEYS.hpPercent, DEFAULT_CALC.hpPercent), 0, 100),
     // O teto real é o do NP escolhido e vive no dado; aqui só se impede
     // negativo. `damage.ts` prende ao `maxCount` — a regra mora com a fórmula.
@@ -262,6 +362,7 @@ export function serializeCalc(s: CalcState): URLSearchParams {
   if (s.mcId !== null) p.set(KEYS.mcId, String(s.mcId));
   put(KEYS.mcSkills, s.mcSkills.join(","));
   putNum(KEYS.mcLevel, s.mcLevel, 10);
+  for (const e of s.externals) p.append(KEYS.externals, serializeExternalBuff(e));
   putNum(KEYS.hpPercent, s.hpPercent, DEFAULT_CALC.hpPercent);
   putNum(KEYS.stacksSelf, s.stacksSelf, 0);
   putNum(KEYS.stacksTarget, s.stacksTarget, 0);
@@ -313,6 +414,19 @@ export function toDamageInput(
   // traduz o que o jogador vê (1, 2, 3) para o índice do array.
   if (state.mcId !== null) {
     for (const num of state.mcSkills) buffStack.push({ kind: "mysticCodeSkill", index: num - 1 });
+  }
+  // Uma entrada por fonte externa, na ordem em que aparecem. Repetição é
+  // legítima: duas cópias do mesmo suporte somam.
+  for (const e of state.externals) {
+    buffStack.push({
+      kind: "support",
+      servantId: e.servantId,
+      skills: e.skills,
+      skillLevel: clamp(e.skillLevel, 1, 10),
+      targetsAttacker: e.targetsAttacker,
+      ...(e.np ? { np: { level: clamp(e.np.level, 1, 5), overcharge: clamp(e.np.overcharge, 1, 5) } } : {}),
+      ...(e.ce ? { ce: e.ce } : {}),
+    });
   }
 
   const traits: Trait[] = state.enemyTraits.map((id) => ({ id, name: traitName(id) }));

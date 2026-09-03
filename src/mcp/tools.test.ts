@@ -154,8 +154,11 @@ describe("calculate_damage", () => {
     };
     // CE e Mystic Code saíram desta lista na 5a; citá-los agora seria mentira
     // na direção oposta — dizer que não modela o que modela.
+    // CE, Mystic Code e suportes saíram desta lista (5a e 5b); citá-los agora
+    // seria mentira na direção oposta — dizer que não modela o que modela.
     expect(r.notModelledAtAll).not.toMatch(/Craft Essence/);
-    expect(r.notModelledAtAll).toMatch(/Support servants/);
+    expect(r.notModelledAtAll).not.toMatch(/[Ss]upport servants/);
+    expect(r.notModelledAtAll).toMatch(/State conditions/);
     expect(r.validation).toMatch(/\d+\/\d+ scenarios verified/);
   });
 
@@ -309,5 +312,62 @@ describe("calculate_damage: Craft Essence e Mystic Code (5a)", () => {
     const r = dmg({ craftEssence: "The Black Grail", ceMlb: true, mysticCode: "20", mysticCodeSkills: [1] });
     const st = parseCalc(new URLSearchParams(r.viewInBrowser.split("?")[1]));
     expect([st.ceId, st.ceMlb, st.mcId, st.mcSkills]).toEqual([9400480, true, 20, [1]]);
+  });
+});
+
+describe("calculate_damage: buffs externos (5b)", () => {
+  const dmg = (a: Record<string, unknown>) =>
+    calculateDamageTool(store, { servant: "artoria", action: "arts", ...a }) as {
+      damage: { average: number };
+      formulaTerms: { atkMod?: number; cardTerm: number };
+      supports?: string[];
+      notFound?: string[];
+      viewInBrowser: string;
+    };
+
+  it("um suporte por nome contribui, e dois iguais somam", () => {
+    const sozinha = dmg({});
+    const uma = dmg({ supports: [{ servant: "Altria Caster", skills: [1, 2, 3] }] });
+    const duas = dmg({ supports: [{ servant: "Altria Caster", skills: [1, 2, 3] }, { servant: "Altria Caster", skills: [1, 2, 3] }] });
+    expect(uma.supports).toEqual(["Altria Caster"]);
+    expect(uma.formulaTerms.atkMod).toBeCloseTo(0.2, 5);
+    expect(duas.formulaTerms.atkMod).toBeCloseTo(0.4, 5);
+    expect(duas.damage.average).toBeGreaterThan(uma.damage.average);
+    expect(uma.damage.average).toBeGreaterThan(sozinha.damage.average);
+  });
+
+  it("targetsAttacker false corta o buff de alvo único", () => {
+    const com = dmg({ supports: [{ servant: "Altria Caster", skills: [3] }] });
+    const sem = dmg({ supports: [{ servant: "Altria Caster", skills: [3], targetsAttacker: false }] });
+    // A tool publica `cardTerm`, que já embute o `cardMod`: arts em 1a posicao
+    // vale 1.0, e o +50% da skill 3 leva a 1.5.
+    expect(com.formulaTerms.cardTerm).toBeCloseTo(1.5, 4);
+    expect(sem.formulaTerms.cardTerm).toBeCloseTo(1.0, 4);
+  });
+
+  it("o NP do suporte tem overcharge próprio", () => {
+    const oc1 = dmg({ supports: [{ servant: "Prince of Lan Ling", npLevel: 1, npOvercharge: 1 }] });
+    const oc5 = dmg({ supports: [{ servant: "Prince of Lan Ling", npLevel: 1, npOvercharge: 5 }] });
+    expect(oc1.formulaTerms.atkMod).toBeCloseTo(0.3, 5);
+    expect(oc5.formulaTerms.atkMod).toBeCloseTo(0.5, 5);
+  });
+
+  it("suporte inexistente é dito, e o resto do cálculo segue", () => {
+    const r = dmg({ supports: [{ servant: "Castoria da Silva" }, { servant: "Altria Caster", skills: [1] }] });
+    expect(r.notFound).toEqual(['support "Castoria da Silva"']);
+    expect(r.formulaTerms.atkMod).toBeCloseTo(0.2, 5);
+  });
+
+  it("o link reproduz a lista inteira", () => {
+    const r = dmg({
+      supports: [
+        { servant: "Altria Caster", skills: [1, 3], npLevel: 5, npOvercharge: 3 },
+        { servant: "Oberon", skills: [3], targetsAttacker: false },
+      ],
+    });
+    const st = parseCalc(new URLSearchParams(r.viewInBrowser.split("?")[1]));
+    expect(st.externals).toHaveLength(2);
+    expect(st.externals[0]).toMatchObject({ servantId: 504500, skills: [1, 3], np: { level: 5, overcharge: 3 } });
+    expect(st.externals[1]).toMatchObject({ servantId: 2800100, skills: [3], targetsAttacker: false });
   });
 });

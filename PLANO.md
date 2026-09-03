@@ -32,7 +32,7 @@ Insight que organiza tudo: **(2) e (3) são a mesma entrega** — um MCP server 
 | D10 | **Append passives no schema, fora do cálculo por default** | Só entram se o usuário especificar. Ver §4.2. |
 | D11 | **Class board ignorado na v1** | Bônus de status do conteúdo novo. `nice_class_board.json` não é ingerido. |
 | D12 | **Calculadora recebe `BuffStack`, não `servo + skills`** | Skills próprias, CE, MC e servos de suporte alimentam a mesma estrutura. Ver §5.1. |
-| D13 | **Templates de suporte são listas de referência** | Nunca valores literais — sobrevivem a rebalanceamento. Ver §5.2. |
+| D13 | **Templates são listas de referência, e são do usuário** | Nunca valores literais — sobrevivem a rebalanceamento. Vivem no navegador de quem usa e **nunca no link**, que carrega sempre os buffs expandidos. Revisto em 5b; ver §5.2. |
 | D14 | **Condições de trait entram na v1** | Revisão do escopo anterior: atacante e inimigo são structs explícitos, comparar trait é trivial. Só condições de *estado* (HP, contagem de buff, turno) ficam adiadas. |
 | D15 | **Classe e atributo do inimigo geram traits automaticamente** | `saber` → `classSaber`, `human` → `attributeHuman`. Nunca checkbox manual. Ver §5.4. |
 | D16 | **Lista de traits do inimigo gerada no build** | 91 traits de identidade, ordenados por frequência de uso. Servo novo traz o trait dele sem edição manual. |
@@ -322,20 +322,38 @@ Exemplo real: na skill 2 da Koyanskaya of Light, `gainStar` e `upCriticalrate` s
 
 ### 5.2 Templates de suporte
 
-Um template é uma **lista de referências**, nunca valores literais:
+Um template é uma **lista de referências**, nunca valores literais. Cada fonte é
+exatamente a string que iria na query string:
 
 ```jsonc
-{ "id": "double-koyan-light",
-  "name": "2× Koyanskaya of Light",
-  "supports": [
-    { "servantId": 314, "skills": [2, 3], "targetsDps": true },
-    { "servantId": 314, "skills": [2, 3], "targetsDps": true }
-  ] }
+[{ "name": "Double Koyanskaya (Light) + Oberon",
+   "sources": ["604200:2,3", "604200:2,3", "2800100:1,3"] }]
 ```
 
-Referência em vez de valor porque o template continua correto quando o jogo rebalancear o suporte — um bundle de números literais apodrece em silêncio.
+Referência em vez de valor porque o template continua correto quando o jogo
+rebalancear o suporte — um bundle de números literais apodrece em silêncio. E é
+a referência que preserva as duas coisas que um número solto perde: a condição
+de card do buff (31% dos que alcançam aliado têm uma) e os traits dele, que é
+como o `buffRate` do Oberon acha o que multiplicar.
 
-Dois níveis: templates curados versionados no repo (as composições clássicas) e templates ad hoc montados na UI, que vivem na query string e viram link compartilhável (§3.1).
+**A string é a mesma do link, lida pelo mesmo `parseExternalBuff`.** Um segundo
+formato para o mesmo dado é o defeito que mais custou a este projeto (R23, R25,
+R27); aqui não existe um para envelhecer sozinho. Os ids são os **internos** —
+`604200`, não o `collectionNo` 314, que identificaria outro servo ou nenhum
+(R9).
+
+**O template é do usuário, não do cenário.** Fica no `localStorage` e nunca no
+link. Um `tpl=minha-comp` só teria sentido no navegador de quem o criou: quem
+recebesse veria o cenário errado, ou nenhum, sem jeito de perceber. Expandido, o
+link é auto-suficiente — e quem recebe abre o editor e salva aquela composição
+como um template **dele**, que é o caminho que motivou os templates existirem. O
+nome também não viaja: é etiqueta pessoal, não fato do cenário.
+
+Dois níveis: **sementes** versionadas no código (as composições clássicas), de
+leitura, que melhoram quando o projeto as melhora; e os do usuário, salvos com o
+nome que ele escolher. Um template só carrega **inteiro**: se uma fonte não
+parseia, o template todo é descartado, porque "Double Castoria" com uma Castoria
+só aplicaria metade do buff sob um nome que promete o dobro.
 
 ### 5.3 Por que as condições de trait não são opcionais
 
@@ -504,7 +522,7 @@ Cada fase entrega algo usável sozinho.
 | ~~**2**~~ | ~~Capabilities + busca por skill~~ | ✅ 170 tags, faceta na busca |
 | ~~**3**~~ | ~~`damage.ts` + testes + tela `/calc`~~ | ✅ núcleo puro, testado e utilizável; **R4 aberto** |
 | ~~**4**~~ | ~~MCP server sobre 1–3~~ | ✅ 4 tools sobre `core/`, `.mcp.json` versionado; itens 2 e 3 do §1 entregues |
-| **5** | ~~CEs/MCs~~ (5a ✅), buffs condicionais, suportes, comparação lado a lado | refinamento |
+| **5** | ~~CEs/MCs~~ (5a ✅), ~~buffs externos e templates~~ (5b ✅), condições de estado, comparação lado a lado | refinamento |
 
 Quebrada em **8.1**. Letras, não `5.1` — `§5.1`–`§5.7` já são as seções da
 calculadora neste documento, e "5.2" apontando para duas coisas diferentes é
@@ -518,15 +536,14 @@ erro de leitura esperando acontecer.
 o filtro de alcance de suporte por `REACHES_ALLY` (`:268`, §5.1). Há teste com
 Oberon e Tamamo como suporte.
 
-O que falta em 5a e 5b é **só a superfície**: `scenario.ts:225` monta o stack
-apenas com `ownSkill`, `append` e `npSelfBuff`. Não existe `ce=` na query
-string, então não existe na tela nem na tool. O núcleo sabe; ninguém consegue
-pedir.
+Faltava a **superfície** em 5a e 5b — o núcleo sabia, e ninguém conseguia pedir.
+As duas foram entregues, e a segunda expôs um defeito latente que só existia
+porque a fonte `support` não tinha caminho de entrada (§8.1, 5b).
 
 | | Entrega | Núcleo | Superfície |
 |---|---|---|---|
 | ~~**5a**~~ | ~~CE e Mystic Code~~ | ✅ | ✅ **pronta** |
-| **5b** | Suportes e templates | ✅ pronto | query string, tela, tools, `templates.json` |
+| ~~**5b**~~ | ~~Suportes e templates~~ | ✅ | ✅ **pronta** |
 | **5c** | Condições de estado | ❌ a fazer | inputs de estado no cenário |
 | **5d** | Comparação lado a lado | n/a | tela |
 
@@ -545,18 +562,36 @@ em toda resposta.
 *Pronto quando:* Kaleidoscope e Black Grail mudam o número, aparecem em
 `buffsCounted` com a origem, e o link `/calc?…` reproduz.
 
-#### 5b — Suportes e templates
+#### 5b — Suportes e templates ✅
 
-O terceiro slot que falta para o número bater com uma party real.
+O terceiro slot que faltava para o número bater com uma party real.
 
-- `sup=` na query string, com o alvo do buff (`targetsAttacker`) explícito.
-- `templates.json`: composições clássicas como **listas de referência**, nunca
-  valores literais (**D13**) — assim sobrevivem a rebalanceamento.
-- Templates ad hoc montados na tela vivem na query string e viram link (§3.1).
+**Não é uma party, é uma lista de buffos externos** — sem posição, sem limite de
+três, repetição permitida. Order Change deixa mais de dois buffarem o mesmo
+ataque num turno, e duas cópias do mesmo suporte somam.
 
-*Pronto quando:* um template de duas Castorias muda o número, e cada buff de
-suporte aparece com a origem — inclusive os que **não** chegaram, com o motivo
-`target … does not reach the attacker`, que o núcleo já produz.
+- `sup=` repetido na query string, um por fonte: `504500:1,3;lv=6;np=5;oc=3;ce=9400480;mlb;t0`.
+  Chave repetida em vez de `sup1`/`sup2` porque a lista é **editada**: com
+  índice, remover o do meio exige renumerar, e uma sub-chave órfã grudaria a CE
+  de um suporte removido em outro, calada.
+- Skills, nível, NP do suporte (nível e overcharge **dele**), CE do suporte
+  (efeitos só — a ATK dela é do suporte) e `t0` para o buff de alvo único que
+  não apontou para o atacante.
+- Editor em janela, com os templates: aplicar, salvar com nome, apagar. O bloco
+  na tela mostra só o resumo — três cartões abertos empurrariam o resultado para
+  fora da tela, e é o resultado que se está olhando.
+- `supports` na tool `calculate_damage`, com os mesmos campos.
+
+**Um defeito latente apareceu no caminho:** o filtro de alcance juntava `ptAll` e
+`ptOne` na mesma lista, então um buff de alvo único passava mesmo com
+`targetsAttacker: false`. Ninguém tinha notado porque a fonte `support` não tinha
+superfície — só teste chegava nela. Agora são dois conjuntos e uma função só.
+
+*Pronto:* duas Castorias levam a Artoria de 3.091 para 8.657 num Arts; a
+composição Koyanskaya×2 + Oberon vai a 26.281 num Buster e a 6.183 num Arts,
+onde os três `upCommandall` saem com `restricted to cardBuster, this attack is
+cardArts`. Cada buff aparece com a origem — inclusive os que **não** chegaram,
+com o motivo.
 
 #### 5c — Condições de estado
 
@@ -590,7 +625,7 @@ ainda ignoram CE.
 | ~~R1~~ | ~~2.685 CEs, maioria ruído~~ | **Resolvido** — filtro por efeito (§4.1, D6). 536 inertes descartadas, 2.149 ingeridas em duas classes. |
 | R2 | `_lang_en` tem fallback | **Risco menor que o estimado** — medido: só **1** dos 466 servos ainda tem nome em japonês (フランチェスカ・プレラーティ). Detectar e sinalizar, não quebrar. |
 | R3 | Buff→slot é manual | 46 `funcType` e 129 `buffType` distintos no dump, mas só ~25 mapeiam para slot da fórmula; o resto é utilidade (NP gain, estrelas, imunidade) que serve à busca, não ao dano. Trabalho central da fase 2/3, documentar cada decisão em `DAMAGE.md`. |
-| **R4** | **Validação da calculadora** | **Aberto, 11 de 16 casos conferidos** contra maketakunai.github.io — 33 números, exatos. 176 testes provam correspondência com `damage_formula.txt` e com o dado; os 11 casos provam correspondência com uma calculadora da comunidade; **nenhum confere contra o jogo**, e a distinção importa porque duas ferramentas podem compartilhar a mesma convenção e errar juntas. Os 5 que faltam são todos de card, e a fonte usada só calcula NP. **Mitigação: procedimento definido em `docs/VALIDATION.md` com 16 casos — um base que prende a espinha multiplicativa inteira e um por termo, mais os quatro de mecânica nova (R21–R24). `npm run damage:cases` imprime cada cenário com o link que o reproduz; `expected` preenchido vira regressão permanente. Um teste falha de propósito quando os 16 estiverem cobertos, para o risco ser fechado em vez de esquecido.** |
+| **R4** | **Validação da calculadora** | **Aberto, 11 de 16 casos conferidos** contra maketakunai.github.io — 33 números, exatos. 238 testes provam correspondência com `damage_formula.txt` e com o dado; os 11 casos provam correspondência com uma calculadora da comunidade; **nenhum confere contra o jogo**, e a distinção importa porque duas ferramentas podem compartilhar a mesma convenção e errar juntas. Os 5 que faltam são todos de card, e a fonte usada só calcula NP. **Mitigação: procedimento definido em `docs/VALIDATION.md` com 16 casos — um base que prende a espinha multiplicativa inteira e um por termo, mais os quatro de mecânica nova (R21–R24). `npm run damage:cases` imprime cada cenário com o link que o reproduz; `expected` preenchido vira regressão permanente. Um teste falha de propósito quando os 16 estiverem cobertos, para o risco ser fechado em vez de esquecido.** |
 | R5 | `nice_servant_lore` = 88 MB | Nunca vai pro browser nem pro git. Só `raw/` (gitignored) → build. |
 | R6 | Disponibilidade NA | Opcional e barato (cruzar com `basic_servant` de NA, 0,5 MB) se um dia quiser marcar "não lançado em NA". Fora do escopo agora. |
 | **R7** | **`atkMax` é uma armadilha** | `atkMax` é o ATK no nível *natural* máximo, não o máximo real. Artoria: `atkMax=11221` (lv90) mas `atkGrowth[119]=14418` (lv120) — **28% de diferença**. Usar `atkMax` subestimaria todo cálculo com grail, silenciosamente. **Mitigação: `atkMax` é banido do modelo canônico.** `atkGrowth` já traz 120 entradas (465/466 servos), então ATK em qualquer nível é `atkGrowth[lv-1]`. |

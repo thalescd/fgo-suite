@@ -123,8 +123,14 @@ server.registerTool(
       "its effects — the Black Grail is +2400 ATK and +80% NP damage, not one or the other. `ceMlb` picks between " +
       "two DIFFERENT effect sets, not two grades of one, and defaults to the weaker (non-MLB) set because the data " +
       "cannot know which you own.\n\n" +
-      "NOT modelled: support servants and state conditions other than HP and stack counts (turn number). Buffs " +
-      "depending on those are reported in `notCounted` rather than guessed.\n\n" +
+      "`supports` is a LIST of other servants buffing this attack — not a party. There is no position and no limit " +
+      "of three: Order Change lets more than two buff the same attack, and listing the same servant twice is " +
+      "legitimate because two copies stack. Each entry may bring its own skills, NP (with ITS own level and " +
+      "overcharge) and Craft Essence. A support's CE contributes only its EFFECTS; its ATK belongs to the support.\n\n" +
+      "`targetsAttacker` (default true) answers a question only the player can: a support buff that hits ONE ally " +
+      "— 78 servants have some — was it pointed at the attacker? Party-wide buffs never ask.\n\n" +
+      "NOT modelled: state conditions other than HP and stack counts (turn number). Buffs depending on those are " +
+      "reported in `notCounted` rather than guessed.\n\n" +
       `Accuracy: the implementation matches the community formula term by term, but ${validationState()} — ` +
       "say so when the exact figure matters.",
     inputSchema: {
@@ -152,6 +158,21 @@ server.registerTool(
         .optional()
         .describe("Which of its skills fired, 1-based. Nothing applies unless listed."),
       mysticCodeLevel: z.number().int().min(1).max(10).optional().describe("Default 10."),
+      supports: z
+        .array(
+          z.object({
+            servant: z.string().describe("Name, alias, collection number or internal id."),
+            skills: z.array(z.number().int().min(1).max(3)).optional().describe("Which of its skills fired. None unless listed."),
+            skillLevel: z.number().int().min(1).max(10).optional().describe("Default 10 — this support's own, not the attacker's."),
+            npLevel: z.number().int().min(1).max(5).optional().describe("Set only if this support used its NP."),
+            npOvercharge: z.number().int().min(1).max(5).optional().describe("The SUPPORT's overcharge. Default 1. 26 of the 47 party-buffing NPs scale with it."),
+            targetsAttacker: z.boolean().optional().describe("Default true. Only matters for single-target buffs."),
+            craftEssence: z.string().optional().describe("The support's CE. Effects only — its ATK is the support's."),
+            ceMlb: z.boolean().optional(),
+          }),
+        )
+        .optional()
+        .describe("Other servants buffing this attack. Repeat the same one to stack two copies."),
       stacksOnSelf: z
         .number()
         .int()

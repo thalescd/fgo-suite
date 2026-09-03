@@ -494,6 +494,75 @@ table.levels .hl { color: var(--accent); background: rgba(111, 168, 255, .07); f
 /* Lista longa (os 28 mystic codes) rola em vez de esticar o bloco. */
 .matches.scroll { max-height: 292px; overflow-y: auto; }
 
+/* Cada fonte de buff externa é um cartão: sem isso, com três suportes a
+   página vira uma parede de checkbox sem dizer onde um termina. */
+.ext-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: var(--panel);
+}
+.ext-card .attacker-head { margin-bottom: 10px; }
+.ext-card .picker { max-width: none; }
+
+/* No bloco fica só o resumo: três cartões abertos empurrariam o resultado
+   para fora da tela, e é o resultado que se está olhando. */
+.ext-summary { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ext-row { display: flex; gap: 9px; align-items: center; }
+.ext-row img { border-radius: 5px; border: 1px solid var(--line); }
+.ext-row .name { font-weight: 550; }
+.ext-row .orig { color: var(--muted); font-size: 12px; }
+
+/* ------------------------------------------------------------------- janela */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 8, 12, .72);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+  z-index: 50;
+}
+.modal {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  width: min(620px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.modal-head h3 { margin: 0; font-size: 14px; }
+.modal-head .linkish { margin-left: auto; padding: 4px 10px; font-size: 12px; }
+.modal-body { padding: 16px; overflow-y: auto; }
+/* O seletor de suporte, que fica no topo. O de CE dentro de um cartão é
+   `.ext-card .picker` e não é alcançado por isto. */
+.modal-body > .picker { max-width: none; margin-bottom: 14px; }
+.modal-sep { border: 0; border-top: 1px solid var(--line); margin: 20px 0 14px; }
+.modal-sub { margin: 0 0 4px; font-size: 12.5px; }
+
+.tpl-save { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.tpl-save .search-input { flex: 1; }
+.tpl-save .linkish { padding: 6px 13px; font-size: 12px; white-space: nowrap; }
+.tpl-save .linkish:disabled { opacity: .45; cursor: not-allowed; }
+
+.tpl-list { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.tpl-row { display: flex; gap: 9px; align-items: baseline; }
+.tpl-row .name { font-weight: 550; }
+.tpl-row .orig { color: var(--muted); font-size: 12px; flex: 1; }
+.tpl-row .linkish { padding: 3px 9px; font-size: 11.5px; }
+
 .trait-picker { display: flex; flex-direction: column; gap: 7px; max-width: 460px; margin-top: 4px; }
 .chip.removable { cursor: pointer; font-family: inherit; }
 .chip.removable:hover { color: #ff9b6f; border-color: #4a3327; }

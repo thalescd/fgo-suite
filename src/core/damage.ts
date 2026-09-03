@@ -78,7 +78,32 @@ export type BuffSource =
    * apontando para Mystic Codes diferentes na mesma party.
    */
   | { kind: "mysticCodeSkill"; index: number }
-  | { kind: "support"; servantId: number; skills: number[]; skillLevel: number; targetsAttacker: boolean }
+  /**
+   * Uma fonte de buff **externa**: outro servo contribuindo para este ataque.
+   *
+   * Pode aparecer quantas vezes quiser, inclusive com o mesmo `servantId` — duas
+   * cópias do mesmo suporte somam, e Order Change permite mais de dois num turno.
+   * Não há party aqui: a fórmula só quer a lista de contribuições.
+   *
+   * `targetsAttacker` responde a pergunta que só o usuário sabe: um buff de
+   * **alvo único** apontou para quem está atacando? Buff de party inteira não
+   * pergunta. Vale para 78 dos 462 servos.
+   */
+  | {
+      kind: "support";
+      servantId: number;
+      skills: number[];
+      skillLevel: number;
+      targetsAttacker: boolean;
+      /** O NP do suporte, quando ele foi usado. Nível e overcharge são DELE. */
+      np?: { level: number; overcharge: number };
+      /**
+       * A CE do suporte — **efeitos só, nunca ATK**. A ATK daquela CE é do
+       * suporte, não de quem ataca. E não há `level`: nível de CE move ATK e HP,
+       * e o valor dos efeitos só muda com o MLB.
+       */
+      ce?: { id: number; mlb: boolean };
+    }
   | { kind: "npSelfBuff" };
 
 export interface DamageInput {
@@ -337,16 +362,42 @@ export function enemyTraitNames(enemy: Enemy): Set<string> {
 
 // --------------------------------------------------------- resolução de buff
 
-/** Alvos que alcançam o atacante quando vindos de um suporte. */
-const REACHES_ALLY = new Set(["ptAll", "ptFull", "ptOne", "ptOneOther", "ptOther", "ptSelfAnotherFirst"]);
+/** Buff que pega a party inteira: alcança quem ataca sem perguntar. 400 efeitos. */
+const REACHES_PARTY = new Set(["ptAll", "ptFull"]);
+/**
+ * Buff de **alvo único** entre aliados: alcança quem ataca só se tiver sido
+ * apontado para ele. 125 efeitos, em 78 servos.
+ */
+const REACHES_ONE_ALLY = new Set(["ptOne", "ptOneOther", "ptOther", "ptSelfAnotherFirst"]);
+
+/**
+ * Um buff vindo de fora chega em quem ataca?
+ *
+ * A versão anterior juntava os dois conjuntos num só e decidia por um ternário
+ * invertido: com `targetsAttacker: false`, um `ptOne` passava mesmo assim,
+ * porque estava na mesma lista do `ptAll`. Ninguém tinha notado porque a fonte
+ * `support` ainda não tinha superfície — só testes chegavam nela.
+ */
+const reachesAttacker = (target: string, targetsAttacker: boolean): boolean =>
+  REACHES_PARTY.has(target) || (targetsAttacker && REACHES_ONE_ALLY.has(target));
 
 interface Candidate {
   effect: Effect;
   source: string;
   /** Índice de nível dentro de `effect.values`. */
   levelIndex: number;
-  /** true quando o efeito vem de um suporte e precisa alcançar o atacante. */
+  /** true quando o efeito vem de fora do atacante e precisa alcançá-lo. */
   fromSupport: boolean;
+  /** Só em fonte externa: o buff de alvo único foi apontado para quem ataca? */
+  targetsAttacker?: boolean;
+  /**
+   * Overcharge a usar neste efeito. Omitido = o do atacante.
+   *
+   * O NP de um suporte tem overcharge **próprio** — 26 dos 47 NPs que buffam a
+   * party escalam com ele, e o Prince of Lan Ling vai de +30% a +50% de ATK.
+   * Herdar o overcharge de quem ataca daria o número de outro NP.
+   */
+  overcharge?: number;
   /** true quando vem da Craft Essence equipada. Ver `isEventOnlyBonus`. */
   fromCe: boolean;
 }
@@ -497,8 +548,14 @@ function resolveBuffs(
     // não passa por aqui — qualquer um da party pode aplicá-lo, e o def down de
     // um suporte é uma das maiores fontes de dano do jogo.
     const side = sideOfTarget(e.target);
-    if (side === "attacker" && c.fromSupport && !REACHES_ALLY.has(e.target)) {
-      skipped.push({ source: c.source, buffType: label, reason: `target ${e.target} does not reach the attacker` });
+    if (side === "attacker" && c.fromSupport && !reachesAttacker(e.target, c.targetsAttacker ?? false)) {
+      // O motivo distingue os dois casos: um `self` nunca chegaria; um `ptOne`
+      // chegaria se tivesse sido apontado, e dizer isso é o que permite à pessoa
+      // corrigir em vez de achar que a skill não faz nada.
+      const reason = REACHES_ONE_ALLY.has(e.target)
+        ? `target ${e.target} hits one ally, and this source was not pointed at the attacker`
+        : `target ${e.target} does not reach the attacker`;
+      skipped.push({ source: c.source, buffType: label, reason });
       continue;
     }
 
@@ -549,7 +606,7 @@ function resolveBuffs(
       continue;
     }
 
-    const flat = valueOf(e, c.levelIndex, input.attacker.overcharge);
+    const flat = valueOf(e, c.levelIndex, c.overcharge ?? input.attacker.overcharge);
     // R25: quatro buffs de dano crescem conforme o HP cai. Sem isto sobra o
     // valor de HP cheio, que na Passionlip e no Leonidas é zero.
     const hpPercent = clampPercent(input.attacker.hpPercent ?? 100);
@@ -724,18 +781,61 @@ function collectCandidates(input: DamageInput, data: DamageData): Candidate[] {
         // dentro ("カルデア\n戦闘服"), que arrebentaria a linha da auditoria.
         const label = mc.name.replace(/^Mystic Code:\s*/, "");
         for (const e of sk.effects) {
-          out.push({ effect: e, source: `${label} skill ${src.index + 1}`, levelIndex: equipped.level - 1, fromSupport: true, fromCe: false });
+          // O MC é do Master e vale para a party: um buff de alvo único dele
+          // pode ser apontado para quem ataca, como o de um suporte.
+          out.push({ effect: e, source: `${label} skill ${src.index + 1}`, levelIndex: equipped.level - 1, fromSupport: true, targetsAttacker: true, fromCe: false });
         }
         break;
       }
       case "support": {
         const sup = data.servants.get(src.servantId);
         if (!sup) break;
+        // Tudo que vem de fora carrega `fromSupport` e o alvo pretendido; quem
+        // decide o que alcança é `reachesAttacker`, num lugar só.
+        const ext = { fromSupport: true, targetsAttacker: src.targetsAttacker, fromCe: false };
+
         for (const num of src.skills) {
           const sk = sup.skills.find((s) => s.num === num);
           if (!sk) continue;
           for (const e of sk.effects) {
-            out.push({ effect: e, source: `${sup.name} skill ${num}`, levelIndex: src.skillLevel - 1, fromSupport: !src.targetsAttacker ? true : !REACHES_ALLY.has(e.target), fromCe: false });
+            out.push({ effect: e, source: `${sup.name} skill ${num}`, levelIndex: src.skillLevel - 1, ...ext });
+          }
+        }
+
+        if (src.np && sup.np) {
+          /**
+           * D20 vale aqui também: só o que roda **antes** da função de dano
+           * entra no golpe. Mas num NP **de suporte** não existe função de dano
+           * — `damageEffectIndex` é `null` —, e aí não há "depois" nenhum: tudo
+           * vale. São **20 dos 47** NPs que buffam a party, e é justamente onde
+           * estão Castoria e Merlin. Cortar em `null` os deixaria com zero buff.
+           */
+          const corte = sup.np.damageEffectIndex ?? sup.np.effects.length;
+          for (const e of sup.np.effects.slice(0, corte)) {
+            out.push({
+              effect: e,
+              source: `${sup.name} NP`,
+              levelIndex: src.np.level - 1,
+              overcharge: src.np.overcharge,
+              ...ext,
+            });
+          }
+        }
+
+        if (src.ce) {
+          // Efeitos só. A ATK daquela CE é do suporte — somá-la em quem ataca
+          // daria +2.400 vindos do nada com um Black Grail no suporte.
+          const ce = data.equips.get(src.ce.id);
+          if (ce) {
+            for (const e of src.ce.mlb ? ce.effectsMlb : ce.effectsBase) {
+              out.push({
+                effect: e,
+                source: `${sup.name}'s CE ${ce.name}${src.ce.mlb ? " (MLB)" : ""}`,
+                levelIndex: 0,
+                ...ext,
+                fromCe: true,
+              });
+            }
           }
         }
         break;

@@ -241,6 +241,16 @@ export interface DamageArgs {
   mysticCode?: string;
   mysticCodeSkills?: number[];
   mysticCodeLevel?: number;
+  supports?: {
+    servant: string;
+    skills?: number[];
+    skillLevel?: number;
+    npLevel?: number;
+    npOvercharge?: number;
+    targetsAttacker?: boolean;
+    craftEssence?: string;
+    ceMlb?: boolean;
+  }[];
   stacksOnSelf?: number;
   stacksOnTarget?: number;
   npId?: number;
@@ -274,6 +284,27 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
   const mc = a.mysticCode !== undefined ? store.findMysticCode(a.mysticCode) : null;
   if (a.mysticCode !== undefined && !mc) notFound.push(`mystic code "${a.mysticCode}"`);
 
+  /**
+   * Fontes externas. Uma entrada por suporte, repetição permitida — duas cópias
+   * do mesmo somam, e Order Change deixa mais de dois buffarem o mesmo ataque.
+   */
+  // Paralelo a `a.supports`, com `null` no que não resolveu. Compactar a lista
+  // aqui desalinharia os índices e pareria o suporte seguinte com os argumentos
+  // do anterior — o mesmo defeito de arrays paralelos que a gramática da query
+  // string evita de propósito.
+  const supDocs: ({ id: number; ceId?: number } | null)[] = [];
+  for (const sp of a.supports ?? []) {
+    const found = store.findServant(sp.servant);
+    if (!found) { notFound.push(`support "${sp.servant}"`); supDocs.push(null); continue; }
+    let supCe: number | undefined;
+    if (sp.craftEssence !== undefined) {
+      const hit = store.findEquip(sp.craftEssence);
+      if (hit) supCe = hit.id;
+      else notFound.push(`support craft essence "${sp.craftEssence}"`);
+    }
+    supDocs.push({ id: found.id, ...(supCe !== undefined ? { ceId: supCe } : {}) });
+  }
+
   const unknownTraits: string[] = [];
   const traitIds = (a.enemyTraits ?? []).map((name) => {
     const t = store.traits.find((x) => x.name.toLowerCase() === name.toLowerCase());
@@ -300,6 +331,23 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
   put("mc", mc?.id);
   put("mcs", (a.mysticCodeSkills ?? []).join(","));
   put("mclv", a.mysticCodeLevel);
+  // Mesma gramática da tela: `servoId:skills` posicional, resto nomeado.
+  (a.supports ?? []).forEach((sp, i) => {
+    const doc = supDocs[i];
+    if (!doc) return;
+    const parts = [`${doc.id}:${(sp.skills ?? []).join(",")}`];
+    if (sp.skillLevel !== undefined && sp.skillLevel !== 10) parts.push(`lv=${sp.skillLevel}`);
+    if (sp.npLevel !== undefined) {
+      parts.push(`np=${sp.npLevel}`);
+      if (sp.npOvercharge !== undefined && sp.npOvercharge !== 1) parts.push(`oc=${sp.npOvercharge}`);
+    }
+    if (doc.ceId !== undefined) {
+      parts.push(`ce=${doc.ceId}`);
+      if (sp.ceMlb) parts.push("mlb");
+    }
+    if (sp.targetsAttacker === false) parts.push("t0");
+    p.append("sup", parts.join(";"));
+  });
   put("ss", a.stacksOnSelf);
   put("st", a.stacksOnTarget);
   put("npid", a.npId);
@@ -320,8 +368,18 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
 
   const state = parseCalc(p);
   const data: DamageData = {
-    servants: new Map([[servant.id, servant]]),
-    equips: ce ? new Map([[ce.id, store.equip(ce.id)]]) : new Map(),
+    servants: new Map(
+      [servant, ...supDocs.filter((d) => d !== null).map((d) => store.servant(d.id))].map((x) => [x.id, x]),
+    ),
+    equips: new Map(
+      [
+        ...(ce ? [ce.id] : []),
+        ...supDocs.map((d) => d?.ceId).filter((x): x is number => x !== undefined),
+      ].map((id) => [
+        id,
+        store.equip(id),
+      ]),
+    ),
     mysticCodes: mc ? new Map([[mc.id, mc]]) : new Map(),
     constants: store.constants,
   };
@@ -394,9 +452,12 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
     ...(notFound.length > 0 ? { notFound } : {}),
     ...(ce ? { craftEssence: `${ce.name}${a.ceMlb ? " (MLB)" : ""}` } : {}),
     ...(mc ? { mysticCode: mc.name } : {}),
+    ...(supDocs.some((d) => d !== null)
+      ? { supports: supDocs.filter((d) => d !== null).map((d) => store.servant(d.id).name) }
+      : {}),
 
     notModelledAtAll:
-      "Support servants and state conditions other than HP and stack counts (turn number) are not part of this calculation.",
+      "State conditions other than HP and stack counts (turn number) are not part of this calculation.",
     validation: validationState(),
   };
 }

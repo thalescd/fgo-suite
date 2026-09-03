@@ -21,7 +21,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **11 de 16 casos conferidos contra calculadora externa (R4)** |
 | **4** | MCP server — busca e calculadora como tools | ✅ pronta |
 | **5a** | CE e Mystic Code na query string, na tela e nas tools | ✅ pronta |
-| **5b** | Suportes e templates de composição | pendente — núcleo pronto, falta a superfície |
+| **5b** | Buffs externos e templates de composição | ✅ pronta |
 | **5c** | Condições de estado (HP, contagem de buffs, turno) | pendente |
 | **5d** | Comparação lado a lado | pendente |
 
@@ -45,7 +45,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 196 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 238 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -91,7 +91,12 @@ Em `/calc`. O cenário inteiro também vive na query string, pelas mesmas razõe
 ```
 /calc?s=100100&sk=1,2,3&ec=lancer&ea=sky        Artoria com as três skills vs lancer sky
 /calc?s=201200&act=buster&pos=1&crit=1&roll=min crítico Buster em 1ª posição, dano garantido
+/calc?s=100100&act=arts&sup=504500:1,3&sup=504500:1,3   a mesma Artoria com duas Castorias
 ```
+
+`sup=` se repete, um por fonte externa — não `sup1`/`sup2`. A lista é editada, e
+com índice remover o do meio exige renumerar; uma sub-chave órfã grudaria a CE de
+um suporte removido em outro, calada.
 
 Escolhe-se atacante, nível/fou/NP/overcharge, a ação (NP ou card, posição na
 chain, crítico), quais skills estão ativas, e o inimigo — classe, atributo,
@@ -124,7 +129,23 @@ Um caso que o dado não resolve sozinho: CE de evento dá "ataque +X% **neste
 evento**", e o dump não diz qual evento. Esse bônus é **recusado com o motivo à
 vista** (R29) — a Golden Sumo quase triplicava o dano em qualquer luta.
 
-Fora por enquanto: suportes (5b) e comparação lado a lado (5d).
+**Outros servos buffando o ataque** entram em *External buffs* (5b) — cada um
+com suas skills, seu nível, seu NP e sua CE. Não é uma party: não há posição,
+não há limite de três, e repetir o mesmo suporte é legítimo, porque Order Change
+deixa mais de dois buffarem o mesmo ataque num turno e duas cópias somam. Duas
+Castorias levam a Artoria de 3.091 para 8.657 num Arts.
+
+O buff de **alvo único** pergunta para quem apontou; o de party não pergunta. E
+o que não alcança sai com o motivo: a skill 2 da Koyanskaya tem `upCriticalrate`
+em `self`, que buffa ela e não você.
+
+**Templates** guardam uma composição pelo nome, no seu navegador — nunca no
+link. O link carrega sempre os buffs expandidos, então quem o recebe vê o mesmo
+cenário e pode salvá-lo como template **dele**. E o template guarda *referência*
+("Castoria, skills 1 e 3"), não valores: continua certo depois do próximo
+rebalanceamento. Duas composições vêm prontas como exemplo.
+
+Fora por enquanto: condições de estado (5c) e comparação lado a lado (5d).
 
 **11 dos 16 casos do R4 estão conferidos** contra calculadora da comunidade —
 33 números, reproduzidos exatamente. Isso prende a espinha multiplicativa inteira
@@ -148,7 +169,7 @@ o assistente **executar** a busca e a calculadora em vez de responder de memóri
 |---|---|
 | `search_servants` | os mesmos filtros de `?class=&rarity=&np=&cap=` |
 | `get_servant` | detalhe curado: NPs, skills, passivas, traits |
-| `calculate_damage` | os mesmos parâmetros de `/calc?…`, CE e Mystic Code inclusos, com a auditoria junto |
+| `calculate_damage` | os mesmos parâmetros de `/calc?…`, CE, Mystic Code e suportes inclusos, com a auditoria junto |
 | `list_capabilities` | as 170 tags, para não chutar nome de filtro |
 
 [`.mcp.json`](.mcp.json) está versionado: quem clonar e abrir no Claude Code já

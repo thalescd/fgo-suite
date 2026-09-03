@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 
 import { calculateDamage, type DamageData } from "../core/damage.js";
 import type { Constants, IndexEntry, IndexEntryServant, Meta, MysticCode, Servant } from "../core/model.js";
-import { CalcPage } from "./CalcPage.js";
+import { CalcPage, ExternalBuffsEditor } from "./CalcPage.js";
 import { DamageReport } from "./DamageReport.js";
 import { DEFAULT_CALC, defaultNpLevel, parseCalc, serializeCalc, toDamageInput } from "../core/scenario.js";
 import type { Bootstrap, TraitEntry } from "./data.js";
@@ -68,6 +68,65 @@ describe("a página monta", () => {
 
   it("com servo na URL, entra em carregamento em vez de quebrar", () => {
     expect(renderAt(`/calc?s=${artoria.id}`)).toContain("loading");
+  });
+
+  /**
+   * O editor é montado à parte porque a página nunca chega nele em SSR: o servo
+   * fica `null` e a página volta antes, então o bloco de buffs externos e a
+   * janela inteira ficariam sem nenhuma cobertura.
+   */
+  describe("a janela de buffs externos", () => {
+    const castoria = load(284);
+    const two = [castoria, castoria].map(() => ({
+      servantId: castoria.id,
+      skills: [1, 3],
+      skillLevel: 10,
+      targetsAttacker: true,
+      np: null,
+      ce: null,
+    }));
+    const docs = { servants: [castoria, castoria], ces: [null, null] };
+    const nameOf = (id: number) => servants.find((s) => s.id === id)?.name ?? `servant ${id}`;
+
+    const html = strip(renderToString(
+      <StaticRouter location="/calc">
+        <ExternalBuffsEditor
+          sources={two}
+          docs={docs}
+          boot={boot}
+          templates={[]}
+          servantName={nameOf}
+          onChange={() => {}}
+          onTemplates={() => {}}
+          onClose={() => {}}
+        />
+      </StaticRouter>,
+    ));
+
+    it("mostra um cartão por fonte, mesmo repetida", () => {
+      expect(html.match(/Charisma of Hope/g)).toHaveLength(2);
+    });
+
+    it("o campo de acrescentar vem antes dos cartões, e não desce com eles", () => {
+      // Depois dos cartões, ele desceria a cada suporte acrescentado — e
+      // acrescentar vários seguidos é o caso comum.
+      expect(html.indexOf("add a support")).toBeGreaterThan(-1);
+      expect(html.indexOf("add a support")).toBeLessThan(html.indexOf("Charisma of Hope"));
+    });
+
+    it("o campo de nome já vem com a sugestão tirada do conteúdo", () => {
+      expect(html).toContain('value="Double Altria Caster"');
+    });
+
+    it("lista as sementes como exemplos, e sem botão de apagar", () => {
+      expect(html).toContain("Double Koyanskaya (Light) + Oberon");
+      expect(html).toContain("example");
+      expect(html).not.toContain(">delete<");
+    });
+
+    it("diz que o template fica no navegador e não no link", () => {
+      expect(text(html)).toMatch(/never in the link/);
+    });
   });
 });
 
@@ -327,5 +386,41 @@ describe("CE e Mystic Code na query string (5a)", () => {
     expect(padrao.attacker.ce).toEqual({ id: 9400480, mlb: false });
     const explicito = toDamageInput(parseCalc(new URLSearchParams("ce=9400480&cel=50&mlb=1")), artoria, traitName);
     expect(explicito.attacker.ce).toEqual({ id: 9400480, mlb: true, level: 50 });
+  });
+});
+
+describe("buffs externos na query string (5b)", () => {
+  it("chave repetida vira lista, e sobrevive à ida e volta", () => {
+    const q = "s=100100&sup=504500:1,2,3;lv=6&sup=2800100:3;np=5;oc=4;ce=9400480;mlb;t0";
+    const state = parseCalc(new URLSearchParams(q));
+    expect(state.externals).toEqual([
+      { servantId: 504500, skills: [1, 2, 3], skillLevel: 6, targetsAttacker: true, np: null, ce: null },
+      {
+        servantId: 2800100, skills: [3], skillLevel: 10, targetsAttacker: false,
+        np: { level: 5, overcharge: 4 }, ce: { id: 9400480, mlb: true },
+      },
+    ]);
+    expect(parseCalc(serializeCalc(state))).toEqual(state);
+  });
+
+  it("o caso comum fica curto", () => {
+    const s = { ...DEFAULT_CALC, externals: [{ servantId: 504500, skills: [1, 3], skillLevel: 10, targetsAttacker: true, np: null, ce: null }] };
+    expect(serializeCalc(s).toString()).toBe("sup=504500%3A1%2C3");
+  });
+
+  it("entrada sem servo é descartada, o resto sobrevive", () => {
+    const state = parseCalc(new URLSearchParams("sup=lixo&sup=504500:1"));
+    expect(state.externals).toHaveLength(1);
+    expect(state.externals[0]!.servantId).toBe(504500);
+  });
+
+  it("remover o do meio não embaralha os outros", () => {
+    // É o motivo de a chave ser repetida em vez de indexada: com `sup1`/`sup2`,
+    // remover o do meio exigiria renumerar as sub-chaves, e uma órfã grudaria a
+    // CE de um suporte removido em outro.
+    const s = parseCalc(new URLSearchParams("sup=1:1&sup=2:2;ce=9400480&sup=3:3"));
+    const semMeio = { ...s, externals: s.externals.filter((_, i) => i !== 1) };
+    expect(parseCalc(serializeCalc(semMeio)).externals.map((e) => e.servantId)).toEqual([1, 3]);
+    expect(parseCalc(serializeCalc(semMeio)).externals.every((e) => e.ce === null)).toBe(true);
   });
 });
