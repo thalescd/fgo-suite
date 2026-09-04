@@ -282,7 +282,7 @@ API mudar um campo, conserta-se em um lugar só.
 | [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md) | Tags de busca: formato, limiares, como adicionar |
 | [`docs/DAMAGE.md`](docs/DAMAGE.md) | Fórmula, mapeamento buff→slot, sutilezas, estado da validação |
 | [`docs/MCP.md`](docs/MCP.md) | As tools, como o assistente as descobre, e por que a descrição é interface |
-| [`docs/VALIDATION.md`](docs/VALIDATION.md) | **Como conferir a calculadora contra o jogo** — os 17 casos e o procedimento |
+| [`docs/VALIDATION.md`](docs/VALIDATION.md) | **Como conferir a calculadora contra o jogo** — os 18 casos e o procedimento |
 | [`damage_formula.txt`](damage_formula.txt) | A fórmula de dano da comunidade (fonte da fase 3) |
 
 Se você herdou este projeto: comece pelo `PLANO.md`. Ele registra *por que* cada
