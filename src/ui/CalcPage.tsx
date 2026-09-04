@@ -108,11 +108,18 @@ function ServantPicker({
   boot,
   onPick,
   placeholder = "who is attacking? name, alias or number…",
+  autoFocus = false,
 }: {
   boot: Bootstrap;
   onPick: (id: number) => void;
-  /** O mesmo seletor serve para escolher o atacante e para acrescentar suporte. */
+  /** O mesmo seletor escolhe o atacante, acrescenta suporte e puxa o alvo. */
   placeholder?: string;
+  /**
+   * Só onde escolher é a ação principal — a tela vazia e a janela ao abrir.
+   * O do inimigo divide espaço com meia dúzia de campos e não pode roubar o
+   * cursor de quem estava mexendo neles.
+   */
+  autoFocus?: boolean;
 }) {
   const [query, setQuery] = useState("");
 
@@ -131,7 +138,7 @@ function ServantPicker({
         placeholder={placeholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        autoFocus
+        autoFocus={autoFocus}
       />
       {matches.length > 0 && (
         <div className="matches">
@@ -433,6 +440,7 @@ export function ExternalBuffsEditor({
         Aqui ele fica parado no mesmo lugar, e o que cresce cresce abaixo.
       */}
       <ServantPicker
+        autoFocus
         boot={boot}
         placeholder="add a support — name, alias or number…"
         onPick={(id) =>
@@ -749,7 +757,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
       <div className="detail">
         <h2>Damage calculator</h2>
         <p className="detail-text">Pick the attacking servant to start.</p>
-        <ServantPicker boot={boot} onPick={(id) => patch({ servantId: id, skills: [], appends: [], npId: null })} />
+        <ServantPicker autoFocus boot={boot} onPick={(id) => patch({ servantId: id, skills: [], appends: [], npId: null })} />
         {state.servantId !== null && <p className="empty">loading…</p>}
       </div>
     );
@@ -1263,11 +1271,10 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
               carrega o resultado, nunca "o alvo é o servo X". Mesma razão de o
               `tpl=` não existir.
             */}
-            <details className="sub">
-              <summary>Pull a servant in as the target — fills class, attribute and traits</summary>
+            <Field label="Fighting a servant?" hint="fills class, attribute and every trait at once">
               <ServantPicker
                 boot={boot}
-                placeholder="which servant are you fighting?"
+                placeholder="search the servant you are up against…"
                 onPick={(id) => {
                   void loadServant(id).then((doc) => {
                     setPulledName(doc.name);
@@ -1279,7 +1286,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                   });
                 }}
               />
-            </details>
+            </Field>
 
             <div className="fields">
               <Field label="Class" hint="multiplier shown is against this attacker">
