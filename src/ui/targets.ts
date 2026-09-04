@@ -52,7 +52,7 @@ interface StoredTarget {
 }
 
 /** Igual ao template de buff: ou entra inteiro, ou não entra. */
-function revive(raw: unknown): SavedTarget | null {
+export function revive(raw: unknown): SavedTarget | null {
   if (typeof raw !== "object" || raw === null) return null;
   const { name, enemy } = raw as Partial<StoredTarget>;
   if (typeof name !== "string" || name.trim() === "") return null;
@@ -82,7 +82,7 @@ export function loadTargets(store?: Store): SavedTarget[] {
 
 export type SaveResult = { ok: true; targets: SavedTarget[] } | { ok: false; reason: string };
 
-function persist(list: SavedTarget[], store?: Store): SaveResult {
+export function persist(list: SavedTarget[], store?: Store): SaveResult {
   const s = storage(store);
   if (!s) return { ok: false, reason: "this browser is not letting the page store anything — nothing was saved" };
   const payload: StoredTarget[] = list.map((t) => ({ name: t.name, enemy: serializeEnemyPreset(t.enemy) }));

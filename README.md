@@ -25,7 +25,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **5c** | Condições de estado (HP, contagem de buffs, turno) | pendente |
 | **5d** | Comparação lado a lado | pendente |
 | **5e** | Alvos salvos, e puxar um servo como alvo | ✅ pronta |
-| **5f** | Exportar/importar a biblioteca em JSON | pendente |
+| **5f** | Exportar/importar a biblioteca em JSON | ✅ pronta |
 
 Detalhe de cada uma em [`PLANO.md`](PLANO.md) §8.1.
 
@@ -47,7 +47,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 295 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 307 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -174,6 +174,12 @@ Castorias levam a Artoria de 3.091 para 8.657 num Arts.
 O buff de **alvo único** pergunta para quem apontou; o de party não pergunta. E
 o que não alcança sai com o motivo: a skill 2 da Koyanskaya tem `upCriticalrate`
 em `self`, que buffa ela e não você.
+
+A biblioteca inteira — templates e alvos — sai e entra num **arquivo só** (5f).
+Não é para compartilhar, que o link já faz: é backup, e é o buraco que a 5b
+abriu. Importar **junta por padrão** e nunca apaga nada sem ser mandado; nome
+repetido mantém o seu, e o relatório diz quantos entraram, quantos já existiam e
+quantos não deram para ler.
 
 **Alvos salvos** funcionam igual, do outro lado da conta (5e). E há um atalho
 que vale mais que eles: **puxar um servo como alvo** preenche classe, atributo e

@@ -557,6 +557,12 @@ table.levels .hl { color: var(--accent); background: rgba(111, 168, 255, .07); f
 .tpl-save .linkish { padding: 6px 13px; font-size: 12px; white-space: nowrap; }
 .tpl-save .linkish:disabled { opacity: .45; cursor: not-allowed; }
 
+/* `<input type=file>` não estiliza; o rótulo vira o botão e o input some
+   dentro dele — continua acessível pelo teclado, ao contrário de `display:none`. */
+.file-btn { position: relative; overflow: hidden; cursor: pointer; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.file-btn.danger { color: #ff9b6f; border-color: #4a3327; }
+
 .tpl-list { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
 .tpl-row { display: flex; gap: 9px; align-items: baseline; }
 .tpl-row .name { font-weight: 550; }

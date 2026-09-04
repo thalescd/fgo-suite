@@ -87,7 +87,7 @@ interface StoredTemplate {
  * carregar as outras: "Double Castoria" com uma Castoria só é pior que ausente
  * — o nome continuaria prometendo o dobro do buff que ele aplicaria.
  */
-function revive(raw: unknown): BuffTemplate | null {
+export function revive(raw: unknown): BuffTemplate | null {
   if (typeof raw !== "object" || raw === null) return null;
   const { name, sources } = raw as Partial<StoredTemplate>;
   if (typeof name !== "string" || name.trim() === "") return null;
@@ -127,7 +127,7 @@ export function loadTemplates(store?: Store): BuffTemplate[] {
 
 export type SaveResult = { ok: true; templates: BuffTemplate[] } | { ok: false; reason: string };
 
-function persist(list: BuffTemplate[], store?: Store): SaveResult {
+export function persist(list: BuffTemplate[], store?: Store): SaveResult {
   const s = storage(store);
   if (!s) return { ok: false, reason: "this browser is not letting the page store anything — nothing was saved" };
   const payload: StoredTemplate[] = list.map((t) => ({ name: t.name, sources: t.sources.map(serializeExternalBuff) }));

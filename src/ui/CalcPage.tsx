@@ -50,6 +50,13 @@ import {
   type BuffTemplate,
 } from "./templates.js";
 import {
+  describeImport,
+  exportFileName,
+  exportLibrary,
+  importLibrary,
+  type ImportMode,
+} from "./library.js";
+import {
   loadTargets,
   removeTarget,
   saveTarget,
@@ -356,6 +363,64 @@ function ExternalSummaryRow({
   );
 }
 
+/**
+ * Exportar e importar a biblioteca (5f).
+ *
+ * Mora nas **duas** janelas, e é o mesmo componente nos dois lugares: o arquivo
+ * cobre as duas listas, e quem pensa em "minhas coisas salvas" já está numa
+ * delas. Um bloco fixo na tela seria mais visível e mais errado — isto se usa
+ * ao trocar de navegador, não a cada conta.
+ */
+function LibraryBar({ onChanged }: { onChanged: () => void }) {
+  const [report, setReport] = useState<string | null>(null);
+  /** `replace` apaga o que está aqui, então pede um segundo clique. */
+  const [armed, setArmed] = useState(false);
+
+  const baixar = () => {
+    const blob = new Blob([exportLibrary()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = exportFileName();
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const ler = (file: File | undefined, mode: ImportMode) => {
+    if (!file) return;
+    void file.text().then((text) => {
+      setReport(describeImport(importLibrary(text, mode)));
+      setArmed(false);
+      onChanged();
+    });
+  };
+
+  return (
+    <>
+      <hr className="modal-sep" />
+      <h4 className="modal-sub">Library file</h4>
+      <p className="footnote">
+        Both lists in one file — buff templates and saved targets. This is backup, not sharing: a link
+        already carries the whole scenario.
+      </p>
+      <div className="row-actions">
+        <button className="linkish" type="button" onClick={baixar}>Export…</button>
+        <label className="linkish file-btn">
+          Import (keep mine)
+          <input type="file" accept="application/json,.json"
+            onChange={(e) => { ler(e.target.files?.[0], "merge"); e.target.value = ""; }} />
+        </label>
+        <label className={`linkish file-btn${armed ? " danger" : ""}`} onClick={() => setArmed(true)}>
+          {armed ? "pick a file — this erases what is here" : "Import (replace all)"}
+          <input type="file" accept="application/json,.json"
+            onChange={(e) => { ler(e.target.files?.[0], "replace"); e.target.value = ""; }} />
+        </label>
+      </div>
+      {report && <p className="footnote">{report}</p>}
+    </>
+  );
+}
+
 // -------------------------------------------------------------------- a janela
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -507,6 +572,8 @@ export function ExternalBuffsEditor({
           </div>
         ))}
       </div>
+
+      <LibraryBar onChanged={() => onTemplates(loadTemplates())} />
     </Modal>
   );
 }

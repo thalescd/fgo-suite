@@ -547,7 +547,7 @@ porque a fonte `support` não tinha caminho de entrada (§8.1, 5b).
 | **5c** | Condições de estado | ❌ a fazer | inputs de estado no cenário |
 | **5d** | Comparação lado a lado | n/a | tela |
 | ~~**5e**~~ | ~~Alvos salvos~~ | n/a | ✅ **pronta** |
-| **5f** | Exportar/importar a biblioteca | n/a | um arquivo, as duas listas |
+| ~~**5f**~~ | ~~Exportar/importar a biblioteca~~ | n/a | ✅ **pronta** |
 
 #### 5a — CE e Mystic Code
 
@@ -663,7 +663,7 @@ ficou, mas só para alvo montado à mão, onde a lista é curta e deliberada.
 número, e o link carrega o inimigo expandido — nunca um `tgt=`, pela mesma razão
 do `tpl=` (§5.2).
 
-#### 5f — Exportar/importar a biblioteca
+#### 5f — Exportar/importar a biblioteca ✅
 
 Ideia do Thales, e **fecha um buraco aberto pela 5b**: hoje não há como tirar um
 template do navegador. Limpou cache, perdeu; trocou de máquina, perdeu.
@@ -690,9 +690,17 @@ Três decisões que a ideia força:
 As **sementes ficam fora do arquivo**: exportadas, virariam cópias congeladas
 que param de melhorar quando o projeto as melhora.
 
-*Ordem:* **5e antes de 5f.** O arquivo tem de cobrir as duas listas; definir o
-formato antes de alvos existirem custa uma versão nova logo em seguida, ou um
-campo vazio esperando. Com alvos prontos, a primeira versão já nasce completa.
+*Ordem:* **5e antes de 5f** — e valeu. O arquivo cobre as duas listas na versão
+1, sem campo vazio esperando nem versão nova em seguida.
+
+*Pronto:* o arquivo é o conteúdo do `localStorage` mais um cabeçalho
+(`kind`/`version`/`exportedAt`), então fonte de buff continua sendo `504500:1,3`
+e alvo continua sendo `ec=saber&ea=earth&esdef=50` — legível e diffável. Recusa
+JSON que não é nosso e versão futura, em vez de ler pela metade; grava as duas
+listas só depois de ler as duas, porque meia importação é pior que nenhuma. A
+barra vive **dentro das duas janelas**, o mesmo componente nos dois lugares: um
+bloco fixo na tela seria mais visível e mais errado, já que isto se usa ao trocar
+de navegador, não a cada conta.
 
 ---
 
