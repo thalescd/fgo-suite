@@ -95,6 +95,7 @@ describe("a página monta", () => {
           docs={docs}
           boot={boot}
           templates={[]}
+          saved={0}
           servantName={nameOf}
           onChange={() => {}}
           onTemplates={() => {}}
@@ -126,6 +127,13 @@ describe("a página monta", () => {
 
     it("diz que o template fica no navegador e não no link", () => {
       expect(text(html)).toMatch(/never in the link/);
+    });
+
+    it("sem nada salvo, exportar aparece desabilitado e dizendo o motivo", () => {
+      // Um arquivo de duas listas vazias só se descobre abrindo.
+      expect(html).toMatch(/<button[^>]*disabled[^>]*>Export — nothing saved yet<\/button>/);
+      // E importar continua disponível: é assim que a biblioteca deixa de estar vazia.
+      expect(html).toContain("Import (keep mine)");
     });
   });
 });

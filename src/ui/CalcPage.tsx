@@ -371,7 +371,7 @@ function ExternalSummaryRow({
  * delas. Um bloco fixo na tela seria mais visível e mais errado — isto se usa
  * ao trocar de navegador, não a cada conta.
  */
-function LibraryBar({ onChanged }: { onChanged: () => void }) {
+function LibraryBar({ saved, onChanged }: { saved: number; onChanged: () => void }) {
   const [report, setReport] = useState<string | null>(null);
   /** `replace` apaga o que está aqui, então pede um segundo clique. */
   const [armed, setArmed] = useState(false);
@@ -404,7 +404,14 @@ function LibraryBar({ onChanged }: { onChanged: () => void }) {
         already carries the whole scenario.
       </p>
       <div className="row-actions">
-        <button className="linkish" type="button" onClick={baixar}>Export…</button>
+        {/*
+          Sem nada salvo, exportar geraria um arquivo de duas listas vazias —
+          e o usuário só descobriria abrindo. O botão diz o motivo em vez de
+          entregar isso.
+        */}
+        <button className="linkish" type="button" disabled={saved === 0} onClick={baixar}>
+          {saved === 0 ? "Export — nothing saved yet" : `Export ${saved}…`}
+        </button>
         <label className="linkish file-btn">
           Import (keep mine)
           <input type="file" accept="application/json,.json"
@@ -457,6 +464,7 @@ export function ExternalBuffsEditor({
   docs,
   boot,
   templates,
+  saved,
   servantName,
   onChange,
   onTemplates,
@@ -466,6 +474,8 @@ export function ExternalBuffsEditor({
   docs: ExternalDocs | null;
   boot: Bootstrap;
   templates: BuffTemplate[];
+  /** Quantas coisas há na biblioteca inteira — a janela só conhece metade. */
+  saved: number;
   servantName: (id: number) => string;
   onChange: (next: ExternalBuff[]) => void;
   onTemplates: (next: BuffTemplate[]) => void;
@@ -573,7 +583,7 @@ export function ExternalBuffsEditor({
         ))}
       </div>
 
-      <LibraryBar onChanged={() => onTemplates(loadTemplates())} />
+      <LibraryBar saved={saved} onChanged={() => onTemplates(loadTemplates())} />
     </Modal>
   );
 }
@@ -606,6 +616,7 @@ function traitsAsTarget(servant: Servant, catalog: Set<number>): number[] {
 function TargetsModal({
   current,
   targets,
+  saved,
   pulledName,
   traitName,
   traitUses,
@@ -615,6 +626,8 @@ function TargetsModal({
 }: {
   current: EnemyPreset;
   targets: SavedTarget[];
+  /** Quantas coisas há na biblioteca inteira — a janela só conhece metade. */
+  saved: number;
   /**
    * O nome do último servo puxado, quando houve um. Nenhum heurístico sobre o
    * conteúdo chega perto: um servo entra com 20 traits, e o que identifica
@@ -1441,6 +1454,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
         <TargetsModal
           current={enemyOf(state)}
           targets={targets}
+          saved={templates.length + targets.length}
           pulledName={pulledName}
           traitName={traitName}
           traitUses={traitUses}
@@ -1456,6 +1470,7 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
           docs={extDocs}
           boot={boot}
           templates={templates}
+          saved={templates.length + targets.length}
           servantName={servantName}
           onChange={(externals) => patch({ externals })}
           onTemplates={setTemplates}
