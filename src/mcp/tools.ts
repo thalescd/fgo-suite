@@ -263,6 +263,7 @@ export interface DamageArgs {
   cardPosition?: number;
   critical?: boolean;
   busterFirstCard?: boolean;
+  mightyChain?: boolean;
   busterChain?: boolean;
   braveChain?: boolean;
   enemyClass?: string;
@@ -361,6 +362,7 @@ export function calculateDamageTool(store: Store, a: DamageArgs) {
   put("pos", a.cardPosition);
   if (a.critical) p.set("crit", "1");
   if (a.busterFirstCard) p.set("bfirst", "1");
+  if (a.mightyChain) p.set("mchain", "1");
   if (a.busterChain) p.set("bchain", "1");
   if (a.braveChain) p.set("brave", "1");
   put("ec", a.enemyClass);

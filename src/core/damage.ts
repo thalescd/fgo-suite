@@ -168,6 +168,20 @@ export interface DamageInput {
      * carta ser a Buster de abertura, ou ser uma Buster Chain, já responde sim.
      */
     busterFirst?: boolean;
+    /**
+     * **Mighty Chain**: as três cartas de tipos diferentes, em qualquer ordem
+     * (R34).
+     *
+     * Aí todas as cartas ganham o bônus de primeira carta **dos três tipos**,
+     * e não só do seu. Para o dano isso quer dizer o `firstCardBonus` do
+     * Buster valendo numa chain Quick-Arts-Buster, onde nenhuma Buster abriu.
+     * Os bônus de Arts (NP) e Quick (estrelas) também valem, mas nada aqui
+     * calcula NP nem estrela.
+     *
+     * **Não mexe no `cardDamageValue`**: a posição de cada carta continua
+     * sendo a dela. O que a Mighty Chain replica é o bônus de abertura.
+     */
+    mightyChain?: boolean;
     busterChain: boolean;
     braveChain: boolean;
   };
@@ -1125,13 +1139,15 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
    * posição — a 2ª e a 3ª de uma chain aberta em Buster saíam sem ele, e uma
    * Arts em segunda posição perdia 0,5 de um termo que vale 1,2 (R32).
    *
-   * A entrada é factual: "a primeira carta foi Buster?". Quando *esta* carta é
-   * a Buster de abertura, ou quando é uma Buster Chain, a resposta é sim por
-   * construção e não se pergunta.
+   * **Quatro caminhos levam ao bônus, e a frase da fórmula só nomeia um.** A
+   * Mighty Chain (R34) dá o bônus de abertura dos três tipos a todas as cartas,
+   * então uma chain Quick-Arts-Buster o ganha sem nenhuma Buster ter aberto —
+   * caso que a fórmula de 2018 não cobre, como não cobria o Oberon (§3.5).
    */
   const busterOpened =
     !isNP &&
     (input.action.busterFirst === true ||
+      input.action.mightyChain === true ||
       input.action.busterChain ||
       (position === 1 && card === "buster"));
   // Do dump, não literal: `buster[1].addAtk` é onde o 0,5 mora.

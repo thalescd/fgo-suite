@@ -98,6 +98,15 @@
       "sourceName": "planilha comunitaria (Reddit), sobre a mesma formula"
     },
     {
+      "id": "card-quick-mighty-chain",
+      "why": "R34: numa Mighty Chain toda carta ganha o bonus de abertura dos tres tipos. Uma Quick em 1a posicao, sem nenhuma Buster ter aberto, ainda leva o firstCardBonus de 0.5 -- o termo vai de 0.864 para 1.364 (0.8 do Quick com os 8% da passiva Riding da Artoria). Prende o GATILHO, nao o termo, que card-buster-1st ja' prende.",
+      "scenario": "Artoria, card Quick em 1a posicao, mighty chain (uma de cada tipo), contra Saber/earth",
+      "calc": "s=100100&act=quick&pos=1&mchain=1&ec=saber&ea=earth",
+      "source": "calc",
+      "mode": "avg",
+      "expected": null
+    },
+    {
       "id": "card-extra",
       "why": "Prende extraCardModifier = 2.0 (extra fora de brave chain).",
       "scenario": "Igual, card Extra",

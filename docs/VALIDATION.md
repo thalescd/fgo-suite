@@ -10,7 +10,7 @@ npm run damage:cases    # imprime os casos, o link de cada um e o nosso número
 
 ---
 
-## 1. Por que 17 casos bastam
+## 1. Por que 18 casos bastam
 
 A fórmula é um **produto de termos**. Isso muda tudo sobre quanto trabalho é
 preciso: não é necessário testar combinações, só cobrir cada fator uma vez.
@@ -225,16 +225,17 @@ super-efetivo por soma (R27), fase de medidor (R33), unidade faltando no
 `funcType` (R28) e condição de quem recebe (R31). Todos foram achados por alguém
 olhar um número e estranhar, não por este conjunto. É o que falta desenhar.
 
-O conjunto **cresceu de 16 para 17** quando o R32 apareceu: `card-arts-2nd-buster-first`
-existe porque nenhum dos 16 cobria uma carta não-primeira numa chain aberta em
-Buster, e era exatamente ali que o defeito estava. Um caso novo por mecânica
-nova é o que impede o conjunto de virar decoração.
+O conjunto **cresce com o modelo**: 16 → 17 no R32 (`card-arts-2nd-buster-first`,
+carta não-primeira em chain aberta em Buster, que era onde o defeito estava) e
+17 → 18 no R34 (`card-quick-mighty-chain`, o outro gatilho do mesmo termo). Um
+caso novo por mecânica nova é o que impede o conjunto de virar decoração — e faz
+o R4 fechar mais tarde, o que é o preço certo a pagar.
 
 ## 6. Estado
 
-`npm run damage:cases` termina imprimindo `R4: N de 17 casos conferidos`. Hoje: **16 de 17** —
-11 contra maketakunai.github.io e 5 contra a planilha comunitária. Falta
-`card-extra`, que nenhuma das duas fontes cobre.
+`npm run damage:cases` termina imprimindo `R4: N de 18 casos conferidos`. Hoje: **16 de 18** —
+11 contra maketakunai.github.io e 5 contra a planilha comunitária. Faltam
+`card-extra` e `card-quick-mighty-chain`.
 
 Os **5 que faltam são todos de card** — `card-buster-1st`, `card-buster-3rd`,
 `card-arts-crit`, `card-extra` e `buster-chain`. A fonte usada até aqui só

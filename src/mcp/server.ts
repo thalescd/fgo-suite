@@ -195,6 +195,9 @@ server.registerTool(
       busterFirstCard: z.boolean().optional().describe(
         "Did the chain OPEN with a Buster card? If so every card in it gets +0.5, not just the first. Implied when this card is itself the opening Buster, or in a Buster chain.",
       ),
+      mightyChain: z.boolean().optional().describe(
+        "One of each card type in the chain, any order. Every card then gets the first-card bonus of all three types, so the Buster one applies even when no Buster opened.",
+      ),
       busterChain: z.boolean().optional().describe("Buster command cards only."),
       braveChain: z.boolean().optional().describe("Raises the extra card from x2 to x3.5."),
       enemyClass: z.string().optional().describe("Defaults to \"neutral\": no class advantage and no class trait, so an unspecified enemy never grants a silent 2x or 0.5x. Pass a real class to model one. Beast variants are accepted (beastI, beastII, beastIIIR...)."),

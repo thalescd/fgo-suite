@@ -652,9 +652,11 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
    * chain abriu em Buster por construção — não há o que perguntar.
    */
   const busterFirstImplied =
-    !isNP && ((state.action === "buster" && state.position === 1) || state.busterChain);
+    !isNP && ((state.action === "buster" && state.position === 1) || state.busterChain || state.mightyChain);
   const busterFirstAsked = !isNP && !busterFirstImplied;
   const busterFirstOn = !isNP && (busterFirstImplied || state.busterFirst);
+  /** Mighty Chain é feita de command cards, como as outras chains. */
+  const canMighty = !isNP && state.action !== "extra";
   /** 50 servos têm NP de suporte. Calcular "dano" ali daria um número sem sentido. */
   const npDealsNoDamage = isNP && (np == null || np.damageEffectIndex === null);
   /**
@@ -864,9 +866,24 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                     chain opened with a Buster card
                     {isNP
                       ? " — an NP gets no first-card bonus"
-                      : busterFirstImplied
-                        ? " — this card already is it"
-                        : " — +0.5 to every card in the chain"}
+                      : state.mightyChain
+                        ? " — a mighty chain grants it anyway"
+                        : busterFirstImplied
+                          ? " — this card already is it"
+                          : " — +0.5 to every card in the chain"}
+                  </span>
+                </label>
+                {/*
+                  R34: numa Mighty Chain toda carta ganha o bônus de abertura
+                  dos TRÊS tipos, então o do Buster vale mesmo numa chain que
+                  começou em Quick — caso que "abriu em Buster" responderia não.
+                */}
+                <label className={`opt${canMighty ? "" : " inert"}`}>
+                  <input type="checkbox" disabled={!canMighty} checked={state.mightyChain}
+                    onChange={() => patch({ mightyChain: !state.mightyChain })} />
+                  <span>
+                    mighty chain — one of each card type, any order
+                    {canMighty && " · grants the Buster first-card bonus even without a Buster opening"}
                   </span>
                 </label>
                 <label className={`opt${canBusterChain ? "" : " inert"}`}>

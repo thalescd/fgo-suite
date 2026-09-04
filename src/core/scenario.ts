@@ -136,6 +136,13 @@ export interface CalcState {
    * numa chain aberta em Buster ganha o bônus, e nada na carta diz isso.
    */
   busterFirst: boolean;
+  /**
+   * Mighty Chain: as três cartas de tipos diferentes, em qualquer ordem (R34).
+   *
+   * Vale o bônus de abertura dos três tipos em todas as cartas, então o
+   * `firstCardBonus` do Buster entra mesmo numa chain que começou em Quick.
+   */
+  mightyChain: boolean;
   busterChain: boolean;
   braveChain: boolean;
 
@@ -173,6 +180,7 @@ export const DEFAULT_CALC: CalcState = {
   position: 1,
   isCrit: false,
   busterFirst: false,
+  mightyChain: false,
   busterChain: false,
   braveChain: false,
   // Alvo sem classe e sem atributo, não o primeiro da lista.
@@ -229,6 +237,7 @@ const KEYS = {
   position: "pos",
   isCrit: "crit",
   busterFirst: "bfirst",
+  mightyChain: "mchain",
   busterChain: "bchain",
   braveChain: "brave",
   enemyClass: "ec",
@@ -352,6 +361,7 @@ export function parseCalc(p: URLSearchParams): CalcState {
     position: clamp(int(p, KEYS.position, 1), 1, 3),
     isCrit: p.get(KEYS.isCrit) === "1",
     busterFirst: p.get(KEYS.busterFirst) === "1",
+    mightyChain: p.get(KEYS.mightyChain) === "1",
     busterChain: p.get(KEYS.busterChain) === "1",
     braveChain: p.get(KEYS.braveChain) === "1",
     enemyClass: p.get(KEYS.enemyClass) ?? DEFAULT_CALC.enemyClass,
@@ -392,6 +402,7 @@ export function serializeCalc(s: CalcState): URLSearchParams {
   putNum(KEYS.position, s.position, 1);
   if (s.isCrit) p.set(KEYS.isCrit, "1");
   if (s.busterFirst) p.set(KEYS.busterFirst, "1");
+  if (s.mightyChain) p.set(KEYS.mightyChain, "1");
   if (s.busterChain) p.set(KEYS.busterChain, "1");
   if (s.braveChain) p.set(KEYS.braveChain, "1");
   if (s.enemyClass !== DEFAULT_CALC.enemyClass) p.set(KEYS.enemyClass, s.enemyClass);
@@ -487,6 +498,7 @@ export function toDamageInput(
       isCrit: isNP ? false : state.isCrit,
       // Num NP a pergunta não existe: NP não ganha `firstCardBonus`.
       busterFirst: isNP ? false : state.busterFirst,
+      mightyChain: isNP ? false : state.mightyChain,
       busterChain: state.busterChain,
       braveChain: state.braveChain,
     },

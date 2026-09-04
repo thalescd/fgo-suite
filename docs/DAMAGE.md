@@ -128,6 +128,24 @@ construção e não se pergunta — a caixa aparece marcada e travada.
 nomeia; o card extra ganha, porque é uma carta da chain. Um NP conta como
 "primeira posição do tipo dele" só para o `cardDamageValue`.
 
+**E a frase da fórmula não é o único gatilho (R34).** A **Mighty Chain** — as
+três cartas de tipos diferentes, em qualquer ordem — dá a todas as cartas o bônus
+de abertura **dos três tipos**. Numa chain Quick-Arts-Buster ninguém abriu em
+Buster, e mesmo assim as três levam os 0,5:
+
+```
+Quick em 1ª, chain comum   termo 0,864
+Quick em 1ª, mighty chain  termo 1,364     +58%
+```
+
+Os bônus de Arts (NP) e de Quick (estrelas) também valem ali, mas nada nesta
+página calcula NP nem estrela. E a Mighty Chain **não promove a carta a primeira
+posição**: o `cardDamageValue` continua sendo o da posição real, e o que ela
+replica é só o bônus de abertura.
+
+`damage_formula.txt` é de 2018 e não menciona Mighty Chain, como não menciona o
+Oberon (§3.5). É a terceira mecânica que entra como exceção documentada.
+
 > **Em aberto:** se um NP **Buster** na primeira posição concede o bônus às
 > cartas seguintes. A fórmula não diz, e não há caso conferido. Como a entrada é
 > "a primeira carta foi Buster", quem sabe responde; nada é assumido no código.

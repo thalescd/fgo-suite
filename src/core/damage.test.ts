@@ -259,6 +259,29 @@ describe("bônus de primeira carta Buster (R32)", () => {
     expect(card("extra", { busterFirst: true }).breakdown.firstCardBonus).toBe(0.5);
   });
 
+  it("mighty chain dá o bônus sem nenhuma Buster ter aberto (R34)", () => {
+    // Chain Quick-Arts-Buster: "abriu em Buster?" responderia NÃO, e a carta
+    // perderia 0,5. Numa Mighty Chain toda carta ganha o bônus de abertura dos
+    // três tipos — o de Arts e o de Quick também, mas nenhum é de dano.
+    expect(card("card", { card: "quick", position: 1 }).breakdown.firstCardBonus).toBe(0);
+    expect(card("card", { card: "quick", position: 1, mightyChain: true }).breakdown.firstCardBonus).toBe(0.5);
+  });
+
+  it("mighty chain não mexe na posição, só no bônus de abertura", () => {
+    // O `cardDamageValue` continua sendo o da posição real: Arts em 2ª é 1.2,
+    // e o que a Mighty Chain acrescenta é o 0,5, não uma promoção a 1ª.
+    const m = card("card", { card: "arts", position: 2, mightyChain: true });
+    expect([m.breakdown.firstCardBonus, m.breakdown.cardTerm]).toEqual([0.5, 1.7]);
+    const terceira = card("card", { card: "arts", position: 3, mightyChain: true });
+    expect(terceira.breakdown.cardTerm).toBeCloseTo(1.9, 6);
+  });
+
+  it("os dois caminhos dão o mesmo bônus, e não somam", () => {
+    const so_mighty = card("card", { card: "arts", position: 2, mightyChain: true });
+    const os_dois = card("card", { card: "arts", position: 2, mightyChain: true, busterFirst: true });
+    expect(os_dois.breakdown.cardTerm).toBe(so_mighty.breakdown.cardTerm);
+  });
+
   it("NP não ganha, nem quando a chain abriu em Buster", () => {
     const np = calculateDamage(
       input({
@@ -278,6 +301,9 @@ describe("bônus de primeira carta Buster (R32)", () => {
     // No NP a pergunta não existe, então nem chega ao núcleo.
     const semNp = parseCalc(new URLSearchParams("s=100100&bfirst=1"));
     expect(toDamageInput(semNp, ARTORIA, () => "x").action.busterFirst).toBe(false);
+    // Mesma chave curta para a Mighty Chain, e a mesma regra no NP.
+    const mighty = parseCalc(new URLSearchParams("s=100100&act=quick&mchain=1"));
+    expect(toDamageInput(mighty, ARTORIA, () => "x").action.mightyChain).toBe(true);
   });
 });
 

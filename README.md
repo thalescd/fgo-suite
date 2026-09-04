@@ -18,7 +18,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **0** | Ingestão, manifest, modelo canônico | ✅ pronta |
 | **1** | Busca com filtros diretos (servos e CEs) | ✅ pronta |
 | **2** | Capabilities + busca por skill | ✅ pronta |
-| **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **16 de 17 casos conferidos contra duas fontes externas (R4)** |
+| **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **16 de 18 casos conferidos contra duas fontes externas (R4)** |
 | **4** | MCP server — busca e calculadora como tools | ✅ pronta |
 | **5a** | CE e Mystic Code na query string, na tela e nas tools | ✅ pronta |
 | **5b** | Buffs externos e templates de composição | ✅ pronta |
@@ -47,7 +47,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 272 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 275 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -119,10 +119,15 @@ card — não só a primeira (R32). Numa chain B-A-A isso é +42% na segunda car
 +34% no turno. A caixa vem marcada e travada quando a própria carta já é a
 abertura.
 
+E abrir em Buster não é o único caminho: numa **Mighty Chain** — uma carta de
+cada tipo, em qualquer ordem — todas ganham o bônus de abertura dos três tipos
+(R34). Uma Quick de 1ª posição vai de 0,864 para 1,364 no termo, **+58%**, sem
+nenhuma Buster ter aberto.
+
 A fórmula da comunidade é de 2018 e o jogo andou: mecânicas mais novas entram
-como exceção documentada. Duas até agora: a skill 3 do **Oberon**, que dobra os
-buffs de dano de NP (R21), e a passiva da **Kiara**, que sobrescreve a matriz de
-classe (R22).
+como exceção documentada. Três até agora: a skill 3 do **Oberon**, que dobra os
+buffs de dano de NP (R21); a passiva da **Kiara**, que sobrescreve a matriz de
+classe (R22); e a **Mighty Chain** acima.
 
 Dezessete NPs somam dano por unidade de um trait acumulado — 〔Heroic King〕 no
 próprio **Charlemagne**, 〔roman〕 no alvo do **Romulus**. São dois campos, porque
@@ -178,7 +183,7 @@ rebalanceamento. Duas composições vêm prontas como exemplo.
 
 Fora por enquanto: condições de estado (5c) e comparação lado a lado (5d).
 
-**16 dos 17 casos do R4 estão conferidos**, contra **duas** fontes: 11 de NP
+**16 dos 18 casos do R4 estão conferidos**, contra **duas** fontes: 11 de NP
 numa calculadora da comunidade, 5 de card numa planilha. Reconstruindo o produto
 sem o piso, as 48 medidas batem na unidade — a fórmula inteira, mais as cinco
 mecânicas que nasceram de relato (R21–R24, R26) e o R32, que só a segunda fonte
