@@ -282,6 +282,19 @@ describe("bônus de primeira carta Buster (R32)", () => {
     expect(os_dois.breakdown.cardTerm).toBe(so_mighty.breakdown.cardTerm);
   });
 
+  it("buster chain numa carta que não é Buster é estado contraditório, não um sim", () => {
+    // Uma Buster Chain e' feita de tres Busters, entao "chain de Buster numa
+    // Quick" nao pode acontecer. A tela apaga a marca ao trocar de carta, mas o
+    // nucleo nao confia nela: a tool tambem monta esta entrada.
+    const q = card("card", { card: "quick", position: 2, busterChain: true });
+    expect(q.breakdown.firstCardBonus).toBe(0);
+    expect(q.breakdown.busterChainBonus).toBe(0);
+    // Com a carta certa, a mesma marca vale para os dois.
+    const b = card("card", { card: "buster", position: 2, busterChain: true });
+    expect(b.breakdown.firstCardBonus).toBe(0.5);
+    expect(b.breakdown.busterChainBonus).toBeGreaterThan(0);
+  });
+
   it("NP não ganha, nem quando a chain abriu em Buster", () => {
     const np = calculateDamage(
       input({

@@ -1144,11 +1144,18 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
    * então uma chain Quick-Arts-Buster o ganha sem nenhuma Buster ter aberto —
    * caso que a fórmula de 2018 não cobre, como não cobria o Oberon (§3.5).
    */
+  //
+  // `busterChain` só vale como resposta **com a carta sendo Buster**: uma
+  // Buster Chain é feita de três Busters, então a combinação "chain de Buster
+  // numa Quick" é contraditória, e derivar um bônus dela é derivar de absurdo.
+  // A tela impede o estado; o núcleo não confia nela, porque a tool também
+  // monta esta entrada.
+  const inBusterChain = input.action.kind === "card" && card === "buster" && input.action.busterChain;
   const busterOpened =
     !isNP &&
     (input.action.busterFirst === true ||
       input.action.mightyChain === true ||
-      input.action.busterChain ||
+      inBusterChain ||
       (position === 1 && card === "buster"));
   // Do dump, não literal: `buster[1].addAtk` é onde o 0,5 mora.
   const firstCardBonus = busterOpened ? k.cardMultiplier["buster"]?.[1]?.addAtk ?? 0 : 0;
@@ -1229,10 +1236,7 @@ export function calculateDamage(input: DamageInput, data: DamageData): DamageRes
         ? k.extraAttackRateGrand
         : k.extraAttackRateSingle
       : 1;
-  const busterChainBonus =
-    input.action.kind === "card" && card === "buster" && input.action.busterChain
-      ? servantAtk * k.busterChainMod
-      : 0;
+  const busterChainBonus = inBusterChain ? servantAtk * k.busterChainMod : 0;
 
   const constantPart =
     servantAtk *

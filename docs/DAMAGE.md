@@ -143,6 +143,18 @@ página calcula NP nem estrela. E a Mighty Chain **não promove a carta a primei
 posição**: o `cardDamageValue` continua sendo o da posição real, e o que ela
 replica é só o bônus de abertura.
 
+**Os quatro gatilhos, e o que cada um exige.** `busterChain` só responde "sim"
+**com a carta sendo Buster de fato**: uma Buster Chain é feita de três Busters,
+então "chain de Buster numa Quick" é estado contraditório, e derivar um bônus
+dele é derivar de absurdo. A tela apaga a marca ao trocar de carta; o núcleo
+checa de novo, porque a tool também monta esta entrada.
+
+> Foi assim que o defeito apareceu: sair de um Buster com "buster chain" marcado
+> deixava `bchain=1` na URL. A caixa dele sumia da vista — desabilitada — mas o
+> valor ficava, e a caixa de "abriu em Buster" aparecia **travada** numa carta
+> Quick, dizendo "esta carta já é a abertura". Controle desabilitado não é
+> estado apagado.
+
 `damage_formula.txt` é de 2018 e não menciona Mighty Chain, como não menciona o
 Oberon (§3.5). É a terceira mecânica que entra como exceção documentada.
 

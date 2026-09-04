@@ -651,12 +651,24 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
    * R32: quando esta carta já É a Buster de abertura, ou é uma Buster Chain, a
    * chain abriu em Buster por construção — não há o que perguntar.
    */
+  /**
+   * Quando a resposta a "a chain abriu em Buster?" já está dada pelo resto do
+   * cenário. `busterChain` só conta com a carta sendo Buster de fato — uma
+   * Buster Chain é feita de três Busters, então "chain de Buster numa Quick" é
+   * estado contraditório, não um sim.
+   */
   const busterFirstImplied =
-    !isNP && ((state.action === "buster" && state.position === 1) || state.busterChain || state.mightyChain);
+    !isNP &&
+    ((state.action === "buster" && state.position === 1) ||
+      (state.action === "buster" && state.busterChain) ||
+      state.mightyChain);
   const busterFirstAsked = !isNP && !busterFirstImplied;
   const busterFirstOn = !isNP && (busterFirstImplied || state.busterFirst);
-  /** Mighty Chain é feita de command cards, como as outras chains. */
-  const canMighty = !isNP && state.action !== "extra";
+  /**
+   * Mighty Chain vale para o extra pelo mesmo motivo que "abriu em Buster":
+   * o extra é uma carta da chain, e a única exclusão que a fórmula nomeia é o NP.
+   */
+  const canMighty = !isNP;
   /** 50 servos têm NP de suporte. Calcular "dano" ali daria um número sem sentido. */
   const npDealsNoDamage = isNP && (np == null || np.damageEffectIndex === null);
   /**
@@ -804,7 +816,19 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                     ...deck.map((c) => ({ value: c as ActionKind, label: c })),
                     { value: "extra" as ActionKind, label: "extra" },
                   ]}
-                  onChange={(v) => patch({ action: v })}
+                  onChange={(v) =>
+                    // Trocar de ação apaga o que não pode mais valer. Sem isto,
+                    // um `bchain=1` sobrava ao sair do Buster: a caixa dele
+                    // sumia da vista mas o valor ficava na URL, e o
+                    // `firstCardBonus` continuava lendo "estou numa Buster
+                    // Chain" numa carta Quick.
+                    patch({
+                      action: v,
+                      ...(v !== "buster" ? { busterChain: false } : {}),
+                      ...(v !== "extra" ? { braveChain: false } : {}),
+                      ...(v === "np" ? { busterFirst: false, mightyChain: false } : {}),
+                    })
+                  }
                 />
               </Field>
 
@@ -883,7 +907,9 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
                     onChange={() => patch({ mightyChain: !state.mightyChain })} />
                   <span>
                     mighty chain — one of each card type, any order
-                    {canMighty && " · grants the Buster first-card bonus even without a Buster opening"}
+                    {canMighty
+                      ? " · grants the Buster first-card bonus even without a Buster opening"
+                      : " — an NP gets no first-card bonus"}
                   </span>
                 </label>
                 <label className={`opt${canBusterChain ? "" : " inert"}`}>
