@@ -65,7 +65,7 @@
       "source": "calc",
       "mode": "avg",
       "expected": 5621,
-      "sourceName": "maketakunai.github.io"
+      "sourceName": "planilha comunitaria (Reddit), sobre a mesma formula"
     },
     {
       "id": "card-buster-3rd",
@@ -74,7 +74,8 @@
       "calc": "s=100100&act=buster&pos=3&ec=saber&ea=earth",
       "source": "calc",
       "mode": "avg",
-      "expected": null
+      "expected": 5902,
+      "sourceName": "planilha comunitaria (Reddit), sobre a mesma formula"
     },
     {
       "id": "card-arts-2nd-buster-first",
@@ -83,7 +84,8 @@
       "calc": "s=100100&act=arts&pos=2&bfirst=1&ec=saber&ea=earth",
       "source": "calc",
       "mode": "avg",
-      "expected": null
+      "expected": 4778,
+      "sourceName": "planilha comunitaria (Reddit), sobre a mesma formula"
     },
     {
       "id": "card-arts-crit",
@@ -92,7 +94,8 @@
       "calc": "s=100100&act=arts&pos=1&crit=1&ec=saber&ea=earth",
       "source": "calc",
       "mode": "avg",
-      "expected": null
+      "expected": 5621,
+      "sourceName": "planilha comunitaria (Reddit), sobre a mesma formula"
     },
     {
       "id": "card-extra",
@@ -110,7 +113,8 @@
       "calc": "s=100100&act=buster&pos=1&bchain=1&ec=saber&ea=earth",
       "source": "calc",
       "mode": "avg",
-      "expected": null
+      "expected": 8066,
+      "sourceName": "planilha comunitaria (Reddit), sobre a mesma formula"
     },
     {
       "id": "buffs-atk-card-np",

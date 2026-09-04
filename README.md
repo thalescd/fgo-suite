@@ -18,7 +18,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **0** | Ingestão, manifest, modelo canônico | ✅ pronta |
 | **1** | Busca com filtros diretos (servos e CEs) | ✅ pronta |
 | **2** | Capabilities + busca por skill | ✅ pronta |
-| **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **12 de 17 casos conferidos contra calculadora externa (R4)** |
+| **3** | Calculadora: núcleo, testes e tela | ✅ pronta — **16 de 17 casos conferidos contra duas fontes externas (R4)** |
 | **4** | MCP server — busca e calculadora como tools | ✅ pronta |
 | **5a** | CE e Mystic Code na query string, na tela e nas tools | ✅ pronta |
 | **5b** | Buffs externos e templates de composição | ✅ pronta |
@@ -178,10 +178,16 @@ rebalanceamento. Duas composições vêm prontas como exemplo.
 
 Fora por enquanto: condições de estado (5c) e comparação lado a lado (5d).
 
-**12 dos 17 casos do R4 estão conferidos** contra calculadora da comunidade —
-36 números, reproduzidos exatamente. Isso prende a espinha multiplicativa inteira
-e cinco mecânicas que nasceram de relato (R21–R24, R26). O décimo-segundo é o
-primeiro de **card**, e o primeiro em que o `firstCardBonus` entra na conta.
+**16 dos 17 casos do R4 estão conferidos**, contra **duas** fontes: 11 de NP
+numa calculadora da comunidade, 5 de card numa planilha. Reconstruindo o produto
+sem o piso, as 48 medidas batem na unidade — a fórmula inteira, mais as cinco
+mecânicas que nasceram de relato (R21–R24, R26) e o R32, que só a segunda fonte
+podia confirmar.
+
+As duas **discordam entre si** no teto do random (1,099 contra 1,100), o que
+mostra que aquilo é escolha de quem implementa, não algo que a fórmula fixe. E
+as duas leem `damage_formula.txt`: concordar com elas prova a nossa
+implementação, **não** a fórmula. O R4 continua aberto por isso.
 
 Duas ressalvas continuam valendo. Os 5 casos que faltam são todos de **card**, e
 a fonte usada só calcula NP. E conferir contra outra calculadora **não é** conferir

@@ -112,57 +112,82 @@ motivos que o primeiro bug apareceu.
 
 ## 5. Diferenças já conhecidas e explicadas
 
-Contra **maketakunai.github.io**, em **12 casos — 36 números**. Reconstruindo o
-produto sem o piso a partir da própria auditoria, os 36 são reproduzidos
-**exatamente** sob duas convenções que não são as nossas:
+**Duas fontes, 16 casos, 48 números.** Os 11 de NP vieram de
+**maketakunai.github.io**; os 5 de card, de uma **planilha comunitária do
+Reddit**. As duas implementam a *mesma* fórmula (`damage_formula.txt`).
 
 ```
-✓ base-artoria-np             15178/16865/18535
-✓ triangle-lancer             30357/33730/37069
-✓ attribute-human             16696/18551/20388
-✓ np5                         22768/25297/27802
-✓ buffs-atk-card-np           44397/49330/54214
+maketakunai (NP)                            planilha (card)
+✓ base-artoria-np      15178/16865/18535    ✓ card-buster-1st            5059/5621/6184
+✓ triangle-lancer      30357/33730/37069    ✓ card-buster-3rd            5312/5902/6493
+✓ attribute-human      16696/18551/20388    ✓ card-arts-2nd-buster-first 4301/4778/5256
+✓ np5                  22768/25297/27802    ✓ card-arts-crit             5059/5621/6184
+✓ buffs-atk-card-np    44397/49330/54214    ✓ buster-chain               7504/8066/8628
 ✓ berserker-and-class-passive 38893/43192/47448
-✓ super-effective-oc          122394/135974/149418
-✓ np-variant-st               41844/46493/51096
-✓ class-relation-override     23600/26223/28819
-✓ card-res-down-on-target     30681/34090/37464
-✓ buff-boost                  42957/47730/52455
-✓ card-buster-1st              5059/ 5621/ 6184
+✓ super-effective-oc   122394/135974/149418
+✓ np-variant-st        41844/46493/51096
+✓ class-relation-override 23600/26223/28819
+✓ card-res-down-on-target 30681/34090/37464
+✓ buff-boost           42957/47730/52455
 ```
 
-O último é o **primeiro caso de card** conferido, e o primeiro em que o
-`firstCardBonus` entra na conta — os onze anteriores são todos de NP, que não
-ganha o bônus. Min e média exatos; o max repete a divergência de sempre.
+### O que a reconstrução mostrou
 
-Trinta e seis números, **duas** diferenças, nenhuma terceira.
+Reconstruindo o produto sem o piso a partir da própria auditoria (`cp`), e
+comparando com cada uma das 48 medidas:
 
-**Arredondamento.** Eles arredondam, nós truncamos. Vale 1 ponto, e só quando a
-fração passa de `,5`.
+| | resultado |
+|---|---|
+| `min = round(cp × 0,9)` | **exato nos 16 casos, nas duas fontes** |
+| `max` do maketakunai | `round(cp × 1,099)` — exato nos 11 |
+| `max` da planilha | `round(cp × 1,100)` — exato nos 5 |
+| "média" do maketakunai | `round(cp)` |
+| "média" da planilha | `(min + max) / 2`, um artefato de exibição |
 
-> ⚠️ **Não sabemos qual o jogo faz.** Uma versão anterior desta página afirmava
-> "o jogo trunca, então `Math.floor` fica" — isso nunca foi verificado, e
-> `damage_formula.txt` não diz nada sobre arredondamento. `Math.floor` fica por
-> falta de motivo para mudar, não por conhecimento.
+**O `cp` bate nas duas fontes, na unidade, em 16 cenários.** É a fórmula inteira
+— ATK, multiplicador de NP, termo de card com e sem `firstCardBonus`, classe,
+atributo, crítico, extra, chain, buffs, super-efetivo, override de classe.
 
-**Teto do random.** `ATTACK_RATE_RANDOM_MIN/MAX` no dump são `900` e `1100`.
-Eles usam **1,099** como máximo; nós usamos 1,100. Doze em doze, na casa decimal.
+**Uma diferença real sobrevive: arredondamento.** As duas fontes arredondam; nós
+truncamos. Vale 1 ponto, e só quando a fração passa de `,5`.
 
-A leitura por trás do 1,099 é que o jogo sorteia um **inteiro** em `[900, 1100)`
-— limite superior exclusivo, como é convenção em RNG —, e nesse caso 1,100 não
-pode acontecer. O detalhe que sustenta isso: o **mínimo bate exato** nos doze
-casos, o que só faz sentido se o limite de baixo for fechado e o de cima não.
+> ⚠️ **Não sabemos qual o jogo faz**, e `damage_formula.txt` não diz nada sobre
+> arredondamento. Mas agora há um motivo para manter `Math.floor` além da
+> inércia: `round` pode devolver **mais** que o valor exato, e no `min` isso
+> significaria anunciar como garantido um dano que não é. Truncar erra por
+> baixo, que é o lado seguro do número que existe para dizer "no pior caso".
 
-> **Em aberto, de propósito.** A interpretação é boa, mas é dedução a partir do
-> nome de uma constante — não medição. Doze casos confirmam que a escolha *deles*
-> é essa, não que ela esteja certa: é uma fonte só, repetida doze vezes.
->
-> **O que resolveria:** um dano in-game acima de `exato × 1,099`. Um único acerto
-> desses fecha a favor do 1,100; muitos tiros parando abaixo fecham a favor do
-> 1,099. Até lá, impacto de 0,09% e só no `max` — o `min`, que é o que interessa
-> para "dano garantido", bate nos doze.
+### O teto do random deixou de ser um mistério nosso
 
-### O que os 12 casos já provam
+A versão anterior desta página tratava **1,099** como a leitura provável do jogo,
+com dois argumentos. Os dois caíram:
+
+**"É uma fonte só."** Agora são duas — e elas **discordam entre si**. A planilha
+usa 1,100, exatamente o que o dump diz (`ATTACK_RATE_RANDOM_MAX = 1100`) e o que
+nós usamos. Ou seja: o teto é escolha de quem implementa, não algo que a fórmula
+fixe, e nenhuma das duas é evidência sobre o jogo.
+
+**"O mínimo bate exato, logo o limite de cima é exclusivo."** Este era um erro de
+raciocínio meu. O mínimo bater exato prova que o limite de baixo é fechado **e
+que eles arredondam** — não diz nada sobre o de cima. Tanto que ele bate exato
+nas duas fontes, inclusive na que usa 1,100.
+
+> **O que ainda resolveria:** um dano in-game acima de `exato × 1,099`. Um único
+> acerto desses fecha a favor do 1,100. Até lá o impacto é de 0,09%, só no `max`,
+> e agora com uma fonte externa do nosso lado.
+
+### O que a segunda fonte prova, e o que não prova
+
+**Prova:** que a nossa *implementação* está certa. Duas implementações
+independentes chegam ao mesmo `cp` em 16 cenários — foi isso que confirmou o R32,
+que nenhum teste interno pegava.
+
+**Não prova:** que a *fórmula* está certa. A planilha usa
+`damage_formula.txt`, a mesma que nós. Três leitores do mesmo texto concordando
+não medem o jogo — é exatamente o risco que o R4 nomeia desde o começo, e ele
+continua aberto.
+
+### O que os 16 casos já provam
 
 **A espinha multiplicativa inteira:** ATK por `atkGrowth` + fou (sem `atkMax`,
 que erraria 8% — R7), `cardTerm` 1,5 do NP Buster sem `firstCardBonus`,
@@ -170,10 +195,11 @@ que erraria 8% — R7), `cardTerm` 1,5 do NP Buster sem `firstCardBonus`,
 `attributeModifier` 1,1, multiplicador de NP em 400% e 600%, e com eles os
 divisores de unidade (R14).
 
-**E, desde `card-buster-1st`, o primeiro termo que só existe em card:**
-`firstCardBonus` 0,5 somado ao `cardDamageValue` 1,5 do Buster de abertura.
-Os onze anteriores são de NP, que não ganha o bônus — foi dentro desse vão que
-o R32 viveu.
+**E os cinco termos que só existem em card**, todos conferidos de uma vez pela
+segunda fonte: `firstCardBonus` (na carta de abertura **e** nas seguintes da
+mesma chain — R32), `cardDamageValue` na 3ª posição, `criticalModifier` 2,0 e
+`busterChainMod` somado fora do produto. Os onze de NP não tocavam nenhum deles,
+e foi dentro desse vão que o R32 viveu.
 
 **E quatro mecânicas que nasceram de relato**, o que importa mais, porque cada
 uma foi corrigida na base de leitura do dado e não tinha confirmação externa:
@@ -192,7 +218,7 @@ a fonte externa concorda com 200 e 175, não com 20 e 17,5. Aquela correção ti
 só `damage_formula.txt` ("note the lack of %") e os nossos próprios testes atrás
 dela.
 
-### O buraco que os 12 não cobrem
+### O buraco que os 16 não cobrem
 
 Nenhum caso toca as famílias **por servo** — escala por HP (R25 e R30),
 super-efetivo por soma (R27), fase de medidor (R33), unidade faltando no
@@ -206,8 +232,9 @@ nova é o que impede o conjunto de virar decoração.
 
 ## 6. Estado
 
-`npm run damage:cases` termina imprimindo `R4: N de 17 casos conferidos`. Hoje: **12 de 17**, todos contra
-maketakunai.github.io.
+`npm run damage:cases` termina imprimindo `R4: N de 17 casos conferidos`. Hoje: **16 de 17** —
+11 contra maketakunai.github.io e 5 contra a planilha comunitária. Falta
+`card-extra`, que nenhuma das duas fontes cobre.
 
 Os **5 que faltam são todos de card** — `card-buster-1st`, `card-buster-3rd`,
 `card-arts-crit`, `card-extra` e `buster-chain`. A fonte usada até aqui só
