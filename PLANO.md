@@ -546,7 +546,7 @@ porque a fonte `support` não tinha caminho de entrada (§8.1, 5b).
 | ~~**5b**~~ | ~~Suportes e templates~~ | ✅ | ✅ **pronta** |
 | **5c** | Condições de estado | ❌ a fazer | inputs de estado no cenário |
 | **5d** | Comparação lado a lado | n/a | tela |
-| **5e** | Alvos salvos | n/a | mesma máquina dos templates de buff |
+| ~~**5e**~~ | ~~Alvos salvos~~ | n/a | ✅ **pronta** |
 | **5f** | Exportar/importar a biblioteca | n/a | um arquivo, as duas listas |
 
 #### 5a — CE e Mystic Code
@@ -618,7 +618,7 @@ exibida é ruído do dado.
 Por último de propósito: comparar antes de 5a e 5b seria comparar números que
 ainda ignoram CE.
 
-#### 5e — Alvos salvos
+#### 5e — Alvos salvos ✅
 
 Ideia do Thales. O bloco Enemy é hoje a parte mais cara de preencher — classe,
 atributo, cada trait buscado um a um, def buff, special def — e a que mais se
@@ -644,9 +644,24 @@ Duas decisões que a ideia força:
   〔roman〕 o inimigo acumulou depende de quantas vezes o *atacante* usou o NP
   (**R27**). Guardá-lo dentro de um inimigo salvo misturaria as duas coisas.
 
-*Pronto quando:* salvar "Gawain de Camelot, special def 50%" e reaplicá-lo
-reproduz o mesmo número, e o link continua carregando o inimigo expandido —
-nunca um `enemyTpl=`, pela mesma razão do `tpl=` (§5.2).
+**O que a ideia ganhou na implementação: puxar um servo como alvo.** Sugestão do
+Thales — no jogo se enfrenta servo o tempo todo, e o servo já traz classe,
+atributo e traits prontos. Contra a Artoria são **20 traits**, que ninguém
+digitaria à mão; sem eles um bônus anti-〔riding〕 não dispara e ninguém nota.
+Filtra pelo **catálogo de inimigo**, que já é a lista curada dos traits que algum
+efeito checa, e tira `class*`/`attribute*`, que os dois seletores derivam
+sozinhos. É **preenchimento, não modo**: os campos ficam editáveis e o link
+carrega o resultado, nunca "o alvo é o servo X".
+
+O nome sugerido ao salvar é o **do servo puxado**, quando houve um. Um heurístico
+sobre o conteúdo não chega perto: tentei o trait menos usado — o mais distintivo
+por medida — e ele escolheu `skyOrEarthExceptPseudoAndDemiServant`. O heurístico
+ficou, mas só para alvo montado à mão, onde a lista é curta e deliberada.
+
+*Pronto:* Gilgamesh vai de 22.808 para 74.864 puxando a Artoria como alvo
+(triângulo 2× e super-efetivo 150%), o alvo salva e reaplica reproduzindo o mesmo
+número, e o link carrega o inimigo expandido — nunca um `tgt=`, pela mesma razão
+do `tpl=` (§5.2).
 
 #### 5f — Exportar/importar a biblioteca
 

@@ -49,6 +49,43 @@ export interface ExternalBuff {
   ce: { id: number; mlb: boolean } | null;
 }
 
+/**
+ * Um alvo salvo: a parte do cenário que descreve o inimigo (5e).
+ *
+ * **Por valor, e isso é forçado.** O template de buff é por *referência*
+ * (`504500:1,3`), e é o que o faz sobreviver a rebalanceamento (D13). O alvo não
+ * tem para onde apontar — não existe documento de inimigo —, então guarda os
+ * valores. A exceção está anotada no próprio D13.
+ *
+ * `stacksTarget` fica **de fora**: quantos 〔roman〕 o inimigo acumulou depende de
+ * quantas vezes o *atacante* usou o NP (R27). É do combate, não do alvo.
+ */
+export interface EnemyPreset {
+  className: string;
+  attribute: string;
+  /** Ids, nunca nomes: o nome muda entre dumps, o id não (R10). */
+  traits: number[];
+  defMod: number;
+  specialDefMod: number;
+}
+
+export const enemyOf = (s: CalcState): EnemyPreset => ({
+  className: s.enemyClass,
+  attribute: s.enemyAttribute,
+  traits: s.enemyTraits,
+  defMod: s.enemyDefMod,
+  specialDefMod: s.enemySpecialDefMod,
+});
+
+/** Os campos que um alvo aplica sobre o cenário. O resto não se toca. */
+export const enemyPatch = (e: EnemyPreset): Partial<CalcState> => ({
+  enemyClass: e.className,
+  enemyAttribute: e.attribute,
+  enemyTraits: e.traits,
+  enemyDefMod: e.defMod,
+  enemySpecialDefMod: e.specialDefMod,
+});
+
 export interface CalcState {
   servantId: number | null;
   /** `null` = usar o padrão do servo (nível natural máximo). */
@@ -413,6 +450,43 @@ export function serializeCalc(s: CalcState): URLSearchParams {
   if (s.rollMode !== DEFAULT_CALC.rollMode) p.set(KEYS.rollMode, s.rollMode);
 
   return p;
+}
+
+/**
+ * Um alvo salvo é um **pedaço de link**, pela mesma razão do template de buff
+ * (§5.2): um formato só para o mesmo dado, e o clamp vem de graça do parser.
+ *
+ *   ec=lancer&ea=sky&et=2000,2002&edef=20
+ */
+export function serializeEnemyPreset(e: EnemyPreset): string {
+  const p = serializeCalc({ ...DEFAULT_CALC, ...enemyPatch(e) });
+  const out = new URLSearchParams();
+  for (const k of ENEMY_KEYS) {
+    const v = p.get(k);
+    if (v !== null) out.set(k, v);
+  }
+  return out.toString();
+}
+
+const ENEMY_KEYS = [
+  KEYS.enemyClass,
+  KEYS.enemyAttribute,
+  KEYS.enemyTraits,
+  KEYS.enemyDefMod,
+  KEYS.enemySpecialDefMod,
+] as const;
+
+/**
+ * `null` quando a string não traz **nenhuma** chave de inimigo.
+ *
+ * Sem essa checagem, lixo viraria "alvo neutro" em silêncio — a direção segura
+ * do erro, mas ainda um erro calado. Um alvo salvo que perdeu o conteúdo é
+ * melhor descartado, como o template de buff que não parseia inteiro.
+ */
+export function parseEnemyPreset(raw: string): EnemyPreset | null {
+  const p = new URLSearchParams(raw);
+  if (!ENEMY_KEYS.some((k) => p.has(k))) return null;
+  return enemyOf(parseCalc(p));
 }
 
 // ------------------------------------------------------------ estado -> entrada

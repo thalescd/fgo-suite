@@ -30,11 +30,14 @@ import { DamageReport } from "./DamageReport.js";
 import {
   defaultLevel,
   defaultNpLevel,
+  enemyOf,
+  enemyPatch,
   parseCalc,
   serializeCalc,
   toDamageInput,
   type ActionKind,
   type CalcState,
+  type EnemyPreset,
   type ExternalBuff,
 } from "../core/scenario.js";
 import { loadEquip, loadServant, type Bootstrap } from "./data.js";
@@ -46,6 +49,13 @@ import {
   SEED_TEMPLATES,
   type BuffTemplate,
 } from "./templates.js";
+import {
+  loadTargets,
+  removeTarget,
+  saveTarget,
+  suggestTargetName,
+  type SavedTarget,
+} from "./targets.js";
 import { useAsync } from "./useAsync.js";
 
 const num = (n: number) => n.toLocaleString("en-US");
@@ -493,6 +503,107 @@ export function ExternalBuffsEditor({
   );
 }
 
+/**
+ * Traits que um servo leva consigo quando vira alvo (5e).
+ *
+ * **Só os que o catálogo de inimigo conhece.** O catálogo já é a lista curada
+ * dos traits que algum efeito de fato checa no alvo; filtrar por ele reusa essa
+ * decisão em vez de inventar uma segunda.
+ *
+ * Fora dela saem `class*` e `attribute*`, que os dois seletores já derivam
+ * sozinhos — repetir viraria chip duplicado dizendo a mesma coisa.
+ *
+ * O que sobra é **tudo o que ele tem**, mesmo sendo bastante: a Artoria entra
+ * com 19. Excesso o usuário vê e remove; falta ele não vê, e vira bônus
+ * anti-〔riding〕 que não dispara sem ninguém notar.
+ */
+function traitsAsTarget(servant: Servant, catalog: Set<number>): number[] {
+  return servant.traits
+    .filter((t) => catalog.has(t.id) && !/^(class|attribute)/.test(t.name))
+    .map((t) => t.id);
+}
+
+/**
+ * Gerenciar alvos salvos. Ao contrário dos buffs externos, aqui a janela **não**
+ * é o editor: o inimigo já se edita no próprio bloco. Ela só guarda, aplica e
+ * apaga.
+ */
+function TargetsModal({
+  current,
+  targets,
+  pulledName,
+  traitName,
+  traitUses,
+  onApply,
+  onTargets,
+  onClose,
+}: {
+  current: EnemyPreset;
+  targets: SavedTarget[];
+  /**
+   * O nome do último servo puxado, quando houve um. Nenhum heurístico sobre o
+   * conteúdo chega perto: um servo entra com 20 traits, e o que identifica
+   * aquele alvo é o nome dele, que o preset — por valor — não carrega.
+   */
+  pulledName: string | null;
+  traitName: (id: number) => string;
+  traitUses: (id: number) => number;
+  onApply: (e: EnemyPreset) => void;
+  onTargets: (next: SavedTarget[]) => void;
+  onClose: () => void;
+}) {
+  const suggested = pulledName ?? suggestTargetName(current, traitName, traitUses);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const name = draft ?? suggested;
+  const overwrites = targets.some((t) => t.name.toLowerCase() === name.trim().toLowerCase());
+
+  const apply = (r: ReturnType<typeof saveTarget>) => {
+    if (r.ok) { onTargets(r.targets); setProblem(null); } else setProblem(r.reason);
+  };
+
+  return (
+    <Modal title="Saved targets" onClose={onClose}>
+      <p className="footnote">
+        Saved in this browser only, and never in the link — a link always carries the enemy itself, so
+        whoever opens it sees the same fight and can save it here as their own.
+      </p>
+
+      <h4 className="modal-sub">Save what is on screen</h4>
+      <p className="footnote">
+        {suggestTargetName(current, traitName, traitUses) || "nothing set — the target is neutral"}
+      </p>
+      <div className="tpl-save">
+        <input className="search-input" placeholder="name this target…" value={name}
+          onChange={(e) => setDraft(e.target.value)} />
+        <button className="linkish" type="button" disabled={name.trim() === ""}
+          onClick={() => apply(saveTarget(name, current))}>
+          {overwrites ? "overwrite" : "save"}
+        </button>
+      </div>
+      {problem && <p className="footnote warn">{problem}</p>}
+
+      {targets.length === 0 ? (
+        <p className="footnote">
+          Nothing saved yet. Set up the enemy below — or pull a servant in, which fills class,
+          attribute and traits at once — and come back here.
+        </p>
+      ) : (
+        <div className="tpl-list">
+          {targets.map((t) => (
+            <div className="tpl-row" key={t.name}>
+              <span className="name">{t.name}</span>
+              <span className="orig">{suggestTargetName(t.enemy, traitName, traitUses)}</span>
+              <button className="linkish" type="button" onClick={() => onApply(t.enemy)}>apply</button>
+              <button className="linkish" type="button" onClick={() => apply(removeTarget(t.name))}>delete</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 // ---------------------------------------------------------------------- skills
 
 /**
@@ -597,6 +708,16 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
   );
 
   const [editingExternals, setEditingExternals] = useState(false);
+  const [managingTargets, setManagingTargets] = useState(false);
+  /** Quem foi puxado como alvo por último — só para sugerir o nome ao salvar. */
+  const [pulledName, setPulledName] = useState<string | null>(null);
+  const [targets, setTargets] = useState<SavedTarget[]>(() => loadTargets());
+  /** Os ids que o catálogo de inimigo conhece — quem decide o que um servo traz. */
+  const traitCatalog = useMemo(() => new Set(boot.traits.map((t) => t.id)), [boot.traits]);
+  const traitUses = useCallback(
+    (id: number) => boot.traits.find((t) => t.id === id)?.uses ?? 0,
+    [boot.traits],
+  );
   // Só os do usuário; as sementes entram do lado na hora de listar. O
   // inicializador preguiçoso lê o `localStorage` uma vez — em SSR ele não
   // existe e a função devolve lista vazia, sem tocar em `window`.
@@ -1115,6 +1236,51 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
           </Block>
 
           <Block title="Enemy">
+            <div className="row-actions">
+              {/* Mesma forma do menu de templates: lista de ações, não estado. */}
+              <select
+                aria-label="Apply a saved target"
+                value=""
+                onChange={(e) => {
+                  const t = targets[Number(e.target.value)];
+                  if (t) patch(enemyPatch(t.enemy));
+                }}
+              >
+                <option value="">{targets.length > 0 ? "Apply a saved target…" : "No saved targets yet"}</option>
+                {targets.map((t, i) => <option key={t.name} value={i}>{t.name}</option>)}
+              </select>
+              <button className="linkish" type="button" onClick={() => setManagingTargets(true)}>
+                Saved targets…
+              </button>
+            </div>
+
+            {/*
+              Puxar um servo como alvo: no jogo se enfrenta servo o tempo todo, e
+              digitar 19 traits à mão é o que ninguém faz — então não se faz, e o
+              bônus anti-〔riding〕 não dispara sem ninguém notar.
+
+              É preenchimento, não modo: os campos ficam editáveis e o link
+              carrega o resultado, nunca "o alvo é o servo X". Mesma razão de o
+              `tpl=` não existir.
+            */}
+            <details className="sub">
+              <summary>Pull a servant in as the target — fills class, attribute and traits</summary>
+              <ServantPicker
+                boot={boot}
+                placeholder="which servant are you fighting?"
+                onPick={(id) => {
+                  void loadServant(id).then((doc) => {
+                    setPulledName(doc.name);
+                    patch({
+                      enemyClass: doc.className,
+                      enemyAttribute: doc.attribute,
+                      enemyTraits: traitsAsTarget(doc, traitCatalog),
+                    });
+                  });
+                }}
+              />
+            </details>
+
             <div className="fields">
               <Field label="Class" hint="multiplier shown is against this attacker">
                 <select value={state.enemyClass} onChange={(e) => patch({ enemyClass: e.target.value })}>
@@ -1196,6 +1362,19 @@ export function CalcPage({ boot }: { boot: Bootstrap }) {
           )}
         </div>
       </div>
+
+      {managingTargets && (
+        <TargetsModal
+          current={enemyOf(state)}
+          targets={targets}
+          pulledName={pulledName}
+          traitName={traitName}
+          traitUses={traitUses}
+          onApply={(e) => patch(enemyPatch(e))}
+          onTargets={setTargets}
+          onClose={() => setManagingTargets(false)}
+        />
+      )}
 
       {editingExternals && (
         <ExternalBuffsEditor

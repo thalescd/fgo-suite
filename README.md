@@ -24,7 +24,7 @@ Site estático: os dados são pré-processados em build, sem backend e sem banco
 | **5b** | Buffs externos e templates de composição | ✅ pronta |
 | **5c** | Condições de estado (HP, contagem de buffs, turno) | pendente |
 | **5d** | Comparação lado a lado | pendente |
-| **5e** | Alvos salvos, como os templates de buff | pendente |
+| **5e** | Alvos salvos, e puxar um servo como alvo | ✅ pronta |
 | **5f** | Exportar/importar a biblioteca em JSON | pendente |
 
 Detalhe de cada uma em [`PLANO.md`](PLANO.md) §8.1.
@@ -47,7 +47,7 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 276 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | 295 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
@@ -174,6 +174,13 @@ Castorias levam a Artoria de 3.091 para 8.657 num Arts.
 O buff de **alvo único** pergunta para quem apontou; o de party não pergunta. E
 o que não alcança sai com o motivo: a skill 2 da Koyanskaya tem `upCriticalrate`
 em `self`, que buffa ela e não você.
+
+**Alvos salvos** funcionam igual, do outro lado da conta (5e). E há um atalho
+que vale mais que eles: **puxar um servo como alvo** preenche classe, atributo e
+os traits de uma vez. Contra a Artoria isso são 20 traits — 〔weakToEnumaElish〕,
+〔riding〕, 〔dragon〕, 〔knightsOfTheRound〕 — que ninguém digitaria à mão, e sem os
+quais um bônus anti-〔riding〕 simplesmente não dispara. Gilgamesh vai de 22.808
+para 74.864 contra ela.
 
 **Templates** guardam uma composição pelo nome, no seu navegador — nunca no
 link. O link carrega sempre os buffs expandidos, então quem o recebe vê o mesmo
