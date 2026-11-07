@@ -6,7 +6,7 @@
  */
 
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 
 import { tagsForEffects } from "../core/capabilities.js";
 import {
@@ -51,11 +51,25 @@ import {
 /** Fou padrão do preset (§4.2 do PLANO): 1000 de ATK plano. */
 const DEFAULT_FOU = 1000;
 
+/**
+ * Nome de arquivo derivado de dado baixado nunca é confiável: um `id` como
+ * `"../../x"` num dump adulterado gravaria fora de `public/data/`. A conferência
+ * de tipo em `assertNumericIds` barra isso antes; esta é a segunda trava, que
+ * vale para qualquer caminho, inclusive os que ainda não existem.
+ */
+const OUT_ROOT = resolve(OUT_DIR);
 const write = async (rel: string, data: unknown) => {
-  const path = join(OUT_DIR, rel);
-  await mkdir(join(path, ".."), { recursive: true });
+  const path = resolve(OUT_ROOT, rel);
+  if (!path.startsWith(OUT_ROOT + sep)) throw new Error(`caminho fora de ${OUT_DIR}/ recusado: ${rel}`);
+  await mkdir(dirname(path), { recursive: true });
   await writeFile(path, JSON.stringify(data));
 };
+
+/** O tipo diz `number`, mas o tipo é promessa de compilação; o dump é runtime. */
+function assertNumericIds(what: string, list: { id: unknown }[]): void {
+  const bad = list.find((x) => !Number.isSafeInteger(x.id) || (x.id as number) <= 0);
+  if (bad) throw new Error(`${what} com id inválido no dump: ${JSON.stringify(bad.id)} — build abortado`);
+}
 
 /** ATK no preset padrão: nível natural máximo + fou. Nunca `atkMax` (R7). */
 function statAtDefault(growth: number[], lvMax: number, fou: number): number {
@@ -365,6 +379,9 @@ export async function build(): Promise<BuildStats> {
   const traitCatalog = buildTraitCatalog(servants, equips, mysticCodes);
 
   // ---- escrita
+  // Antes do `rm`: um dump com id inválido não pode custar a saída anterior.
+  assertNumericIds("servo", servants);
+  assertNumericIds("CE", equips);
   console.log("Gravando artefatos...");
   await rm(OUT_DIR, { recursive: true, force: true });
 
