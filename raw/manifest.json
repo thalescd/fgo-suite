@@ -1,72 +1,72 @@
 {
   "region": "JP",
-  "gameDataHash": "489221",
-  "gameDataTimestamp": 1786287664,
-  "syncedAt": "2026-08-11T16:34:40.329Z",
+  "gameDataHash": "eb3575",
+  "gameDataTimestamp": 1794052871,
+  "syncedAt": "2026-11-07T17:38:52.850Z",
   "files": {
     "servants": {
       "remote": "nice_servant_lang_en",
-      "etag": "\"dkki6vdz3nbb13zrcd-gzip\"",
-      "lastModified": "Sun, 09 Aug 2026 15:03:56 GMT",
-      "bytes": 67173421,
-      "sha256": "b8ec160979b4b106f296ae97c34860b770dad20fe23b176dd78d34ebc5fb7033",
-      "syncedAt": "2026-08-11T16:34:19.741Z"
+      "etag": "\"dmoyqpo9qyw3-157fli-gzip\"",
+      "lastModified": "Sat, 07 Nov 2026 12:04:45 GMT",
+      "bytes": 69211062,
+      "sha256": "49186a8d1bf4deda0f3202583475bb24d65fa825b349b306ad113ba22af0fec8",
+      "syncedAt": "2026-11-07T17:37:58.488Z"
     },
     "equips": {
       "remote": "nice_equip_lang_en",
-      "etag": "\"dkki7hyqnqpodd3wa-gzip\"",
-      "lastModified": "Sun, 09 Aug 2026 15:04:45 GMT",
-      "bytes": 22446586,
-      "sha256": "9155aad71194d56f58ad5a9f371cc098aaf077e88513411bab8ff241672368cd",
-      "syncedAt": "2026-08-11T16:34:26.267Z"
+      "etag": "\"dmoyrhgrd4a1-d6lou-gzip\"",
+      "lastModified": "Sat, 07 Nov 2026 12:05:46 GMT",
+      "bytes": 22143054,
+      "sha256": "2c52aee70aa5b4c8e1d9fd836a5d0b9082f4d9130345c6e0a7359bcb41078b7d",
+      "syncedAt": "2026-11-07T17:38:00.048Z"
     },
     "mystic_codes": {
       "remote": "nice_mystic_code_lang_en",
-      "etag": "\"dkki83rmf4w84q3e-gzip\"",
-      "lastModified": "Sun, 09 Aug 2026 15:05:32 GMT",
-      "bytes": 220442,
-      "sha256": "325b779e62e159d879b42251df3113f894ab5e23806dfcdf0135e6ca88e04914",
-      "syncedAt": "2026-08-11T16:34:27.105Z"
+      "etag": "\"dmoytvhxmkpr-4t6n-gzip\"",
+      "lastModified": "Sat, 07 Nov 2026 12:08:53 GMT",
+      "bytes": 224447,
+      "sha256": "2a94cef0c8011318e43e352073af49c3cb0bf422e612bdcab1bcea8b1adbc57d",
+      "syncedAt": "2026-11-07T17:38:00.241Z"
     },
     "constant": {
       "remote": "NiceConstant",
-      "etag": "\"dkki60eq6sou8w4-gzip\"",
-      "lastModified": "Sun, 09 Aug 2026 15:02:48 GMT",
-      "bytes": 11524,
-      "sha256": "cba04533e0aee5a9404faa1651fbb3069545263352f9b3fd760dabdbc7400f0e",
-      "syncedAt": "2026-08-11T16:34:27.299Z"
+      "etag": "\"dmoyps40h6nh-93p-gzip\"",
+      "lastModified": "Sat, 07 Nov 2026 12:03:32 GMT",
+      "bytes": 11797,
+      "sha256": "a4fe18eac55ae85d41f664db0c2a24ded7b5e32c348083fa01e9bc837418f19e",
+      "syncedAt": "2026-11-07T17:38:00.434Z"
     },
     "class_attack_rate": {
       "remote": "NiceClassAttackRate",
-      "etag": "\"dkki60erz3hw1h4-gzip\"",
-      "lastModified": "Sun, 09 Aug 2026 15:02:48 GMT",
+      "etag": "\"dmoyps41o1ut-1h4-gzip\"",
+      "lastModified": "Sat, 07 Nov 2026 12:03:32 GMT",
       "bytes": 1912,
       "sha256": "e9b988e6b90ff448fb8d82e81244e0973204171caef9440b77ea9898fd34066c",
-      "syncedAt": "2026-08-11T16:34:27.490Z"
+      "syncedAt": "2026-11-07T17:38:00.627Z"
     },
     "class_relation": {
       "remote": "NiceClassRelation",
-      "etag": "\"dkki60ipo8t22krb-gzip\"",
-      "lastModified": "Sun, 09 Aug 2026 15:02:49 GMT",
+      "etag": "\"dmoyps7m9nvb-2krb-gzip\"",
+      "lastModified": "Sat, 07 Nov 2026 12:03:32 GMT",
       "bytes": 120215,
       "sha256": "951ef2e93e6e612aa18c6ab24f2cd1d6c4d6dfbe819c780800330feb775074e4",
-      "syncedAt": "2026-08-11T16:34:27.688Z"
+      "syncedAt": "2026-11-07T17:38:00.819Z"
     },
     "attribute_relation": {
       "remote": "NiceAttributeRelation",
-      "etag": "\"dkki60eskj3kf1-gzip\"",
-      "lastModified": "Sun, 09 Aug 2026 15:02:48 GMT",
+      "etag": "\"dmoyps429hgh-f1-gzip\"",
+      "lastModified": "Sat, 07 Nov 2026 12:03:32 GMT",
       "bytes": 541,
       "sha256": "6624f75d4ef52d194bd2b1893adf62c5dea939e53e81fd5d4033728e9d88d7a9",
-      "syncedAt": "2026-08-11T16:34:27.881Z"
+      "syncedAt": "2026-11-07T17:38:01.010Z"
     },
     "card": {
       "remote": "NiceCard",
-      "etag": "\"dkki60eskj3kaag-gzip\"",
-      "lastModified": "Sun, 09 Aug 2026 15:02:48 GMT",
+      "etag": "\"dmoyps429hgh-aag-gzip\"",
+      "lastModified": "Sat, 07 Nov 2026 12:03:32 GMT",
       "bytes": 13336,
       "sha256": "8d9edff2b0931240b0543abc446b39d2364ed37242d31d62d6fb8571874d79a4",
-      "syncedAt": "2026-08-11T16:34:28.073Z"
+      "syncedAt": "2026-11-07T17:38:01.202Z"
     }
   }
 }

@@ -11,11 +11,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import type { IndexEntry, IndexEntryServant } from "./model.js";
+import type { IndexEntry, IndexEntryEquip, IndexEntryServant } from "./model.js";
 import { EMPTY_FILTERS, facetCounts, normalize, search, statKindOf, type SearchFilters } from "./search.js";
 
 const index = JSON.parse(readFileSync("public/data/index.json", "utf8")) as IndexEntry[];
 const servants = index.filter((e): e is IndexEntryServant => e.kind === "servant");
+const equips = index.filter((e): e is IndexEntryEquip => e.kind === "equip");
 
 const F = (over: Partial<SearchFilters> = {}): SearchFilters => ({ ...EMPTY_FILTERS, ...over });
 
@@ -86,7 +87,11 @@ describe("facetas de servo", () => {
     const aoe = search(index, F({ npTarget: ["aoe"] })).length;
     const sup = search(index, F({ npTarget: ["support"] })).length;
     expect(st + aoe + sup).toBe(servants.length);
-    expect([st, aoe, sup]).toEqual([174, 238, 50]);
+    // Contagem derivada do dado, não fixada: um patch novo não quebra o teste.
+    // O tamanho do roster é vigiado pelo censo de `data:validate`.
+    const direct = (t: string) => servants.filter((s) => s.npTarget === t).length;
+    expect([st, aoe, sup]).toEqual([direct("st"), direct("aoe"), direct("support")]);
+    expect(Math.min(st, aoe, sup)).toBeGreaterThan(0);
   });
 
   it("filtra por card do NP", () => {
@@ -95,8 +100,10 @@ describe("facetas de servo", () => {
   });
 
   it("filtra welfare", () => {
-    expect(search(index, F({ welfare: true })).length).toBe(56);
-    expect(search(index, F({ welfare: false })).length).toBe(servants.length - 56);
+    const welfare = servants.filter((s) => s.isWelfare).length;
+    expect(welfare).toBeGreaterThan(0);
+    expect(search(index, F({ welfare: true })).length).toBe(welfare);
+    expect(search(index, F({ welfare: false })).length).toBe(servants.length - welfare);
   });
 
   it("traits múltiplos são AND", () => {
@@ -119,9 +126,10 @@ describe("facetas de craft essence", () => {
   it("separa combat de farm", () => {
     const combat = search(index, F({ kind: "equip", category: ["combat"] })).length;
     const farm = search(index, F({ kind: "equip", category: ["farm"] })).length;
-    expect(combat).toBe(1309);
-    expect(farm).toBe(840);
-    expect(combat + farm).toBe(2149);
+    const direct = (c: string) => equips.filter((e) => e.category === c).length;
+    expect([combat, farm]).toEqual([direct("combat"), direct("farm")]);
+    expect(Math.min(combat, farm)).toBeGreaterThan(0);
+    expect(combat + farm).toBe(equips.length);
   });
 
   describe("que status a CE dá", () => {
@@ -130,15 +138,17 @@ describe("facetas de craft essence", () => {
     it("as três opções particionam o catálogo", () => {
       // Nenhuma CE fica de fora e nenhuma entra duas vezes — é o que autoriza
       // a partição em vez de duas caixas independentes.
-      expect([n("atk"), n("hp"), n("both")]).toEqual([386, 156, 1607]);
-      expect(n("atk", "hp", "both")).toBe(2149);
+      const [atk, hp, both] = [n("atk"), n("hp"), n("both")];
+      expect(Math.min(atk, hp, both)).toBeGreaterThan(0);
+      expect(atk + hp + both).toBe(equips.length);
+      expect(n("atk", "hp", "both")).toBe(equips.length);
     });
 
     it("marcar duas soma, porque a faceta é OR", () => {
       // "dá ATK" é o par ATK + ambas. Com caixas independentes isso não teria
       // como ser dito sem também dizer "dá HP".
-      expect(n("atk", "both")).toBe(386 + 1607);
-      expect(n("hp", "both")).toBe(156 + 1607);
+      expect(n("atk", "both")).toBe(n("atk") + n("both"));
+      expect(n("hp", "both")).toBe(n("hp") + n("both"));
     });
 
     it("o rótulo corresponde ao que a CE tem de fato", () => {

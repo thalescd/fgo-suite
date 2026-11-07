@@ -1,0 +1,27 @@
+{
+  "_": "Gerado por `npm run data:validate`. Não edite à mão. Ver docs/DATA.md §2.",
+  "gameDataHash": "eb3575",
+  "measuredAt": "2026-11-07T17:38:54.181Z",
+  "counts": {
+    "servants": 471,
+    "lastCollectionNo": 483,
+    "combatForms": 4,
+    "craftEssencesCombat": 1330,
+    "craftEssencesFarm": 843,
+    "craftEssencesDropped": 536,
+    "mysticCodes": 28,
+    "welfare": 57,
+    "servantsWithSkillRankUp": 248,
+    "npsWithGauge": [
+      "Ereshkigal",
+      "Ereshkigal"
+    ],
+    "npEffects": 1906,
+    "npEffectsScalingWithOc": 451,
+    "damageNps": 420,
+    "damageNpsWithPreEffect": 246,
+    "superEffectiveNps": 145,
+    "superEffectiveNpsScalingWithOc": 74,
+    "enemyTraits": 101
+  }
+}

@@ -40,10 +40,13 @@ const renderAt = (url: string): string =>
     </StaticRouter>,
   ).replace(/<!--[\s\S]*?-->/g, "");
 
+/** Contagens derivadas do índice: um patch novo do jogo não quebra a tela. */
+const count = (pred: (e: IndexEntry) => boolean) => boot.index.filter(pred).length;
+
 describe("SearchPage", () => {
   it("renderiza a listagem de servos sem filtro", () => {
     const html = renderAt("/");
-    expect(html).toContain("462</strong> servants");
+    expect(html).toContain(`${count((e) => e.kind === "servant")}</strong> servants`);
     expect(html).toContain("Mash Kyrielight");
   });
 
@@ -58,7 +61,9 @@ describe("SearchPage", () => {
 
   it("filtro de alvo de NP chega ao resultado", () => {
     const html = renderAt("/?np=aoe");
-    expect(html).toContain("238</strong> servants");
+    const aoe = count((e) => e.kind === "servant" && e.npTarget === "aoe");
+    expect(aoe).toBeGreaterThan(0);
+    expect(html).toContain(`${aoe}</strong> servants`);
   });
 
   it("busca por apelido funciona na tela", () => {
@@ -69,12 +74,14 @@ describe("SearchPage", () => {
 
   it("troca para a aba de craft essences", () => {
     const html = renderAt("/?kind=equip");
-    expect(html).toContain("2149</strong> craft essences");
+    expect(html).toContain(`${count((e) => e.kind === "equip")}</strong> craft essences`);
   });
 
   it("filtra CE por categoria", () => {
     const html = renderAt("/?kind=equip&cat=combat");
-    expect(html).toContain("1309</strong> craft essences");
+    const combat = count((e) => e.kind === "equip" && e.category === "combat");
+    expect(combat).toBeGreaterThan(0);
+    expect(html).toContain(`${combat}</strong> craft essences`);
   });
 
   it("mostra as facetas com contagem", () => {

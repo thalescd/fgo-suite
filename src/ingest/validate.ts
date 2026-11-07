@@ -8,13 +8,24 @@
  *
  * Todo valor esperado abaixo tem procedência: ou é conhecido do jogo
  * (Excalibur NP1 = 400%), ou foi medido no dump e registrado em PLANO.md.
+ *
+ * Contagens que crescem com o roster NÃO são `check`: são `census`, comparadas
+ * contra `data/census.json` pelas regras de `census.ts`. Um patch novo do jogo
+ * não quebra a validação; uma contagem que encolhe, sim.
+ *
+ *   --accept   grava o censo mesmo com regressão (mudança legítima e conferida).
  */
 
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { Constants, CraftEssence, IndexEntry, IndexEntryServant, Meta, Servant } from "../core/model.js";
+import { type CensusEntry, type CensusFile, compareCensus, toCensusFile } from "./census.js";
 import { OUT_DIR } from "./sources.js";
+
+const CENSUS_PATH = "data/census.json";
+const ACCEPT = process.argv.includes("--accept");
 
 const read = async <T>(rel: string): Promise<T> =>
   JSON.parse(await readFile(join(OUT_DIR, rel), "utf8")) as T;
@@ -34,6 +45,14 @@ function check(label: string, actual: unknown, expected: unknown): void {
   }
 }
 
+const censusEntries: CensusEntry[] = [];
+
+/** Contagem do roster: registrada aqui, comparada no fim contra o censo. */
+function census(key: string, label: string, value: CensusEntry["value"], onGrowth?: string): void {
+  censusEntries.push({ key, label, value, onGrowth });
+  console.log(`  # ${label}: ${Array.isArray(value) ? `[${value.join(", ")}]` : value}`);
+}
+
 async function main(): Promise<void> {
   const meta = await read<Meta>("meta.json");
   const index = await read<IndexEntry[]>("index.json");
@@ -47,11 +66,17 @@ async function main(): Promise<void> {
 
   console.log(`Validando build de ${meta.builtAt} (gamedata ${meta.gameDataHash})\n`);
 
-  console.log("Contagens");
-  check("462 servos no índice (466 jogáveis menos 4 formas de combate)", meta.counts.servants, 462);
-  check("4 formas de combate fora do índice", meta.counts.combatForms, 4);
-  check("536 CEs inertes descartadas", meta.counts.craftEssencesDropped, 536);
-  check("28 mystic codes", meta.counts.mysticCodes, 28);
+  console.log("Contagens (censo)");
+  check("o índice tem todos os servos que o meta conta", servants.length, meta.counts.servants);
+  check("e todas as CEs", equips.length, meta.counts.craftEssences);
+  census("servants", "servos no índice (jogáveis menos formas de combate)", meta.counts.servants);
+  census("lastCollectionNo", "maior collectionNo", Math.max(...servants.map((s) => s.collectionNo)));
+  census("combatForms", "formas de combate fora do índice", meta.counts.combatForms);
+  census("craftEssencesCombat", "CEs de combate", equips.filter((e) => e.kind === "equip" && e.category === "combat").length);
+  census("craftEssencesFarm", "CEs de farm", equips.filter((e) => e.kind === "equip" && e.category === "farm").length);
+  census("craftEssencesDropped", "CEs inertes descartadas", meta.counts.craftEssencesDropped);
+  census("mysticCodes", "mystic codes", meta.counts.mysticCodes);
+  census("welfare", "servos welfare no índice", servants.filter((s) => s.isWelfare).length);
 
   console.log("\nR7 — atkGrowth substitui atkMax");
   const artoria = await servant(byCn(2).id);
@@ -79,8 +104,8 @@ async function main(): Promise<void> {
     const f = await servant(s.id);
     if (f.skills.some((k) => k.previousVersions)) withRankUp++;
   }
-  // 243 no índice; 245 contando as 4 formas de combate, que é o número citado em R8.
-  check("243 servos com rank up de skill no índice", withRankUp, 243);
+  // R8 cita 245 de 466 porque conta as formas de combate; o censo conta o índice.
+  census("servantsWithSkillRankUp", "servos com rank up de skill", withRankUp);
 
   console.log("\nR11 — condições de card e alvo");
   const cmd = koyan.skills.find((s) => s.num === 3)?.effects.find((e) => e.buffType === "upCommandall");
@@ -169,7 +194,7 @@ async function main(): Promise<void> {
     [], "Mate/Buddy/Darling/Destiny",
   ]);
   // Um medidor a mais no dump é mecânica nova para conferir, não regressão —
-  // por isso o número está aqui, e não escondido numa desigualdade.
+  // por isso a lista é censo com aviso, e não escondida numa desigualdade.
   const comMedidor: string[] = [];
   for (const s of servants) {
     const f = await servant(s.id);
@@ -178,7 +203,13 @@ async function main(): Promise<void> {
       if (se?.countLabel != null) comMedidor.push(f.name);
     }
   }
-  check("só a Ereshkigal tem medidor, no NP e no rank up", comMedidor, ["Ereshkigal", "Ereshkigal"]);
+  check("a Ereshkigal tem medidor no NP e no rank up", comMedidor.filter((n) => n === "Ereshkigal").length, 2);
+  census(
+    "npsWithGauge",
+    "NPs com medidor de fase",
+    comMedidor,
+    "medidor novo é mecânica nova: confira o superEffective dele na calculadora",
+  );
 
   // Asset ausente não quebra nada — a tela só não mostra imagem —, então o
   // erro sobreviveu desde a fase 0: `toMysticCode` lia `charaGraph`, que é
@@ -187,7 +218,7 @@ async function main(): Promise<void> {
   const mcs = await read<{ id: number; name: string; assets: { male: string | null; female: string | null } }[]>(
     "mysticCodes.json",
   );
-  check("os 28 têm ícone para os dois gêneros", mcs.filter((m) => m.assets.male && m.assets.female).length, 28);
+  check("todos têm ícone para os dois gêneros", mcs.filter((m) => m.assets.male && m.assets.female).length, mcs.length);
   check(
     "e o ícone é o do equipamento, não a figura inteira",
     /\/Items\/masterequip/.test(mcs.find((m) => m.id === 20)?.assets.male ?? ""),
@@ -215,8 +246,9 @@ async function main(): Promise<void> {
       if (e.valuesByOvercharge) ocScaling++;
     }
   }
-  // 443/1855 nos 462 do índice; 446/1878 contando as 4 formas de combate.
-  check("443 de 1855 efeitos de NP escalam com overcharge (índice)", [ocScaling, ocTotal], [443, 1855]);
+  // Se o Atlas mover `svals2..5`, `ocScaling` despenca — e o censo recusa.
+  census("npEffects", "efeitos de NP", ocTotal);
+  census("npEffectsScalingWithOc", "efeitos de NP que escalam com overcharge", ocScaling);
 
   console.log("\nOrdem de execução do NP");
   const gilOrder = await servant(byCn(12).id);
@@ -238,8 +270,8 @@ async function main(): Promise<void> {
     dmgNps++;
     if (i > 0) withPre++;
   }
-  // 411/237 nos 462 do índice; 413/238 contando as 4 formas de combate.
-  check("411 NPs de dano no índice, 237 com efeito antes do golpe", [dmgNps, withPre], [411, 237]);
+  census("damageNps", "NPs de dano", dmgNps);
+  census("damageNpsWithPreEffect", "NPs de dano com efeito antes do golpe", withPre);
 
   console.log("\nSuper-efetivo — Target/TargetList + Correction");
   const gil = await servant(byCn(12).id);
@@ -262,15 +294,16 @@ async function main(): Promise<void> {
       if (e.superEffective.traits.some((t) => t.id === 0)) seZero++;
     }
   }
-  // 139/72 nos 462 do índice; as formas de combate somam mais alguns.
-  //
-  // O número foi de 139 a 138 no R27 e voltou a 139 no R33, pela **mesma**
-  // Ereshkigal — e as duas mexidas estavam certas. R27 tirou porque `Correction`
-  // ali não é multiplicador super-efetivo, e mantê-la era leitura errada. R33
-  // devolveu porque ela **tem** um bônus que cresce, só que por fase de medidor,
-  // com o teto vindo de `battlePoints`. O 72 subiu de 69 no R27 e não se moveu:
-  // `Value2` varia com OC em 3 dos 21 da família soma, `Correction` em nenhum.
-  check("139 NPs com super-efetivo no índice, 72 escalando com OC", [seCount, seOc], [139, 72]);
+  // Histórico (gamedata 489221): o número foi de 139 a 138 no R27 e voltou a
+  // 139 no R33, pela **mesma** Ereshkigal — e as duas mexidas estavam certas.
+  // R27 tirou porque `Correction` ali não é multiplicador super-efetivo, e
+  // mantê-la era leitura errada. R33 devolveu porque ela **tem** um bônus que
+  // cresce, só que por fase de medidor, com o teto vindo de `battlePoints`. O OC
+  // subiu de 69 para 72 no R27: `Value2` varia com OC em 3 dos 21 da família
+  // soma, `Correction` em nenhum. Mudanças de código assim, com o mesmo
+  // gamedata, são exatamente o que o censo recusa até alguém aceitar.
+  census("superEffectiveNps", "efeitos de NP super-efetivos", seCount);
+  census("superEffectiveNpsScalingWithOc", "super-efetivos escalando com OC", seOc);
   check("nenhum trait placeholder id 0 sobrou", seZero, 0);
 
   console.log("\n§3.4.2 — buff que multiplica buff (R21)");
@@ -311,7 +344,6 @@ async function main(): Promise<void> {
   check("o base não é forma de ninguém", jekyll.combatFormOf, null);
 
   console.log("\n§5.6 — welfare e NP level");
-  check("56 welfare no índice — mesmo recorte do basic_servant", servants.filter((s) => s.isWelfare).length, 56);
   check("welfare 5★ = Solomon", servants.find((s) => s.isWelfare && s.rarity === 5)?.name, "Solomon");
   check("1 servo rarity 0 (Aŋra Mainiiu)", servants.filter((s) => s.rarity === 0).length, 1);
   const npLevel = (s: IndexEntryServant) => (s.rarity <= 3 || s.isWelfare ? 5 : 1);
@@ -400,7 +432,8 @@ async function main(): Promise<void> {
   // `^buff`; os outros seis (os cinco de `traitNames.json` mais `magicBullet`
   // da Aoko e `manuscriptComplete` da Chloe) eram oferecidos como filtro de
   // inimigo sem que inimigo nenhum pudesse carregá-los.
-  check("101 traits de identidade do inimigo", traits.length, 101);
+  // (101 na época do R27; agora é censo — servo novo traz trait novo.)
+  census("enemyTraits", "traits de identidade do inimigo", traits.length);
   check("stack do atacante não entra no catálogo", traits.some((t) => t.name === "Heroic King"), false);
   check("mas stack contado no alvo entra", traits.some((t) => t.name === "Past Alteration"), true);
   check("ordenado por frequência", traits[0]!.uses >= traits[traits.length - 1]!.uses, true);
@@ -408,13 +441,56 @@ async function main(): Promise<void> {
   check("weakToEnumaElish está no catálogo", traits.some((t) => t.name === "weakToEnumaElish"), true);
 
   console.log();
+  const ok = reportCensus(meta, servants);
   if (failures.length) {
     console.log(`${failures.length} FALHA(S):\n`);
     for (const f of failures) console.log(`  ✗ ${f}\n`);
-    console.log("Se o Atlas mudou de propósito, atualize o valor esperado E o documento que o cita.");
+    console.log("Estes são fatos do jogo, não tamanho do roster: um valor que mudou aqui");
+    console.log("é o Atlas mudando de formato ou o jogo rebalanceando. Confira antes de mexer.");
     process.exit(1);
   }
-  console.log(`Todos os ${pass} checks passaram.`);
+  if (!ok) process.exit(1);
+  console.log(`Todos os ${pass} checks passaram; censo com ${censusEntries.length} contagens.`);
+}
+
+/** Compara o censo, grava quando cabe, e diz se a validação pode passar. */
+function reportCensus(meta: Meta, servants: IndexEntryServant[]): boolean {
+  const prev = existsSync(CENSUS_PATH) ? (JSON.parse(readFileSync(CENSUS_PATH, "utf8")) as CensusFile) : null;
+  const diff = compareCensus(prev, censusEntries, meta.gameDataHash);
+  const from = prev ? prev.gameDataHash : "—";
+
+  if (diff.growth.length) {
+    console.log(`Novidades do dump (gamedata ${from} -> ${meta.gameDataHash}):\n`);
+    for (const g of diff.growth) console.log(`  + ${g}`);
+    const lastCn = prev?.counts.lastCollectionNo;
+    if (typeof lastCn === "number") {
+      const fresh = servants.filter((s) => s.collectionNo > lastCn).sort((a, b) => a.collectionNo - b.collectionNo);
+      if (fresh.length) {
+        console.log("\n  Servos novos:");
+        for (const s of fresh) console.log(`    ${s.collectionNo}  ${s.displayName}`);
+      }
+    }
+    console.log();
+  }
+  for (const n of diff.notes) console.log(`  · ${n}`);
+  if (diff.notes.length) console.log();
+
+  if (diff.regressions.length) {
+    console.log(`${diff.regressions.length} contagem(ns) do censo REGREDIRAM:\n`);
+    for (const r of diff.regressions) console.log(`  ✗ ${r}`);
+    console.log();
+    console.log("Contagem que encolhe costuma ser o Atlas mudando de formato: um campo renomeado");
+    console.log("zera o que dependia dele. Confira. Se a mudança for legítima (o código passou a");
+    console.log("contar diferente de propósito), aceite com:  npm run data:validate -- --accept\n");
+  }
+
+  const changed = !prev || diff.growth.length > 0 || diff.notes.length > 0 || prev.gameDataHash !== meta.gameDataHash;
+  const canWrite = failures.length === 0 && (diff.regressions.length === 0 || ACCEPT);
+  if (canWrite && (changed || (ACCEPT && diff.regressions.length))) {
+    writeFileSync(CENSUS_PATH, `${JSON.stringify(toCensusFile(censusEntries, meta.gameDataHash, meta.builtAt), null, 2)}\n`);
+    console.log(`${CENSUS_PATH} atualizado — faça commit dele junto com raw/manifest.json.\n`);
+  }
+  return diff.regressions.length === 0 || ACCEPT;
 }
 
 main().catch((err: unknown) => {

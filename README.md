@@ -37,8 +37,13 @@ npm run data:all     # baixa ~86 MB, gera public/data/, valida
 npm run dev          # http://localhost:5173
 ```
 
-Depois disso `public/data/` tem 466 servos, 2.149 Craft Essences e 28 Mystic Codes
-no modelo canônico (10,4 MB).
+Depois disso `public/data/` tem o roster inteiro (servos, Craft Essences e Mystic
+Codes) no modelo canônico. As contagens do dump atual ficam em
+[`data/census.json`](data/census.json).
+
+Para atualizar depois de um patch do jogo: `npm run data:all` e commit de
+`raw/manifest.json` + `data/census.json`. Detalhes em
+[`docs/DATA.md`](docs/DATA.md) §2.
 
 ### Comandos
 
@@ -47,11 +52,11 @@ no modelo canônico (10,4 MB).
 | `npm run dev` | Servidor de desenvolvimento. |
 | `npm run build` | Typecheck + build de produção em `dist/` (com `404.html`). |
 | `npm run preview` | Serve o `dist/` para conferir o build. |
-| `npm test` | 308 testes: busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
+| `npm test` | Testes de busca, renderização, a fórmula termo a termo, a tela e as tools do MCP. |
 | `npm run data:check` | O que mudou no Atlas? Não baixa nada (custa alguns KB). |
 | `npm run data:sync` | Baixa só o que mudou (GET condicional, `304` no resto). |
 | `npm run data:build` | `raw/` → `public/data/`. |
-| `npm run data:validate` | Confere a saída contra 100 valores conhecidos do jogo. |
+| `npm run data:validate` | Confere a saída contra fatos conhecidos do jogo e compara o tamanho do roster com `data/census.json`. |
 | `npm run data:all` | Os três de dados em sequência. |
 | `npm run mcp` | Sobe o servidor MCP solto, para depurar sem cliente. |
 | `npm run damage:cases` | Casos de conferência da calculadora e o nosso número em cada um (R4). |

@@ -57,6 +57,47 @@ npm run data:all        # sync + build + validate
 ter mudado de formato: uma quebra silenciosa aparece ali antes de virar número
 errado na calculadora.
 
+### O fluxo de uma atualização
+
+```bash
+npm run data:all
+git add raw/manifest.json data/census.json
+git commit -m "Dados: gamedata <hash>"
+```
+
+É só isso quando o patch é normal. O `data:validate` faz dois tipos de conferência:
+
+- **Fatos do jogo** (`check`): Excalibur NP1 = 400%, a Artoria tem 120 entradas
+  de ATK, `saber -> lancer = 2.0`. Não mudam quando sai servo novo, e exigem valor
+  exato. Falhou aqui, **pare e investigue**: é o Atlas mudando de formato ou o jogo
+  rebalanceando.
+- **Tamanho do roster** (`census`): quantos servos, quantos NPs escalam com OC,
+  quantos traits de inimigo... Ficam em [`data/census.json`](../data/census.json),
+  versionado, junto com o hash do gamedata em que foram medidos.
+
+| Situação | Resultado |
+|---|---|
+| gamedata novo, contagem igual ou maior | passa; imprime as **novidades do dump** (com a lista de servos novos) e regrava o censo |
+| gamedata novo, contagem **menor** | falha: contagem que encolhe é o sintoma típico de campo renomeado no Atlas |
+| **mesmo** gamedata, qualquer diferença | falha: o dado não mudou, então quem mudou foi o build |
+
+O diff de `data/census.json` no commit é o registro do que cada patch trouxe.
+
+Quando a falha do censo é legítima (você mudou o código para contar diferente de
+propósito, ou o Atlas de fato removeu algo), confira e aceite:
+
+```bash
+npm run data:validate -- --accept
+```
+
+Os **testes** (`npm test`) não fixam contagens do roster: derivam o esperado do
+próprio índice. Eles testam a lógica da busca; o censo vigia o dado.
+
+> Números citados neste e nos outros documentos ("245 de 466 servos", "403 de 462")
+> são **medições datadas**, feitas no gamedata `489221` (ago/2026), e justificam
+> decisões de projeto. Não é preciso atualizá-los a cada sync. A contagem viva
+> fica em `data/census.json`.
+
 ### Como o incremental funciona
 
 Os exports do Atlas respondem a GET condicional. O `raw/manifest.json` guarda o
@@ -171,10 +212,12 @@ ninguém o use por engano.
 
 ## 5. Se o Atlas mudar de schema
 
-1. `npm run data:validate` falha e diz qual check quebrou.
+1. `npm run data:validate` falha e diz qual check quebrou (um fato do jogo, ou
+   uma contagem do censo que encolheu).
 2. Compare o campo em `raw/JP/*.json` com o que [`src/ingest/atlas.ts`](../src/ingest/atlas.ts) espera.
 3. Ajuste `atlas.ts` (formato bruto) e/ou [`transform.ts`](../src/ingest/transform.ts) (tradução).
 4. **Não** ajuste `src/core/model.ts` para acomodar o Atlas — o modelo canônico é
    nosso contrato; ele muda quando *nós* decidimos, não quando a fonte muda.
-5. Se um valor esperado da validação mudou de propósito, atualize o valor **e** o
-   documento que o cita (`SCHEMA.md` ou `PLANO.md`), no mesmo commit.
+5. Se um **fato do jogo** mudou de propósito (o jogo rebalanceou), atualize o valor
+   em `validate.ts` e o documento que o cita (`SCHEMA.md` ou `PLANO.md`), no mesmo
+   commit. Se foi uma **contagem do censo**, `npm run data:validate -- --accept`.
